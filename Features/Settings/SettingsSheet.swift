@@ -1,0 +1,84 @@
+import SwiftUI
+
+// Settings — our own layout (not a stock Form). For now: appearance (the
+// dark-mode control). More settings can slot into this list later.
+struct SettingsSheet: View {
+    @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.system.rawValue
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            ScrollView {
+                VStack(spacing: 18) {
+                    appearanceCard
+                }
+                .padding(Theme.margin)
+            }
+        }
+        .background(Theme.page.ignoresSafeArea())
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("الإعدادات").font(.subheadline).foregroundStyle(Theme.accent)
+                Text("Settings").serifDisplay(.title2).foregroundStyle(Theme.ink)
+            }
+            Spacer()
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Theme.ink.opacity(0.7))
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(Theme.ink.opacity(0.06)))
+            }
+            .buttonStyle(PressableStyle())
+        }
+        .padding(.horizontal, Theme.margin)
+        .padding(.top, Theme.margin)
+        .padding(.bottom, 10)
+    }
+
+    private var appearanceCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Appearance")
+                .font(.system(.headline, design: .serif))
+                .foregroundStyle(Theme.ink)
+            HStack(spacing: 10) {
+                ForEach(AppearanceMode.allCases) { mode in
+                    option(mode)
+                }
+            }
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.ink.opacity(0.06)))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 3)
+    }
+
+    private func option(_ mode: AppearanceMode) -> some View {
+        let selected = appearanceRaw == mode.rawValue
+        return Button {
+            appearanceRaw = mode.rawValue
+        } label: {
+            VStack(spacing: 7) {
+                Image(systemName: mode.icon).font(.system(size: 18))
+                Text(mode.label).font(.footnote.weight(.medium))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .foregroundStyle(selected ? Theme.onChrome : Theme.ink)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(selected ? Theme.accent : Theme.ink.opacity(0.05))
+            )
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel("\(mode.label)\(selected ? ", selected" : "")")
+    }
+}
+
+#Preview { Color.clear.sheet(isPresented: .constant(true)) { SettingsSheet() } }
