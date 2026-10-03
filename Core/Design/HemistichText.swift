@@ -91,24 +91,34 @@ enum HemistichText {
 
     private static let smallNoon: UInt32 = 0x06E8
     private static let fatha: UInt32 = 0x064E
+    private static let damma: UInt32 = 0x064F
+    private static let kasra: UInt32 = 0x0650
+    private static let sukun: UInt32 = 0x0652
+
+    /// The four harakāt a small nun may carry in the source.
+    private static func isNoonHaraka(_ v: UInt32) -> Bool {
+        v == fatha || v == damma || v == kasra || v == sukun
+    }
 
     enum NoonPlace { case above, below, natural }
 
     /// Where each U+06E8 in `plain` should sit, keyed by its 0-based scalar index.
-    /// We follow the printed book, not the tanwīn: a *connecting* nun (word-final,
-    /// joining the next word) sits BELOW by default. A nun the source explicitly
-    /// marks with a fatḥa right after it (U+06E8 U+064E) sits ABOVE — the opt-in
-    /// for the few the book draws on top. A nun inside a word stays put.
+    /// We follow the printed book: the vowel drawn on a *connecting* nun (word-final,
+    /// joining the next word) tells us where it rides — a **kasra** hangs it BELOW
+    /// the line, a **fatḥa/ḍamma** lifts it ABOVE. A nun still followed by a letter
+    /// (after its vowel) is a mid-word spelling nun and stays put. A bare connecting
+    /// nun with no vowel defaults BELOW, as the book draws most of them.
     private static func noonPlacements(_ plain: String) -> [Int: NoonPlace] {
         let sc = Array(plain.unicodeScalars)
         var map: [Int: NoonPlace] = [:]
         for i in sc.indices where sc[i].value == smallNoon {
-            if i + 1 < sc.count, sc[i + 1].value == fatha {
-                map[i] = .above
-            } else if i + 1 == sc.count || sc[i + 1].value == 0x20 {
-                map[i] = .below          // connecting nun → below (follows the book)
+            var j = i + 1
+            var vowel: UInt32?
+            if j < sc.count, isNoonHaraka(sc[j].value) { vowel = sc[j].value; j += 1 }
+            if j == sc.count || sc[j].value == 0x20 {           // connecting nun
+                map[i] = (vowel == nil || vowel == kasra) ? .below : .above
             } else {
-                map[i] = .natural        // mid-word spelling nun
+                map[i] = .natural                               // mid-word spelling nun
             }
         }
         return map
@@ -191,8 +201,9 @@ enum HemistichText {
                 global += 1
                 var piece = String(s)
                 if let place = placements[pidx], s.value == smallNoon, place != .natural {
-                    // For an above nun, pull its fatḥa into the same shifted piece.
-                    if place == .above, i + 1 < run.count, run[i + 1].value == fatha {
+                    // Pull the nun's vowel (kasra below, fatḥa/ḍamma above) into the
+                    // same shifted piece so the mark travels with the nun.
+                    if i + 1 < run.count, isNoonHaraka(run[i + 1].value) {
                         piece += String(run[i + 1]); i += 1; global += 1
                     }
                     if let n = insertions[global] { piece += String(repeating: "\u{0640}", count: n) }
@@ -215,7 +226,7 @@ enum HemistichText {
     }
 
     // Offsets (× size) for the shifted layers.
-    static let noonRise: CGFloat = 0.72    // fatḥa nun, well above
+    static let noonRise: CGFloat = 0.45    // fatḥa/ḍamma nun, just above the word
     static let noonFall: CGFloat = 1.45    // kasra nun, clearly below the word
     static let noonShift: CGFloat = 0.32   // nudge left (into the gap between words)
     static let footnoteLift: CGFloat = 1.15 // footnote marker, above the line
