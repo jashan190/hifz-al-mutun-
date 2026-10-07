@@ -21,6 +21,7 @@ struct PageView: View {
     let matn: Matn
     let page: Int
     let mode: PageMode
+    var reveal: RevealState? = nil
 
     // Tighter margins/gaps give each hemistich more width, which — since the text
     // is sized to fill its column — makes the glyphs noticeably larger.
@@ -65,7 +66,8 @@ struct PageView: View {
                                     justifyWidth: columnWidth * fitSafety,
                                     numberColumn: numberColumn,
                                     numberGap: numberGap,
-                                    midGap: midGap
+                                    midGap: midGap,
+                                    reveal: reveal
                                 )
                             }
                             if index < items.count - 1 { Spacer(minLength: 8) }
@@ -165,6 +167,51 @@ private struct LayeredText: View {
     }
 }
 
+// A half-line in Memorize mode: the first `revealed` words shown with their real
+// colours (filling from the right, RTL), the rest left as a faint blank line.
+private struct MemorizeHalf: View {
+    let half: Hemistich
+    let revealed: Int
+    let fontSize: CGFloat
+    let columnWidth: CGFloat
+
+    var body: some View {
+        let revealedSegments = HemistichReveal.prefix(half, words: revealed)
+        let revealedPlain = half.words.prefix(revealed).map(\.text).joined(separator: " ")
+
+        HStack(spacing: 6) {
+            // Blank remainder on the left. It flexes to fill whatever space the
+            // natural-width revealed text leaves, so we never measure text width
+            // ourselves (which can disagree with SwiftUI's layout and overflow).
+            if revealed < half.words.count {
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(Theme.outline)
+                    .frame(height: 2)
+                    .frame(maxWidth: .infinity)
+            }
+            // Revealed words on the right, at natural size. justifyWidth: 0 means
+            // "no kashida" (same sentinel headings use) — fixedSize keeps it to
+            // its intrinsic width so the blank above takes the rest.
+            if revealed > 0 {
+                LayeredText(
+                    rendered: HemistichText.render(
+                        segments: revealedSegments,
+                        plain: revealedPlain,
+                        size: fontSize,
+                        justifyWidth: 0,
+                        tint: inkColor
+                    ),
+                    font: PageFont.font(size: fontSize),
+                    size: fontSize
+                )
+                .fixedSize()
+            }
+        }
+        .frame(width: columnWidth, alignment: .trailing)
+        .frame(height: fontSize * 1.7, alignment: .center)
+    }
+}
+
 // A centred heading (bab/surah title, basmala, closing line). Rendered from its
 // own segments, so the occasional blue/red part keeps its colour.
 private struct HeadingRow: View {
@@ -198,6 +245,7 @@ private struct BaytRow: View {
     let numberColumn: CGFloat
     let numberGap: CGFloat
     let midGap: CGFloat
+    var reveal: RevealState? = nil
 
     private var lineHeight: CGFloat { fontSize * 1.7 }
 
@@ -211,16 +259,16 @@ private struct BaytRow: View {
                 .frame(width: numberColumn, alignment: .center)
 
             Color.clear.frame(width: numberGap)
-            hemistich(bayt.sadr)
+            hemistich(bayt.sadr, which: .sadr)
             Color.clear.frame(width: midGap)
-            hemistich(bayt.ajuz)
+            hemistich(bayt.ajuz, which: .ajuz)
         }
         .frame(height: lineHeight)
         .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
-    private func hemistich(_ half: Hemistich) -> some View {
+    private func hemistich(_ half: Hemistich, which: Half) -> some View {
         switch mode {
         case .read:
             LayeredText(
@@ -236,10 +284,12 @@ private struct BaytRow: View {
                 width: columnWidth
             )
         case .memorize:
-            // A faint outline where the hemistich sits — no letters, no lengths.
-            RoundedRectangle(cornerRadius: 1, style: .continuous)
-                .fill(Theme.outline)
-                .frame(width: columnWidth, height: 2)
+            MemorizeHalf(
+                half: half,
+                revealed: reveal?.revealedWords(bayt: bayt.number, half: which) ?? 0,
+                fontSize: fontSize,
+                columnWidth: columnWidth
+            )
         }
     }
 }
@@ -260,4 +310,11 @@ private struct BaytRow: View {
 #Preview("Read — XL type") {
     PageView(matn: .preview, page: 1, mode: .read)
         .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+#Preview("Memorize — revealing") {
+    let matn = Matn.preview
+    let idx = RecitationIndex(matn: matn)
+    return PageView(matn: matn, page: 1, mode: .memorize,
+                    reveal: RevealState(index: idx, cursor: 5))
 }
