@@ -24,7 +24,7 @@ cd "/Users/farhan/Developer/hifz-al-mutun-" && xcodegen generate
 
 ```bash
 xcodebuild build -scheme HifzAlMutun \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
   -quiet
 ```
 
@@ -32,7 +32,7 @@ xcodebuild build -scheme HifzAlMutun \
 
 ```bash
 xcodebuild test -scheme HifzAlMutun \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
   -quiet
 ```
 
@@ -40,11 +40,11 @@ xcodebuild test -scheme HifzAlMutun \
 
 ```bash
 xcodebuild test -scheme HifzAlMutun \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
   -only-testing:HifzAlMutunTests/<SuiteName>/<testFunc> -quiet
 ```
 
-If `iPhone 16 Pro` is unavailable, run `xcrun simctl list devices available | grep iPhone` and substitute a device name.
+The app targets iOS 26, so the destination must be a simulator on the **iOS 26.x runtime** (the iPhone 16 family here is only iOS 18.6; the iPhone 17 family is iOS 26.5). If `iPhone 17` is unavailable or its name is ambiguous, run `xcrun simctl list devices available | grep -B1 -A20 "iOS 26"` and use a unique device name or a device id (`id=<UUID>`).
 
 **File layout created by this plan:**
 - `Core/Matching/ArabicNormalize.swift` — runtime port of `Tools/normalize.py`
