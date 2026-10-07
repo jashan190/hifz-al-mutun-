@@ -57,7 +57,10 @@ that re-building a matn's text never erases a user's marks.
 - **Phase 2:** Memorize, test modes, marks/slips, rotation, Today, Progress,
   Mistake history.
 - **Phase 3:** reference audio — forced alignment + listen-and-loop.
-- **Phase 4:** voice test with WhisperKit (on-device, Arabic).
+- **Phase 4:** voice tracking — reciting in Memorize mode reveals the matn
+  word-by-word, following along with Apple's on-device `SpeechAnalyzer` matched
+  against the known text (mistake detection still to come). WhisperKit remains a
+  possible engine swap behind the `SpeechSource` protocol if needed.
 - **Phase 5:** polish — finished-matn taper, settings, backup/export, widgets,
   reminders.
 
