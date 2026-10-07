@@ -619,11 +619,16 @@ final class RecitationTracker {
     }
 
     func consume(_ fragment: TranscriptFragment, at time: TimeInterval) {
-        let tokens = ArabicNormalize.normalize(fragment.text)
-            .split(separator: " ").map(String.init)
+        // Split on spaces FIRST, then normalize each token — normalize() strips
+        // spaces (they aren't Arabic letters), so normalizing the whole fragment
+        // would fuse all words into one unmatchable token.
+        let tokens = fragment.text
+            .split(separator: " ")
+            .map { ArabicNormalize.normalize(String($0)) }
+            .filter { !$0.isEmpty }
         var p = cursor
         let lookahead = (lockState == .lost) ? window : (maxSkip + 1)
-        for token in tokens where !token.isEmpty {
+        for token in tokens {
             let end = min(words.count, p + lookahead)
             if let hit = matchIndex(token, in: p..<end) {
                 p = hit + 1

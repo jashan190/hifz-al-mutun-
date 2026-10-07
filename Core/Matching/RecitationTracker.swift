@@ -2,6 +2,8 @@ import Foundation
 
 /// One recognized hint from a `SpeechSource`. `text` is the recognizer's latest
 /// hypothesis (raw, un-normalized); `isFinal` marks a stabilized segment.
+/// (The tracker currently ignores `isFinal` — it only ever advances the cursor,
+/// never retracts, so a volatile and a final hint are handled identically.)
 struct TranscriptFragment {
     let text: String
     let isFinal: Bool
@@ -48,6 +50,8 @@ final class RecitationTracker {
             .filter { !$0.isEmpty }
 
         var p = cursor
+        // +1 so the range covers the cursor position itself plus `maxSkip`
+        // words ahead (to step over up to `maxSkip` dropped words when locked).
         let lookahead = (lockState == .lost) ? window : (maxSkip + 1)
         for token in tokens {
             let end = min(words.count, p + lookahead)
@@ -61,6 +65,8 @@ final class RecitationTracker {
             lastProgress = time
             lockState = .locked
         } else if lockState == .locked, time - lastProgress > lostAfter {
+            // Only locked → lost; we never fire "lost" from idle (before the
+            // first matched word). reset() is the only way back to idle.
             lockState = .lost
         }
     }
@@ -76,6 +82,10 @@ final class RecitationTracker {
 
     private func fuzzyEqual(_ a: String, _ b: String) -> Bool {
         if a == b { return true }
+        // Caveat: for length-1 tokens the threshold is 1, so any single letter
+        // matches any other. Fine for multi-letter words; single-letter Arabic
+        // particles (و، ف، ب، ل) can false-match. Skip tolerance usually carries
+        // the cursor over them anyway. Revisit if fixture tests show drift.
         let threshold = max(1, min(a.count, b.count) / 4)
         return levenshtein(a, b) <= threshold
     }
