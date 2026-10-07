@@ -1,6 +1,6 @@
 # Hifz al-Mutun
 
-A native iOS app (SwiftUI, SwiftData, iOS 18+) for memorizing three classical
+A native iOS app (SwiftUI, SwiftData, iOS 26+) for memorizing three classical
 Arabic didactic poems (mutun) in tajwīd and qirā’āt: **Tuhfat al-Atfal**,
 **al-Muqaddimah al-Jazariyyah**, and **ash-Shatibiyyah (Hirz al-Amani)**.
 
