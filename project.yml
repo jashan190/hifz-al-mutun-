@@ -54,6 +54,10 @@ targets:
     platform: iOS
     sources:
       - path: Tests
+        excludes:
+          - "SpeechTests/Fixtures/**"
+      - path: Tests/SpeechTests/Fixtures
+        buildPhase: resources
     dependencies:
       - target: HifzAlMutun
     settings:
