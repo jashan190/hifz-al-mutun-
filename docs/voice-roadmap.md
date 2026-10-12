@@ -39,9 +39,11 @@ on a phone.
 - Make the gate honest: `transcribesArabicClip` currently *passes* when no
   locales are supported. Skip only on the Simulator (`#if targetEnvironment(simulator)`);
   on a device, an empty list or missing Arabic must **fail**.
-- Locale: `SpeechModel.ensureInstalled` compares `"ar"` exactly against
-  `supportedLocales`. If iOS lists only `ar-SA` etc., this silently throws.
-  Match on language code instead and pick the best regional variant.
+- Locale: `SpeechModel.ensureInstalled` compares full BCP 47 identifiers, so
+  the requested `"ar"` never matches a supported regional locale such as
+  `ar-SA` and it throws `localeUnsupported`, which `RecitationSession.start()`
+  then discards with `try?` (see B2). Match on the language code and pick a
+  supported regional locale *before* creating the `SpeechTranscriber`.
 - Record 3 fixture clips (murattal, melodic, fast drill) for one page each, and
   measure reveal accuracy with `FileSpeechSource` → tracker.
 - **Exit:** Arabic transcribes on device, and ≥90% of words reveal on the murattal clip.
