@@ -4,7 +4,6 @@ import Speech
 @testable import HifzAlMutun
 
 @Suite struct FileTranscriptionSpikeTests {
-    @available(iOS 26, *)
     @Test func listsSupportedLocales() async {
         let supported = await SpeechTranscriber.supportedLocales
         print("SUPPORTED LOCALES (\(supported.count)):")
@@ -18,7 +17,6 @@ import Speech
         print("ARABIC SUPPORTED: \(hasArabic)")
     }
 
-    @available(iOS 26, *)
     @Test func transcribesArabicClip() async throws {
         // The on-device speech models ship only on physical devices; the
         // Simulator reports zero supported locales. Skip there — this spike is

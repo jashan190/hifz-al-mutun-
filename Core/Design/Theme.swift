@@ -61,9 +61,8 @@ enum Theme {
     static let quran = Color.dynamic(light: 0x1A5A86, dark: 0x74B6DE)
     static let rumuz = Color.dynamic(light: 0xB02430, dark: 0xEE7E82)
 
-    // Spacing — a 4-point grid; 16-point screen margins.
+    // 16-point screen margins.
     static let margin: CGFloat = 16
-    static let gridUnit: CGFloat = 4
 }
 
 enum Numerals {

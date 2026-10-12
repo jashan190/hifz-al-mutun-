@@ -116,7 +116,7 @@ enum HemistichText {
             var vowel: UInt32?
             if j < sc.count, isNoonHaraka(sc[j].value) { vowel = sc[j].value; j += 1 }
             if j == sc.count || sc[j].value == 0x20 {           // connecting nun
-                map[i] = (vowel == nil || vowel == kasra) ? .below : .above
+                map[i] = (vowel == fatha || vowel == damma) ? .above : .below
             } else {
                 map[i] = .natural                               // mid-word spelling nun
             }

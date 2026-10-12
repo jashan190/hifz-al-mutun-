@@ -5,16 +5,15 @@ import Foundation
 /// rest blank. Operates on unicode scalars so a cut never splits a grapheme.
 ///
 /// Relies on the content invariant that a hemistich's `segments` text (text
-/// runs only) concatenates exactly to its `text`, and `text` is its `words`
-/// joined by single spaces.
+/// runs only) concatenates exactly to its `text`, and that `words` are the
+/// space-separated tokens of `text` that contain letters. Punctuation-only
+/// tokens (the book's "-" and "،") sit in `text` but aren't words.
 enum HemistichReveal {
     static func prefix(_ hemistich: Hemistich, words k: Int) -> [Segment] {
         if k <= 0 { return [] }
         if k >= hemistich.words.count { return hemistich.segments }
 
-        // Scalar length of the first k words joined by single spaces.
-        let revealedPlain = hemistich.words.prefix(k).map(\.text).joined(separator: " ")
-        let cut = revealedPlain.unicodeScalars.count
+        let cut = scalarEnd(ofWord: k, in: hemistich.text)
 
         var result: [Segment] = []
         var consumed = 0
@@ -38,5 +37,20 @@ enum HemistichReveal {
             }
         }
         return result
+    }
+
+    /// Scalar offset in `text` just past the `k`-th (1-based) word token.
+    static func scalarEnd(ofWord k: Int, in text: String) -> Int {
+        var offset = 0
+        var seen = 0
+        for token in text.split(separator: " ", omittingEmptySubsequences: false) {
+            offset += token.unicodeScalars.count
+            if !ArabicNormalize.normalize(String(token)).isEmpty {
+                seen += 1
+                if seen == k { return offset }
+            }
+            offset += 1   // the separating space
+        }
+        return text.unicodeScalars.count
     }
 }

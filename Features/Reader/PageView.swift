@@ -177,7 +177,7 @@ private struct MemorizeHalf: View {
 
     var body: some View {
         let revealedSegments = HemistichReveal.prefix(half, words: revealed)
-        let revealedPlain = half.words.prefix(revealed).map(\.text).joined(separator: " ")
+        let revealedPlain = revealedSegments.compactMap(\.text).joined()
 
         HStack(spacing: 6) {
             // Blank remainder on the left. It flexes to fill whatever space the

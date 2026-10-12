@@ -6,7 +6,6 @@ import Speech
 /// permission, captures audio with AVAudioEngine (converting to the analyzer's
 /// preferred format), and emits recognizer fragments. Build-verified here; real
 /// microphone behaviour is validated on-device.
-@available(iOS 26, *)
 final class AppleSpeechSource: SpeechSource {
     let fragments: AsyncStream<TranscriptFragment>
     private let continuation: AsyncStream<TranscriptFragment>.Continuation

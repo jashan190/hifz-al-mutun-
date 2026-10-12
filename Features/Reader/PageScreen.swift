@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 
 // The matn reader: one page per screen, swipe between pages (RTL, like an Arabic
 // book), bound between deep Madinah-green "covers" (header + footer). Tapping the
@@ -41,6 +40,11 @@ struct PageScreen: View {
             } else {
                 voice.stop()
             }
+        }
+        // Never leave the microphone running once the reader is gone.
+        .onDisappear {
+            isListening = false
+            voice.stop()
         }
         .onChange(of: voice.cursor) { _, c in
             guard mode == .memorize, isListening, let target = voice.page(forCursor: c) else { return }

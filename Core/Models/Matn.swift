@@ -32,8 +32,6 @@ struct Segment: Decodable, Hashable {
     let text: String?          // the run's text; nil when this is a footnote marker
     let color: SegmentColor?   // nil treated as black
     let footnote: String?      // eastern-digit marker (e.g. "٤٥"); nil for text runs
-
-    var isFootnote: Bool { footnote != nil }
 }
 
 /// A plain word with its normalized (match-only) form. The normalized form has
