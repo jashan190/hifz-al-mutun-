@@ -6,7 +6,6 @@ import Speech
 /// recognizer's fragments. Used for the engine spike and fixture accuracy tests,
 /// and as the simulator-friendly dev loop (no live mic needed). Shares the asset
 /// install path with the live source via `SpeechModel`.
-@available(iOS 26, *)
 final class FileSpeechSource: SpeechSource {
     let fragments: AsyncStream<TranscriptFragment>
     private let continuation: AsyncStream<TranscriptFragment>.Continuation

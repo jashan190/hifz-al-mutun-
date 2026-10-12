@@ -15,7 +15,6 @@ final class VoiceController: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
 
     func start(matn: Matn, fromPage page: Int) {
-        guard #available(iOS 26, *) else { return }
         stop()   // clear any prior session first
         let index = RecitationIndex(matn: matn)
         self.index = index

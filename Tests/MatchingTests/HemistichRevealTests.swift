@@ -54,6 +54,21 @@ import Testing
         #expect(out.map { $0.text ?? "" }.joined() == "بِسْمِ")
     }
 
+    // The book's "-" and "،" are tokens in `text` but not words; the cut must
+    // step over them (bayt 74: «أَقُولُ لِحُرٍّ - وَالْمُرُوءَةُ مَرْؤُهَا»).
+    @Test func skipsPunctuationTokens() {
+        let words = ["أقول", "لحر", "والمروءة"]
+        let h = Hemistich(
+            text: "أقول لحر - والمروءة",
+            segments: [Segment(text: "أقول لحر - والمروءة", color: .black, footnote: nil)],
+            words: words.map { Word(text: $0, normalized: $0) }
+        )
+        let out = HemistichReveal.prefix(h, words: 2)
+        #expect(out.map { $0.text ?? "" }.joined() == "أقول لحر")
+        let three = HemistichReveal.prefix(h, words: 3)
+        #expect(three.map { $0.text ?? "" }.joined() == "أقول لحر - والمروءة")
+    }
+
     // Footnote markers (text == nil) are kept only when they sit before the cut.
     private func hemiWithFootnote() -> Hemistich {
         let words = ["بدأت", "بسم"]

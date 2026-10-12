@@ -6,7 +6,6 @@ import Speech
 enum SpeechSourceError: Error { case localeUnsupported, notAuthorized }
 
 /// On-device model + permission helpers shared by the live and file sources.
-@available(iOS 26, *)
 enum SpeechModel {
     /// Request speech-recognition + microphone permission, or throw notAuthorized.
     static func requestAuthorization() async throws {

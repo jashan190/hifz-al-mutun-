@@ -14,7 +14,6 @@ enum PageFont {
 
     private static var didRegister = false
     private(set) static var resolvedName: String? = nil
-    static var isAvailable: Bool { resolvedName != nil }
 
     /// Register every .ttf in the bundle. Safe to call repeatedly; runs once.
     static func registerBundledFonts() {
