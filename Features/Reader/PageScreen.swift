@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 // The matn reader: one page per screen, swipe between pages (RTL, like an Arabic
 // book), bound between deep Madinah-green "covers" (header + footer). Tapping the
@@ -13,11 +14,13 @@ struct PageScreen: View {
     @State private var barsVisible = true
     @State private var showIndex = false
     @State private var isListening = false
+    @StateObject private var voice = VoiceController()
 
     var body: some View {
         TabView(selection: $currentPage) {
             ForEach(1...matn.pageCount, id: \.self) { page in
-                PageView(matn: matn, page: page, mode: mode)
+                PageView(matn: matn, page: page, mode: mode,
+                         reveal: (mode == .memorize && page == currentPage) ? voice.reveal : nil)
                     .tag(page)
                     .contentShape(Rectangle())
                     .onTapGesture { toggleBars() }
@@ -31,6 +34,19 @@ struct PageScreen: View {
         .navigationBarBackButtonHidden(true)
         .sheet(isPresented: $showIndex) {
             IndexSheet(matn: matn, currentPage: $currentPage)
+        }
+        .onChange(of: isListening) { _, listening in
+            if listening {
+                voice.start(matn: matn, fromPage: currentPage)
+            } else {
+                voice.stop()
+            }
+        }
+        .onChange(of: voice.cursor) { _, c in
+            guard mode == .memorize, isListening, let target = voice.page(forCursor: c) else { return }
+            if target != currentPage {
+                withAnimation { currentPage = target }
+            }
         }
     }
 
@@ -74,6 +90,12 @@ struct PageScreen: View {
             if mode == .memorize {
                 MicButton(isListening: $isListening)
                     .transition(.scale.combined(with: .opacity))
+                if voice.lockState == .lost {
+                    Text("listening…")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.onChromeDim)
+                        .transition(.opacity)
+                }
             }
             Spacer(minLength: 0)
             Text("\(Numerals.eastern(currentPage)) / \(Numerals.eastern(matn.pageCount))")

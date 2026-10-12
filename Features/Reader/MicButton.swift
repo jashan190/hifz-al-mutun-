@@ -1,9 +1,10 @@
 import SwiftUI
 
 // The voice button, shown in Memorize mode beside the toggle. Tapping it enters
-// a "listening" state (cream mic → green, with a soft pulse). The on-device
-// recognition engine (WhisperKit) gets wired to this next; for now it toggles
-// the listening state so the entry point is in place.
+// a "listening" state (cream mic → green, with a soft pulse). Its `isListening`
+// binding drives `VoiceController` in `PageScreen`, which starts/stops a live
+// `RecitationSession` (Apple's on-device `SpeechAnalyzer`) that reveals the
+// matn word-by-word as the user recites.
 struct MicButton: View {
     @Binding var isListening: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

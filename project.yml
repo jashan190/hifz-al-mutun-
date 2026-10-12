@@ -8,7 +8,7 @@ name: HifzAlMutun
 options:
   bundleIdPrefix: com.farhan
   deploymentTarget:
-    iOS: "18.0"
+    iOS: "26.0"
   createIntermediateGroups: true
   groupSortPosition: top
 
@@ -46,3 +46,34 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Used to listen as you recite, so the app can follow along and reveal the text."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Used to recognise your recitation on-device so the app can track your place in the poem."
+
+  HifzAlMutunTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+        excludes:
+          - "SpeechTests/Fixtures/**"
+      - path: Tests/SpeechTests/Fixtures
+        buildPhase: resources
+    dependencies:
+      - target: HifzAlMutun
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.farhan.hifzalmutun.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  HifzAlMutun:
+    build:
+      targets:
+        HifzAlMutun: all
+        HifzAlMutunTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - HifzAlMutunTests
