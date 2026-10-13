@@ -15,10 +15,10 @@ final class VoiceController: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
 
     func start(matn: Matn, fromPage page: Int) {
-        stop()   // clear any prior session first
+        clear()   // drop any prior session and its results first
         let index = RecitationIndex(matn: matn)
         self.index = index
-        let source = AppleSpeechSource()
+        let source = makeSource()
         let startIndex = index.firstWordIndex(onPage: page)
         let session = RecitationSession(index: index, source: source, startWordIndex: startIndex)
         self.session = session
@@ -32,7 +32,14 @@ final class VoiceController: ObservableObject {
         session.start()
     }
 
+    /// Stop listening but keep the results on screen (and let the recognizer's
+    /// last, finalized result land) until the next session or `clear()`.
     func stop() {
+        session?.stop()
+    }
+
+    /// Drop the session and everything it revealed.
+    func clear() {
         session?.stop()
         session = nil
         index = nil
@@ -40,6 +47,29 @@ final class VoiceController: ObservableObject {
         lockState = .idle
         reveal = nil
     }
+
+    private func makeSource() -> SpeechSource {
+        #if DEBUG
+        if let script = UserDefaults.standard.string(forKey: "debugRecite") {
+            return MockSpeechSource(script: Self.parseDebugScript(script))
+        }
+        #endif
+        return AppleSpeechSource()
+    }
+
+    #if DEBUG
+    /// Debug-only: launch with `-debugRecite "frag|frag|~frag"` to replay a
+    /// scripted recitation instead of the microphone (the Simulator has no
+    /// speech models). Fragments are separated by `|`; a leading `~` marks a
+    /// volatile (not yet final) result.
+    static func parseDebugScript(_ script: String) -> [TranscriptFragment] {
+        script.split(separator: "|").map { raw in
+            let volatile = raw.hasPrefix("~")
+            return TranscriptFragment(text: String(volatile ? raw.dropFirst() : raw),
+                                      isFinal: !volatile)
+        }
+    }
+    #endif
 
     /// The page the current reveal frontier sits on (for auto page-turn), or nil.
     func page(forCursor c: Int) -> Int? {
