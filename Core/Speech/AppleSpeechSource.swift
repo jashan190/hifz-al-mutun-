@@ -16,6 +16,7 @@ final class AppleSpeechSource: SpeechSource {
     private var analyzer: SpeechAnalyzer?
     private var inputContinuation: AsyncStream<AnalyzerInput>.Continuation?
     private var readerTask: Task<Void, Never>?
+    private var tapInstalled = false
 
     /// Where the source is in its life. `start()` awaits permission and a
     /// possible model download, and `stop()` can arrive at any point in
@@ -44,7 +45,20 @@ final class AppleSpeechSource: SpeechSource {
             return true
         }
         guard began else { return }
+        do {
+            try await startCapture()
+        } catch is CancellationError {
+            throw CancellationError()      // a stop: already torn down
+        } catch {
+            // Permission refused, no Arabic model, the engine failed…: release
+            // whatever was set up and end the stream, so nothing is left live.
+            phase.withLock { $0 = .stopped }
+            teardown(analyzerStarted: false)
+            throw error
+        }
+    }
 
+    private func startCapture() async throws {
         try await SpeechModel.requestAuthorization()
         try checkNotStopped()
 
@@ -105,6 +119,7 @@ final class AppleSpeechSource: SpeechSource {
                 : Self.convert(buffer, using: converter, to: analyzerFormat)
             if let out { inputCont.yield(AnalyzerInput(buffer: out)) }
         }
+        tapInstalled = true
         engine.prepare()
         try engine.start()
 
@@ -174,7 +189,10 @@ final class AppleSpeechSource: SpeechSource {
 
     private func teardown(analyzerStarted: Bool) {
         // 1. Stop feeding audio: remove the tap, stop the engine, end the input stream.
-        engine.inputNode.removeTap(onBus: 0)
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
         engine.stop()
         inputContinuation?.finish()
         try? AVAudioSession.sharedInstance().setActive(false)

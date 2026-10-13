@@ -53,6 +53,12 @@ Try each of these and note what happens:
 Turn the mic off while the permission prompt or the download is showing: the mic
 must not come on afterwards.
 
+Early runs will flag words wrongly (recognizer noise, or the 8 s reveal firing while you
+recite correctly). Clear them under **Library → Settings (gear) → Flags → Clear all flags**.
+
+If voice can't start (permission off, no Arabic model), the footer says why and the
+sitting carries on by tap: tap the blank holding the next word to reveal it.
+
 ## Step 3 — send me what you saw
 
 - Which words went amber/red that you recited correctly (bayt and word), and in which

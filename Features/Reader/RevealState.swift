@@ -51,6 +51,14 @@ struct RevealState {
         return k
     }
 
+    /// Whether the next expected word is in this hemistich (its blank is the
+    /// one to tap to reveal it).
+    func holdsCursor(bayt: Int, half: Half) -> Bool {
+        let key = RevealLayout.HalfKey(bayt: bayt, half: half)
+        guard let start = layout.startByHalf[key], let total = layout.countByHalf[key] else { return false }
+        return start <= cursor && cursor < start + total
+    }
+
     /// Flat index of a hemistich's word, for acting on it (e.g. dismissing).
     func flatIndex(bayt: Int, half: Half, wordIndex: Int) -> Int? {
         layout.startByHalf[RevealLayout.HalfKey(bayt: bayt, half: half)].map { $0 + wordIndex }

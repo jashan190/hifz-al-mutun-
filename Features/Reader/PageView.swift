@@ -181,7 +181,8 @@ private struct MemorizeHalf: View {
     var outcome: (Int) -> WordOutcome? = { _ in nil }
     var flagged: (Int) -> Bool = { _ in false }
     var onDismiss: (Int) -> Void = { _ in }
-    var onTapBlank: () -> Void = {}
+    var onToggleFlag: (Int) -> Void = { _ in }
+    var onTapBlank: (() -> Void)? = nil
     let fontSize: CGFloat
     let columnWidth: CGFloat
 
@@ -194,7 +195,7 @@ private struct MemorizeHalf: View {
                 ForEach(0..<revealed, id: \.self) { k in
                     MemorizeWord(segments: HemistichReveal.span(half, words: k..<(k + 1)),
                                  outcome: outcome(k), flagged: flagged(k), fontSize: fontSize,
-                                 onDismiss: { onDismiss(k) })
+                                 onDismiss: { onDismiss(k) }, onToggleFlag: { onToggleFlag(k) })
                 }
             }
             .fixedSize()
@@ -211,7 +212,8 @@ private struct MemorizeHalf: View {
                     // the whole row height, not just the thin line.
                     .frame(height: fontSize * 1.7)
                     .contentShape(Rectangle())
-                    .onTapGesture(perform: onTapBlank)
+                    .onTapGesture { onTapBlank?() }
+                    .allowsHitTesting(onTapBlank != nil)
                     .accessibilityLabel("hidden")
             }
         }
@@ -235,6 +237,7 @@ private struct MemorizeWord: View {
     var flagged = false
     let fontSize: CGFloat
     var onDismiss: () -> Void = {}
+    var onToggleFlag: () -> Void = {}
 
     var body: some View {
         let plain = segments.compactMap(\.text).joined()
@@ -280,6 +283,9 @@ private struct MemorizeWord: View {
         .contextMenu {
             if outcome?.isMistake == true {
                 Button("Not a mistake", systemImage: "checkmark.circle", action: onDismiss)
+            } else {
+                Button(flagged ? "Remove flag" : "Flag mistake",
+                       systemImage: flagged ? "flag.slash" : "flag", action: onToggleFlag)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -289,7 +295,7 @@ private struct MemorizeWord: View {
 
     private func tint(_ color: SegmentColor) -> Color {
         switch outcome {
-        case .none, .correct?: return inkColor(color)
+        case .none, .correct?, .shown?: return inkColor(color)
         case .unsure?: return Theme.unsure
         case .wrong?, .skipped?: return Theme.error
         case .unheard?, .revealed?: return Theme.inkSecondary
@@ -298,7 +304,7 @@ private struct MemorizeWord: View {
 
     private var accessibilityNote: String {
         switch outcome {
-        case .none, .correct?: return ""
+        case .none, .correct?, .shown?: return ""
         case .unsure?: return "unsure"
         case .wrong(let heard)?: return "mistake, heard \(heard)"
         case .skipped?: return "skipped"
@@ -427,7 +433,14 @@ private struct BaytRow: View {
                 outcome: { reveal?.outcome(bayt: bayt.number, half: which, wordIndex: $0) },
                 flagged: { flagged(which, $0) },
                 onDismiss: { actions.dismissMistake(bayt.number, which, $0) },
-                onTapBlank: { actions.revealNext(bayt.number) },
+                onToggleFlag: { k in
+                    flagStore.setFlag(!flagged(which, k), matnID: matnID,
+                                      FlagKey(bayt: bayt.number, half: which, wordIndex: k))
+                },
+                // Only the blank holding the next word reveals it; elsewhere a
+                // tap falls through to show/hide the bars.
+                onTapBlank: reveal?.holdsCursor(bayt: bayt.number, half: which) == true
+                    ? { actions.revealNext(bayt.number) } : nil,
                 fontSize: fontSize,
                 columnWidth: columnWidth
             )

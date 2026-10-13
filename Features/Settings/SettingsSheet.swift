@@ -1,10 +1,12 @@
 import SwiftUI
 
-// Settings — our own layout (not a stock Form). For now: appearance (the
-// dark-mode control). More settings can slot into this list later.
+// Settings — our own layout (not a stock Form): appearance (the dark-mode
+// control) and the flags. More settings can slot into this list later.
 struct SettingsSheet: View {
     @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.system.rawValue
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var flagStore: FlagStore
+    @State private var confirmClear = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -12,6 +14,7 @@ struct SettingsSheet: View {
             ScrollView {
                 VStack(spacing: 18) {
                     appearanceCard
+                    flagsCard
                 }
                 .padding(Theme.margin)
             }
@@ -59,6 +62,33 @@ struct SettingsSheet: View {
         .shadow(color: .black.opacity(0.04), radius: 8, y: 3)
     }
 
+    // Flags gather from voice review; early testing can leave wrong ones.
+    private var flagsCard: some View {
+        let total = flagStore.flags.values.reduce(0) { $0 + $1.count }
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Flags")
+                .font(.system(.headline, design: .serif))
+                .foregroundStyle(Theme.ink)
+            Text(total == 1 ? "1 word is flagged for review." : "\(total) words are flagged for review.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.ink.opacity(0.7))
+            Button(role: .destructive) { confirmClear = true } label: {
+                Text("Clear all flags").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(total == 0)
+            .confirmationDialog("Clear all \(total) flags?", isPresented: $confirmClear, titleVisibility: .visible) {
+                Button("Clear all flags", role: .destructive) { flagStore.clearAll() }
+            } message: {
+                Text("This removes every flag in every matn and can't be undone.")
+            }
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.ink.opacity(0.06)))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 3)
+    }
+
     private func option(_ mode: AppearanceMode) -> some View {
         let selected = appearanceRaw == mode.rawValue
         return Button {
@@ -81,4 +111,8 @@ struct SettingsSheet: View {
     }
 }
 
-#Preview { Color.clear.sheet(isPresented: .constant(true)) { SettingsSheet() } }
+#Preview {
+    Color.clear.sheet(isPresented: .constant(true)) {
+        SettingsSheet().environmentObject(FlagStore.inMemory())
+    }
+}

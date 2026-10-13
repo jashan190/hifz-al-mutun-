@@ -54,6 +54,12 @@ final class RecitationSession: ObservableObject {
     private var clock: Task<Void, Never>?
     private var startTime = Date()
     private var anchor: Int
+    /// Set by stop(): late events from the source (a download still finishing,
+    /// a "listening" that crossed paths with the stop) must not revive it.
+    private var stopped = false
+    /// How a reveal is recorded: as help (flagged) when reciting by voice,
+    /// or plainly shown in a tap-to-reveal sitting.
+    var revealOutcome: WordOutcome = .revealed
 
     init(index: RecitationIndex, source: SpeechSource, startWordIndex: Int) {
         let layout = RevealLayout(index: index)
@@ -69,6 +75,7 @@ final class RecitationSession: ObservableObject {
     private var now: TimeInterval { Date().timeIntervalSince(startTime) }
 
     func start() {
+        stopped = false
         startTime = Date()
         status = .preparing
         source.onEvent = { [weak self] event in
@@ -88,6 +95,7 @@ final class RecitationSession: ObservableObject {
     }
 
     func stop() {
+        stopped = true
         startTask?.cancel()
         clock?.cancel()
         // Stop the source. Its stream finishes once the engine finalises, which
@@ -113,7 +121,8 @@ final class RecitationSession: ObservableObject {
 
     /// Show the next word as help (a tap on the blank, or a long pause).
     func revealNext() {
-        tracker.revealNext(at: now)
+        guard !stopped else { return }
+        tracker.revealNext(at: now, as: revealOutcome)
         publish()
     }
 
@@ -126,6 +135,7 @@ final class RecitationSession: ObservableObject {
     }
 
     private func handle(_ event: SpeechSourceEvent) {
+        guard !stopped else { return }
         if case .failed = status { return }
         switch event {
         case .downloading(let p):
@@ -138,6 +148,7 @@ final class RecitationSession: ObservableObject {
     }
 
     private func fail(_ error: Error) {
+        guard !stopped else { return }
         status = .failed(VoiceFailure(error))
         clock?.cancel()
         source.stop()
@@ -157,9 +168,10 @@ final class RecitationSession: ObservableObject {
     }
 
     private func tick() {
+        guard !stopped else { return }
         tracker.noteSilence(at: now)
         if let after = stuckRevealAfter, tracker.silence(at: now) > after {
-            tracker.revealNext(at: now)
+            tracker.revealNext(at: now, as: revealOutcome)
         }
         publish()
     }

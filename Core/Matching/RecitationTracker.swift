@@ -32,12 +32,14 @@ enum WordOutcome: Equatable {
     case unheard
     /// Shown as help when the reciter was stuck (a tap, or a long pause).
     case revealed
+    /// Shown by tap in a sitting without voice: nothing was recited to judge.
+    case shown
 
     /// A recitation mistake: shown in red, with a haptic.
     var isMistake: Bool {
         switch self {
         case .wrong, .skipped: return true
-        case .correct, .unsure, .unheard, .revealed: return false
+        case .correct, .unsure, .unheard, .revealed, .shown: return false
         }
     }
 
@@ -137,11 +139,12 @@ final class RecitationTracker {
         current.outcomes[index] = outcome
     }
 
-    /// Show the next expected word as help, and move past it.
-    func revealNext(at time: TimeInterval) {
+    /// Show the next expected word, and move past it: as help (`.revealed`,
+    /// flagged) while reciting, or plainly (`.shown`) when reviewing by tap.
+    func revealNext(at time: TimeInterval, as outcome: WordOutcome = .revealed) {
         let i = committed.cursor
         guard i < words.count else { return }
-        committed.outcomes[i] = .revealed
+        committed.outcomes[i] = outcome
         committed.cursor = Self.firstNonEmpty(from: i + 1, in: words)
         committed.lock = .locked           // the place is known again
         committed.lostBySilence = false

@@ -23,6 +23,9 @@ final class VoiceController: ObservableObject {
     @Published var summary: ReviewSummary?
     /// True for a tap-to-reveal sitting without the microphone.
     @Published private(set) var isManual = false
+    /// Why voice last failed to start, kept while a tap-to-reveal sitting
+    /// carries on in its place (so the footer can still say why).
+    @Published private(set) var voiceFailure: VoiceFailure?
 
     private var session: RecitationSession?
     private var index: RecitationIndex?
@@ -32,6 +35,16 @@ final class VoiceController: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
 
     var hasSession: Bool { session != nil }
+
+    /// A sitting is running (by voice or by tap), as opposed to stopped with
+    /// its results still on screen.
+    var isActive: Bool {
+        guard session != nil else { return false }
+        switch status {
+        case .preparing, .downloading, .listening: return true
+        case .idle, .failed: return false
+        }
+    }
     /// Listening (or getting ready to) with the microphone.
     var isLive: Bool {
         guard !isManual else { return false }
@@ -52,7 +65,10 @@ final class VoiceController: ObservableObject {
         let startIndex = bayt.flatMap { index.firstWordIndex(ofBayt: $0) } ?? index.firstWordIndex(onPage: page)
         let session = RecitationSession(index: index, source: manual ? SilentSpeechSource() : makeSource(),
                                         startWordIndex: startIndex)
-        if manual { session.stuckRevealAfter = nil }
+        if manual {
+            session.stuckRevealAfter = nil
+            session.revealOutcome = .shown   // reviewing by tap: reveals aren't flagged
+        }
         self.session = session
 
         cursor = session.cursor
@@ -62,7 +78,14 @@ final class VoiceController: ObservableObject {
         session.$reveal.sink { [weak self] in self?.reveal = $0 }.store(in: &cancellables)
         session.$mistakeCount.sink { [weak self] in self?.mistakeCount = $0 }.store(in: &cancellables)
         session.$status.sink { [weak self] in self?.status = $0 }.store(in: &cancellables)
-        session.$outcomes.sink { [weak self] in self?.syncFlags($0) }.store(in: &cancellables)
+        session.$outcomes.sink { [weak self] outcomes in
+            self?.syncFlags(outcomes)
+            // The recognizer's last result can land after the stop.
+            if self?.summary != nil { self?.summary = self?.makeSummary(outcomes) }
+        }.store(in: &cancellables)
+        session.$status.sink { [weak self] status in
+            if case .failed(let why) = status { self?.voiceFailure = why }
+        }.store(in: &cancellables)
 
         session.start()
     }
@@ -72,14 +95,24 @@ final class VoiceController: ObservableObject {
     func stop() {
         guard let session else { return }
         session.stop()
-        let judged = session.outcomes
-        if !judged.isEmpty, let index {
-            summary = ReviewSummary(
-                baytsRecited: Set(judged.keys.map { index.refs[$0].bayt }).count,
-                mistakes: judged.values.filter(\.isMistake).count,
-                revealed: judged.values.filter { $0 == .revealed }.count
-            )
-        }
+        summary = makeSummary(session.outcomes)
+    }
+
+    private func makeSummary(_ judged: [Int: WordOutcome]) -> ReviewSummary? {
+        guard !judged.isEmpty, let index else { return nil }
+        return ReviewSummary(
+            baytsRecited: Set(judged.keys.map { index.refs[$0].bayt }).count,
+            mistakes: judged.values.filter(\.isMistake).count,
+            revealed: judged.values.filter { $0 == .revealed }.count
+        )
+    }
+
+    /// Voice couldn't start: carry on as a tap-to-reveal sitting from the same
+    /// place, keeping the reason for the footer.
+    func fallBackToManual(matn: Matn, page: Int) {
+        let why = voiceFailure
+        start(matn: matn, fromPage: page, flags: flags, manual: true)
+        voiceFailure = why
     }
 
     /// Drop the session and everything it revealed.
@@ -95,24 +128,28 @@ final class VoiceController: ObservableObject {
         status = .idle
         summary = nil
         isManual = false
+        voiceFailure = nil
     }
 
     // MARK: - During a sitting
 
     /// The reciter moved to another page by hand: continue from its top.
     func jump(toPage page: Int) {
-        guard let index, let session else { return }
+        guard isActive, let index, let session else { return }
         session.jump(toWord: index.firstWordIndex(onPage: page))
     }
 
     /// The reciter tapped a bayt number: continue from that bayt.
     func jump(toBayt bayt: Int) {
-        guard let index, let session, let w = index.firstWordIndex(ofBayt: bayt) else { return }
+        guard isActive, let index, let session, let w = index.firstWordIndex(ofBayt: bayt) else { return }
         session.jump(toWord: w)
     }
 
     /// Show the next word (a tap on the blank, or the manual sitting's only way on).
-    func revealNext() { session?.revealNext() }
+    func revealNext() {
+        guard isActive else { return }
+        session?.revealNext()
+    }
 
     /// "Not a mistake": voice recognition can be wrong.
     func dismissMistake(bayt: Int, half: Half, wordIndex: Int) {

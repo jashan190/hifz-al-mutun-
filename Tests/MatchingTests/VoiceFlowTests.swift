@@ -60,15 +60,63 @@ import Foundation
         #expect(!store.isFlagged("t", rajiKey))
     }
 
-    @Test func manualSittingRevealsByTap() async {
+    @Test func manualSittingRevealsByTapWithoutFlagging() async {
         let store = FlagStore.inMemory()
         let voice = VoiceController()
         voice.start(matn: matn(), fromPage: 2, flags: store, manual: true)
+        await settle()
         voice.revealNext()
         await settle()
         #expect(voice.reveal?.revealedWords(bayt: 2, half: .sadr) == 1)
-        #expect(store.isFlagged("t", FlagKey(bayt: 2, half: .sadr, wordIndex: 0)))  // help is flagged
-        #expect(!voice.isLive)
+        #expect(store.count(for: "t") == 0)   // reviewing by tap isn't a mistake
+        #expect(!voice.isLive && voice.isActive)
+    }
+
+    // B1 in the UI: a download still finishing, or a "listening" that crossed
+    // paths with the stop, must not bring a stopped session back.
+    @Test func lateEventsDontReviveAStoppedSession() async {
+        let source = HeldSource()
+        let session = RecitationSession(index: RecitationIndex(matn: matn()), source: source, startWordIndex: 0)
+        session.start()
+        await settle()
+        session.stop()
+        source.onEvent?(.downloading(0.5))
+        source.onEvent?(.listening)
+        await settle()
+        #expect(session.status == .idle)
+    }
+
+    // After a stop the results stay put: swiping back or tapping a blank to
+    // look at them must not reset or add to them.
+    @Test func stoppedResultsAreLeftAlone() async {
+        let store = FlagStore.inMemory()
+        let voice = VoiceController()
+        UserDefaults.standard.set("يقول|عفو", forKey: "debugRecite")
+        defer { UserDefaults.standard.removeObject(forKey: "debugRecite") }
+        voice.start(matn: matn(), fromPage: 1, flags: store)
+        await settle()
+        voice.stop()
+        let before = voice.reveal?.outcome(bayt: 1, half: .sadr, wordIndex: 1)
+        voice.jump(toPage: 1)
+        voice.revealNext()
+        await settle()
+        #expect(before == .skipped)
+        #expect(voice.reveal?.outcome(bayt: 1, half: .sadr, wordIndex: 1) == .skipped)
+        #expect(voice.reveal?.revealedWords(bayt: 1, half: .ajuz) == 1)   // nothing new revealed
+        #expect(voice.summary?.mistakes == 1)
+    }
+
+    @Test func voiceFailureFallsBackToTapKeepingTheReason() async {
+        let voice = VoiceController()
+        UserDefaults.standard.set("mic", forKey: "debugVoiceFail")
+        defer { UserDefaults.standard.removeObject(forKey: "debugVoiceFail") }
+        voice.start(matn: matn(), fromPage: 1, flags: nil)
+        await settle()
+        #expect(voice.status == .failed(.micDenied))
+        voice.fallBackToManual(matn: matn(), page: 1)
+        await settle()
+        #expect(voice.isManual && voice.isActive)
+        #expect(voice.voiceFailure == .micDenied)
     }
 
     @Test func pageTurnsOnceThePageIsDone() async {
@@ -80,6 +128,14 @@ import Foundation
         #expect(voice.page(forCursor: voice.cursor) == 2)   // last word of page 1 recited
     }
 
+    @Test func clearAllRemovesEveryFlag() {
+        let store = FlagStore.inMemory()
+        store.setFlag(true, matnID: "a", FlagKey(bayt: 1, half: .sadr, wordIndex: 0))
+        store.setFlag(true, matnID: "b", FlagKey(bayt: 2, half: .ajuz, wordIndex: 1))
+        store.clearAll()
+        #expect(store.count(for: "a") == 0 && store.count(for: "b") == 0)
+    }
+
     @Test func flagStoreRoundTrip() {
         let store = FlagStore.inMemory()
         let key = FlagKey(bayt: 3, half: .ajuz, wordIndex: 2)
@@ -88,4 +144,15 @@ import Foundation
         store.setFlag(false, matnID: "m", key)
         #expect(!store.isFlagged("m", key) && store.count(for: "m") == 0)
     }
+}
+
+/// A source that never produces anything and never finishes on its own, so a
+/// test can send events at it after the session has stopped.
+private final class HeldSource: SpeechSource {
+    let fragments: AsyncStream<TranscriptFragment>
+    var onEvent: (@Sendable (SpeechSourceEvent) -> Void)?
+    private let continuation: AsyncStream<TranscriptFragment>.Continuation
+    init() { (fragments, continuation) = AsyncStream.makeStream(of: TranscriptFragment.self) }
+    func start() async throws {}
+    func stop() { continuation.finish() }
 }

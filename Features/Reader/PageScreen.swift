@@ -61,14 +61,16 @@ struct PageScreen: View {
         .onChange(of: currentPage) { _, page in
             ReadingPosition.save(page: page, of: matn.id)
             // Swiped (or jumped) by hand while reciting: carry on from this page.
-            if voice.hasSession, mode == .memorize, page != autoTurnTarget {
+            // (Only while a sitting runs: after a stop, swiping back to look at
+            // the results must not reset them.)
+            if voice.isActive, mode == .memorize, page != autoTurnTarget {
                 voice.jump(toPage: page)
             }
             autoTurnTarget = nil
         }
         // Turn the page as soon as its last word is recited.
         .onChange(of: voice.cursor) { _, c in
-            guard mode == .memorize, voice.isLive || voice.isManual,
+            guard mode == .memorize, voice.isActive,
                   let target = voice.page(forCursor: c), target != currentPage else { return }
             autoTurnTarget = target
             if reduceMotion { currentPage = target } else { withAnimation { currentPage = target } }
@@ -76,9 +78,16 @@ struct PageScreen: View {
         // A light buzz when a new mistake is judged, so the reciter notices
         // without looking (as Tarteel does).
         .sensoryFeedback(.warning, trigger: voice.mistakeCount) { old, new in new > old }
-        // A light tap when a flag is set by hand.
+        // A light tap when a flag is set by hand (not by voice, which has its own).
         .sensoryFeedback(.impact(weight: .light), trigger: flagStore.count(for: matn.id)) { old, new in
-            new > old && mode == .read
+            new > old && (mode == .read || !voice.isLive)
+        }
+        // Voice couldn't start (no permission, no Arabic model): Review carries
+        // on by tap from the same place (UX.md "Without voice").
+        .onChange(of: voice.status) { _, status in
+            if case .failed = status, mode == .memorize {
+                voice.fallBackToManual(matn: matn, page: currentPage)
+            }
         }
         // Never leave the microphone running once the reader is gone.
         .onDisappear { voice.clear() }
@@ -108,14 +117,7 @@ struct PageScreen: View {
             startFromBayt: { bayt in
                 if voice.isLive { voice.jump(toBayt: bayt) } else { startVoice(bayt: bayt) }
             },
-            revealNext: { bayt in
-                // Without a sitting, tapping a blank starts a tap-to-reveal one
-                // from that bayt (Review works without voice too).
-                if !voice.hasSession {
-                    voice.start(matn: matn, fromPage: currentPage, bayt: bayt, flags: flagStore, manual: true)
-                }
-                voice.revealNext()
-            },
+            revealNext: { _ in voice.revealNext() },
             dismissMistake: { bayt, half, word in
                 voice.dismissMistake(bayt: bayt, half: half, wordIndex: word)
             }
@@ -216,33 +218,37 @@ private struct VoiceStatusLabel: View {
             label("Downloading Arabic voice \(Int((p * 100).rounded()))%")
         case .listening:
             if voice.isManual {
-                label("Tap a blank to reveal")
+                if let failure = voice.voiceFailure { failed(failure) } else { label("Tap the blank to reveal the next word.") }
             } else if voice.lockState == .lost {
                 label("listening…")
             }
         case .failed(let failure):
-            HStack(spacing: 8) {
-                label(message(failure))
-                if failure == .micDenied || failure == .speechDenied {
-                    Button("Open Settings") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.onChrome)
-                    .fixedSize()
-                }
-            }
+            failed(failure)
         case .idle:
             EmptyView()
         }
     }
 
+    private func failed(_ failure: VoiceFailure) -> some View {
+        HStack(spacing: 8) {
+            label(message(failure))
+            if failure == .micDenied || failure == .speechDenied {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.onChrome)
+                .fixedSize()
+            }
+        }
+    }
+
     private func message(_ failure: VoiceFailure) -> String {
         switch failure {
-        case .micDenied: return "Microphone is off."
-        case .speechDenied: return "Speech recognition is off."
-        case .arabicUnsupported: return "No Arabic voice on this device. Tap the blanks to review."
-        case .other: return "Voice isn't available. Tap the blanks to review."
+        case .micDenied: return "Microphone is off. Tap the blank to reveal."
+        case .speechDenied: return "Speech recognition is off. Tap the blank to reveal."
+        case .arabicUnsupported: return "No Arabic voice on this device. Tap the blank to reveal."
+        case .other: return "Voice isn't available. Tap the blank to reveal."
         }
     }
 

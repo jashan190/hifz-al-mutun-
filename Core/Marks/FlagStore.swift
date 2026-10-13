@@ -82,4 +82,11 @@ final class FlagStore: ObservableObject {
     }
 
     func count(for matnID: String) -> Int { flags[matnID]?.count ?? 0 }
+
+    /// Remove every flag (e.g. after test runs that flagged words wrongly).
+    func clearAll() {
+        flags = [:]
+        try? context.delete(model: WordFlag.self)
+        try? context.save()
+    }
 }
