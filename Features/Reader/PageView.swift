@@ -183,19 +183,13 @@ private struct MemorizeHalf: View {
         let revealedSegments = HemistichReveal.prefix(half, words: revealed)
         let revealedPlain = revealedSegments.compactMap(\.text).joined()
 
+        // The app lays out right-to-left, so the HStack's first child sits on the
+        // right: revealed words start at the column's leading (right) edge, next
+        // to the bayt number, and the blank remainder takes the rest on the left.
         HStack(spacing: 6) {
-            // Blank remainder on the left. It flexes to fill whatever space the
-            // natural-width revealed text leaves, so we never measure text width
-            // ourselves (which can disagree with SwiftUI's layout and overflow).
-            if revealed < half.words.count {
-                RoundedRectangle(cornerRadius: 1, style: .continuous)
-                    .fill(Theme.outline)
-                    .frame(height: 2)
-                    .frame(maxWidth: .infinity)
-            }
-            // Revealed words on the right, at natural size. justifyWidth: 0 means
-            // "no kashida" (same sentinel headings use) — fixedSize keeps it to
-            // its intrinsic width so the blank above takes the rest.
+            // Revealed words at natural size. justifyWidth: 0 means "no kashida"
+            // (same sentinel headings use) — fixedSize keeps it to its intrinsic
+            // width so the blank takes the rest.
             if revealed > 0 {
                 LayeredText(
                     rendered: HemistichText.render(
@@ -210,8 +204,17 @@ private struct MemorizeHalf: View {
                 )
                 .fixedSize()
             }
+            // Blank remainder. It flexes to fill whatever space the natural-width
+            // revealed text leaves, so we never measure text width ourselves
+            // (which can disagree with SwiftUI's layout and overflow).
+            if revealed < half.words.count {
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(Theme.outline)
+                    .frame(height: 2)
+                    .frame(maxWidth: .infinity)
+            }
         }
-        .frame(width: columnWidth, alignment: .trailing)
+        .frame(width: columnWidth, alignment: .leading)
         .frame(height: fontSize * 1.7, alignment: .center)
     }
 }
