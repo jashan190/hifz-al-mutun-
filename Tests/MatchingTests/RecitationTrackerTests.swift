@@ -122,18 +122,42 @@ import Testing
 
     // MARK: - Losing and re-finding the place
 
-    @Test func pauseGoesLostThenResyncs() {
+    @Test func pauseGoesLostThenResyncsFarAhead() {
         let t = tracker()
-        final(t, "يقول راجي", at: 0)
-        // Long silence, then an unmatched fragment: goes lost.
+        final(t, "يقول", at: 0)
+        // Long silence, then an unmatched final result: goes lost.
         final(t, "شيء غريب", at: 5)
         #expect(t.lockState == .lost)
-        // Reciter resumes further ahead; the wide window re-locks.
+        // Reciter resumes beyond the nearby window; the wide window re-locks.
         final(t, "محمد", at: 6)
         #expect(t.cursor == 6)
         #expect(t.lockState == .locked)
         // The words jumped while lost may just not have been heard: not mistakes.
-        #expect(t.outcomes[2] == .unheard && t.outcomes[4] == .unheard)
+        #expect(t.outcomes[1] == .unheard && t.outcomes[4] == .unheard)
+    }
+
+    // A pause alone doesn't lose the place: a word skipped right after it is
+    // still a skip, judged as if locked.
+    @Test func skipAfterAPauseIsStillASkip() {
+        let t = tracker()
+        final(t, "يقول", at: 0)
+        final(t, "شي", at: 3)          // a final fragment after the pause
+        #expect(t.lockState == .lost)
+        final(t, "عفو", at: 3.5)
+        #expect(t.cursor == 3)
+        #expect(t.outcomes[1] == .wrong(heard: "شي"))
+    }
+
+    // A volatile fragment after a pause must not change how the following
+    // final result is judged.
+    @Test func volatileAfterAPauseDoesNotLoseThePlace() {
+        let t = tracker()
+        final(t, "يقول", at: 0)
+        t.consume(.init(text: "شي", isFinal: false), at: 3)
+        final(t, "عفو", at: 3.5)
+        #expect(t.cursor == 3)
+        #expect(t.lockState == .locked)
+        #expect(t.outcomes[1] == .skipped)
     }
 
     @Test func manyUnmatchedWordsGoLost() {
@@ -146,11 +170,11 @@ import Testing
     @Test func lostNeedsStrongEvidenceToResync() {
         let t = tracker()
         final(t, "يقول", at: 0)
-        final(t, "شيء", at: 5)
+        final(t, "شيء غريب جدا هنا", at: 1)   // what's heard doesn't fit: lost
         #expect(t.lockState == .lost)
-        final(t, "رب", at: 6)        // a short word alone isn't enough
+        final(t, "رب", at: 2)        // a short word alone isn't enough
         #expect(t.cursor == 1)
-        final(t, "رب قادر", at: 7)   // …but followed by the next word, it is
+        final(t, "رب قادر", at: 3)   // …but followed by the next word, it is
         #expect(t.cursor == 5)
     }
 

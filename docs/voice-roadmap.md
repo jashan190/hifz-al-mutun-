@@ -46,6 +46,10 @@ on a phone.
   supported regional locale *before* creating the `SpeechTranscriber`.
 - Record 3 fixture clips (murattal, melodic, fast drill) for one page each, and
   measure reveal accuracy with `FileSpeechSource` → tracker.
+- Confirm the tracker's assumption about results: each `SpeechTranscriber` result covers its
+  own audio range, and a volatile result is replaced by the next one for the same range.
+  This comes from the API's shape (`range`, `resultsFinalizationTime`) and Apple's sample
+  pattern, not from documentation. Log `result.range` with each fragment on the device.
 - **Exit:** Arabic transcribes on device, and ≥90% of words reveal on the murattal clip.
   If not, go to Phase F (engine swap) before anything else.
 

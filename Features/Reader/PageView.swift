@@ -202,6 +202,7 @@ private struct MemorizeHalf: View {
                     .frame(height: 2)
                     .frame(maxWidth: .infinity)
                     .padding(.leading, revealed > 0 ? 6 : 0)
+                    .accessibilityLabel("hidden")
             }
         }
         .frame(width: columnWidth, alignment: .leading)
@@ -238,7 +239,7 @@ private struct MemorizeWord: View {
         .background {
             if outcome?.isMistake == true {
                 RoundedRectangle(cornerRadius: fontSize * 0.18, style: .continuous)
-                    .fill(Theme.error.opacity(0.13))
+                    .fill(Theme.error.opacity(0.10))   // keeps error text ≥4.5:1
                     .padding(.horizontal, -fontSize * 0.1)
                     .padding(.vertical, fontSize * 0.12)
             }
@@ -336,6 +337,7 @@ private struct BaytRow: View {
             Color.clear.frame(width: midGap)
             hemistich(bayt.ajuz, which: .ajuz)
         }
+        .accessibilityElement(children: .combine)   // VoiceOver: one element per bayt
         .frame(height: lineHeight)
         .frame(maxWidth: .infinity)
     }

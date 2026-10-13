@@ -90,6 +90,9 @@ final class RecitationTracker {
         /// Final tokens heard since the last match, as (raw, normalized).
         var pending: [(raw: String, norm: String)] = []
         var unmatchedRun = 0
+        /// Lost only because of a pause (not because what was heard didn't fit):
+        /// the place is still known, so nearby matches are judged as if locked.
+        var lostBySilence = false
     }
 
     private var committed: State
@@ -126,15 +129,15 @@ final class RecitationTracker {
 
         if next.cursor > current.cursor {
             lastProgress = time
-        } else if next.lock == .locked, time - lastProgress > tuning.lostAfter {
-            // Only locked → lost; never from idle (before the first match).
+        } else if fragment.isFinal, next.lock == .locked, time - lastProgress > tuning.lostAfter {
+            // Only a final result can declare a pause: a volatile one is often
+            // just the first fragment of the next utterance, and must never
+            // change how later final results are judged. Only locked → lost;
+            // never from idle (before the first match).
             next.lock = .lost
+            next.lostBySilence = true
         }
-        if fragment.isFinal {
-            committed = next
-        } else if next.lock == .lost {
-            committed.lock = .lost   // being lost widens the search for what follows
-        }
+        if fragment.isFinal { committed = next }
         current = next
     }
 
@@ -144,15 +147,22 @@ final class RecitationTracker {
         var i = 0
         while i < tokens.count {
             let token = tokens[i]
-            let lost = s.lock == .lost
-            let end = min(words.count, s.cursor + (lost ? tuning.lostWindow : tuning.lockedLookahead))
-            if let (hit, exact) = match(token.norm, in: s.cursor..<end),
-               !lost || resyncAccepted(hit, tokens: tokens, at: i) {
+            let near = s.cursor..<min(words.count, s.cursor + tuning.lockedLookahead)
+            let wide = s.cursor..<min(words.count, s.cursor + tuning.lostWindow)
+            var found: (hit: Int, exact: Bool, uncertainGap: Bool)?
+            if s.lock != .lost || s.lostBySilence, let (hit, exact) = match(token.norm, in: near) {
                 // Before the first match (idle) a gap is as uncertain as a lost one.
-                judgeGap(upTo: hit, in: &s, lost: s.lock != .locked)
-                s.outcomes[hit] = exact ? .correct : .unsure
-                s.cursor = Self.firstNonEmpty(from: hit + 1, in: words)
+                found = (hit, exact, s.lock == .idle)
+            } else if s.lock == .lost, let (hit, exact) = match(token.norm, in: wide),
+                      resyncAccepted(hit, tokens: tokens, at: i) {
+                found = (hit, exact, true)
+            }
+            if let found {
+                judgeGap(upTo: found.hit, in: &s, lost: found.uncertainGap)
+                s.outcomes[found.hit] = found.exact ? .correct : .unsure
+                s.cursor = Self.firstNonEmpty(from: found.hit + 1, in: words)
                 s.lock = .locked
+                s.lostBySilence = false
                 s.pending = []
                 s.unmatchedRun = 0
             } else if s.lock != .idle {
@@ -160,6 +170,7 @@ final class RecitationTracker {
                 s.unmatchedRun += 1
                 if s.unmatchedRun >= tuning.lostAfterUnmatched {
                     s.lock = .lost
+                    s.lostBySilence = false
                     s.pending = []   // can't pair these with a slot once lost
                 }
             }
@@ -168,9 +179,9 @@ final class RecitationTracker {
     }
 
     /// Judge the expected words passed over between the cursor and a match at
-    /// `hit`. While locked, heard-but-unmatched tokens fill those slots in
-    /// order (a substitution); slots left over were skipped. Words jumped while
-    /// re-syncing from lost are `.unheard`.
+    /// `hit`. While the place is known, heard-but-unmatched tokens fill those
+    /// slots in order (a substitution); slots left over were skipped. Words
+    /// jumped while re-finding a lost place are `.unheard`.
     private func judgeGap(upTo hit: Int, in s: inout State, lost: Bool) {
         let gap = (s.cursor..<hit).filter { !words[$0].isEmpty }
         guard !gap.isEmpty else { return }   // tokens before an in-place match are extra words
