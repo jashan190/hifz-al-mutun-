@@ -85,6 +85,13 @@ struct RootView: View {
 private struct MatnCard: View {
     let matn: Matn
     let order: Int
+    @AppStorage private var lastPage: Int   // 0 until the matn is first opened
+
+    init(matn: Matn, order: Int) {
+        self.matn = matn
+        self.order = order
+        _lastPage = AppStorage(wrappedValue: 0, ReadingPosition.key(matn.id))
+    }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -103,7 +110,7 @@ private struct MatnCard: View {
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text("\(matn.baytCount) bayts")
+                Text(lastPage > 0 ? "\(matn.baytCount) bayts · Page \(lastPage)" : "\(matn.baytCount) bayts")
                     .font(.system(.footnote, design: .serif))
                     .foregroundStyle(.secondary)
                     .padding(.top, 1)
@@ -131,5 +138,7 @@ private struct MatnCard: View {
 }
 
 #Preview("Library") {
-    RootView().environmentObject(ContentStore())
+    RootView()
+        .environmentObject(ContentStore())
+        .environmentObject(FlagStore.inMemory())
 }

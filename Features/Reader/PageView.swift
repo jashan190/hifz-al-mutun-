@@ -59,6 +59,7 @@ struct PageView: View {
                                 HeadingRow(heading: heading, fontSize: fontSize)
                             case .bayt(let bayt):
                                 BaytRow(
+                                    matnID: matn.id,
                                     bayt: bayt,
                                     mode: mode,
                                     fontSize: fontSize,
@@ -178,6 +179,9 @@ private struct MemorizeHalf: View {
     let half: Hemistich
     let revealed: Int
     var outcome: (Int) -> WordOutcome? = { _ in nil }
+    var flagged: (Int) -> Bool = { _ in false }
+    var onDismiss: (Int) -> Void = { _ in }
+    var onTapBlank: () -> Void = {}
     let fontSize: CGFloat
     let columnWidth: CGFloat
 
@@ -189,7 +193,8 @@ private struct MemorizeHalf: View {
             HStack(spacing: PageFont.width(" ", size: fontSize)) {
                 ForEach(0..<revealed, id: \.self) { k in
                     MemorizeWord(segments: HemistichReveal.span(half, words: k..<(k + 1)),
-                                 outcome: outcome(k), fontSize: fontSize)
+                                 outcome: outcome(k), flagged: flagged(k), fontSize: fontSize,
+                                 onDismiss: { onDismiss(k) })
                 }
             }
             .fixedSize()
@@ -202,6 +207,11 @@ private struct MemorizeHalf: View {
                     .frame(height: 2)
                     .frame(maxWidth: .infinity)
                     .padding(.leading, revealed > 0 ? 6 : 0)
+                    // Stuck? Tap the blank to reveal the next word. The tap area is
+                    // the whole row height, not just the thin line.
+                    .frame(height: fontSize * 1.7)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onTapBlank)
                     .accessibilityLabel("hidden")
             }
         }
@@ -217,10 +227,14 @@ private struct MemorizeHalf: View {
 //  - skipped: red on a soft red highlight, struck through
 // The highlight keeps a mistake distinct from words the book itself prints red.
 //  - unheard (jumped while re-finding the place): secondary ink
+//  - revealed (shown as help when stuck): secondary ink, and flagged
+// A flagged word carries the flag underline in every state.
 private struct MemorizeWord: View {
     let segments: [Segment]
     let outcome: WordOutcome?
+    var flagged = false
     let fontSize: CGFloat
+    var onDismiss: () -> Void = {}
 
     var body: some View {
         let plain = segments.compactMap(\.text).joined()
@@ -230,7 +244,8 @@ private struct MemorizeWord: View {
                 plain: plain,
                 size: fontSize,
                 justifyWidth: 0,   // "no kashida", the sentinel headings use
-                tint: tint
+                tint: tint,
+                underlined: flagged ? [0..<plain.unicodeScalars.count] : []
             ),
             font: PageFont.font(size: fontSize),
             size: fontSize
@@ -261,6 +276,12 @@ private struct MemorizeWord: View {
                     .offset(y: fontSize * HemistichText.heardDrop)
             }
         }
+        // Voice recognition can be wrong: long-press a red word to clear it.
+        .contextMenu {
+            if outcome?.isMistake == true {
+                Button("Not a mistake", systemImage: "checkmark.circle", action: onDismiss)
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(plain)
         .accessibilityValue(accessibilityNote)
@@ -271,7 +292,7 @@ private struct MemorizeWord: View {
         case .none, .correct?: return inkColor(color)
         case .unsure?: return Theme.unsure
         case .wrong?, .skipped?: return Theme.error
-        case .unheard?: return Theme.inkSecondary
+        case .unheard?, .revealed?: return Theme.inkSecondary
         }
     }
 
@@ -282,6 +303,7 @@ private struct MemorizeWord: View {
         case .wrong(let heard)?: return "mistake, heard \(heard)"
         case .skipped?: return "skipped"
         case .unheard?: return "not heard"
+        case .revealed?: return "revealed"
         }
     }
 }
@@ -311,6 +333,10 @@ private struct HeadingRow: View {
 
 // A single bayt row: number + two equal-width, kashida-justified hemistichs.
 private struct BaytRow: View {
+    @EnvironmentObject private var flagStore: FlagStore
+    @Environment(\.readerActions) private var actions
+
+    let matnID: String
     let bayt: Bayt
     let mode: PageMode
     let fontSize: CGFloat
@@ -325,44 +351,83 @@ private struct BaytRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            Text(Numerals.eastern(bayt.number))
-                .font(PageFont.font(size: fontSize * 0.7))
-                .foregroundStyle(Theme.numeral)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .frame(width: numberColumn, alignment: .center)
-
+            number
             Color.clear.frame(width: numberGap)
             hemistich(bayt.sadr, which: .sadr)
             Color.clear.frame(width: midGap)
             hemistich(bayt.ajuz, which: .ajuz)
         }
         .accessibilityElement(children: .combine)   // VoiceOver: one element per bayt
+        .accessibilityActions {
+            if mode == .memorize {
+                Button("Recite from this bayt") { actions.startFromBayt(bayt.number) }
+                Button("Reveal the next word") { actions.revealNext(bayt.number) }
+            }
+        }
         .frame(height: lineHeight)
         .frame(maxWidth: .infinity)
+    }
+
+    // In Memorize, tapping the number starts reciting from this bayt.
+    @ViewBuilder
+    private var number: some View {
+        let label = Text(Numerals.eastern(bayt.number))
+            .font(PageFont.font(size: fontSize * 0.7))
+            .foregroundStyle(mode == .memorize ? Theme.accent : Theme.numeral)
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+            .frame(width: numberColumn, height: lineHeight, alignment: .center)
+            .contentShape(Rectangle())
+        if mode == .memorize {
+            label.onTapGesture { actions.startFromBayt(bayt.number) }
+        } else {
+            label
+        }
+    }
+
+    private func flagged(_ which: Half, _ k: Int) -> Bool {
+        flagStore.isFlagged(matnID, FlagKey(bayt: bayt.number, half: which, wordIndex: k))
     }
 
     @ViewBuilder
     private func hemistich(_ half: Hemistich, which: Half) -> some View {
         switch mode {
         case .read:
+            let ranges = HemistichReveal.wordRanges(in: half.text)
             LayeredText(
                 rendered: HemistichText.render(
                     segments: half.segments,
                     plain: half.text,
                     size: fontSize,
                     justifyWidth: justifyWidth,
-                    tint: inkColor
+                    tint: inkColor,
+                    underlined: ranges.indices.filter { flagged(which, $0) }.map { ranges[$0] }
                 ),
                 font: PageFont.font(size: fontSize),
                 size: fontSize,
                 width: columnWidth
             )
+            // Long-press: flag or unflag any word of this half-line. The page is
+            // justified as one line, so the menu lists its words.
+            .contentShape(Rectangle())
+            .contextMenu {
+                ForEach(Array(half.words.enumerated()), id: \.offset) { k, word in
+                    let on = flagged(which, k)
+                    Button(on ? "Remove flag: \(word.text)" : "Flag mistake: \(word.text)",
+                           systemImage: on ? "flag.slash" : "flag") {
+                        flagStore.setFlag(!on, matnID: matnID,
+                                          FlagKey(bayt: bayt.number, half: which, wordIndex: k))
+                    }
+                }
+            }
         case .memorize:
             MemorizeHalf(
                 half: half,
                 revealed: reveal?.revealedWords(bayt: bayt.number, half: which) ?? 0,
                 outcome: { reveal?.outcome(bayt: bayt.number, half: which, wordIndex: $0) },
+                flagged: { flagged(which, $0) },
+                onDismiss: { actions.dismissMistake(bayt.number, which, $0) },
+                onTapBlank: { actions.revealNext(bayt.number) },
                 fontSize: fontSize,
                 columnWidth: columnWidth
             )
@@ -372,19 +437,23 @@ private struct BaytRow: View {
 
 #Preview("Read — light") {
     PageView(matn: .preview, page: 1, mode: .read)
+        .environmentObject(FlagStore.inMemory())
 }
 
 #Preview("Memorize — light") {
     PageView(matn: .preview, page: 1, mode: .memorize)
+        .environmentObject(FlagStore.inMemory())
 }
 
 #Preview("Read — dark") {
     PageView(matn: .preview, page: 1, mode: .read)
+        .environmentObject(FlagStore.inMemory())
         .preferredColorScheme(.dark)
 }
 
 #Preview("Read — XL type") {
     PageView(matn: .preview, page: 1, mode: .read)
+        .environmentObject(FlagStore.inMemory())
         .environment(\.dynamicTypeSize, .accessibility5)
 }
 
@@ -392,5 +461,6 @@ private struct BaytRow: View {
     let matn = Matn.preview
     let idx = RecitationIndex(matn: matn)
     return PageView(matn: matn, page: 1, mode: .memorize,
-                    reveal: RevealState(index: idx, cursor: 5))
+                    reveal: RevealState(index: idx, cursor: 5, outcomes: [2: .unsure, 3: .wrong(heard: "كلمة"), 4: .skipped]))
+        .environmentObject(FlagStore.inMemory())
 }

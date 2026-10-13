@@ -153,13 +153,15 @@ enum HemistichText {
     private enum Slot { case normal, above, below, belowKasra }
 
     /// Build the base text plus optional above/below nun layers and footnote
-    /// layers for a half-line. `plain` is the half-line's `text`.
+    /// layers for a half-line. `plain` is the half-line's `text`. Scalars of
+    /// `plain` inside `underlined` get the flag mark: a warm red-brown underline.
     static func render(
         segments: [Segment],
         plain: String,
         size: CGFloat,
         justifyWidth: CGFloat,
-        tint: (SegmentColor) -> Color
+        tint: (SegmentColor) -> Color,
+        underlined: [Range<Int>] = []
     ) -> Rendered {
         let insertions = kashida(plain: plain, targetWidth: justifyWidth, size: size)
         let placements = noonPlacements(plain)
@@ -174,13 +176,15 @@ enum HemistichText {
 
         // Append the same glyph to every layer, visible only on the slot that owns
         // it, so all layers share identical metrics → identical x positions.
-        func add(_ text: String, color: Color, slot: Slot) {
+        func add(_ text: String, color: Color, slot: Slot, underline: Bool = false) {
             func piece(_ c: Color) -> AttributedString {
                 var a = AttributedString(text)
                 a.foregroundColor = c
                 return a
             }
-            base += piece(slot == .normal ? color : .clear)
+            var basePiece = piece(slot == .normal ? color : .clear)
+            if underline { basePiece.underlineStyle = Text.LineStyle(pattern: .solid, color: Theme.flag) }
+            base += basePiece
             above += piece(slot == .above ? color : .clear)
             below += piece(slot == .below ? color : .clear)
             belowKasra += piece(slot == .belowKasra ? color : .clear)
@@ -229,7 +233,8 @@ enum HemistichText {
                     add(piece, color: color, slot: slot)
                 } else {
                     if let n = insertions[global] { piece += String(repeating: "\u{0640}", count: n) }
-                    add(piece, color: color, slot: .normal)
+                    add(piece, color: color, slot: .normal,
+                        underline: underlined.contains { $0.contains(pidx) })
                 }
                 i += 1
             }

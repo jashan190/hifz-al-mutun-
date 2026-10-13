@@ -16,10 +16,10 @@ SpeechSource (AppleSpeechSource | FileSpeechSource | MockSpeechSource)
    → RecitationSession → RecitationTracker (pure) → RevealState → PageView
 ```
 
-Mistake detection (Phase C) is in, as a first cut. Not built yet: flags, persistence, the stuck-word reveal, the
-stop card, and the no-voice fallback. **Arabic support on a real device is
-still unproven:** the GATE spike (`FileTranscriptionSpikeTests`) has never run
-on a phone.
+**Phases B–E are built** (as of 2026-10-12): hardening, mistake detection, flags,
+and the Review UX. **What's left is the device:** Arabic support on a real phone
+is unproven, and every `MatchTuning` threshold is provisional. Next step:
+`docs/voice-testing.md`.
 
 ## Decisions needed first (owner: you)
 
@@ -32,7 +32,7 @@ on a phone.
 3. **iOS 26 minimum.** PR #1 raised the deployment target from 18 to 26. Your phone
    must be on iOS 26 to install.
 
-## Phase A — Gate: does on-device Arabic work? (do first, ~½ day)
+## Phase A — Gate: does on-device Arabic work? (ready to run — see `docs/voice-testing.md`)
 
 - Install the iOS 26.2 platform in Xcode (Settings → Components) and run
   `HifzAlMutunTests` on the phone.
@@ -59,13 +59,13 @@ Ordered by severity. Each needs a unit test, and most can use `MockSpeechSource`
 
 | # | Problem | Fix |
 |---|---|---|
-| B1 | Stopping the mic while permission or the model download is pending is ignored; the engine then starts with no owner, so **the mic stays on**. | Keep the start `Task`. In `stop()`, set a `stopRequested` flag and cancel the task; check the flag before `engine.start()`. |
-| B2 | Start errors are swallowed (`try?`): denied permission or an unsupported locale leaves the UI "listening" forever. | Publish a `VoiceStatus` (`idle / preparing / downloading(progress) / listening / failed(reason)`) and reset `isListening` on failure. |
+| B1 ✅ | Stopping the mic while permission or the model download is pending is ignored; the engine then starts with no owner, so **the mic stays on**. | Keep the start `Task`. In `stop()`, set a `stopRequested` flag and cancel the task; check the flag before `engine.start()`. |
+| B2 ✅ | Start errors are swallowed (`try?`): denied permission or an unsupported locale leaves the UI "listening" forever. | Publish a `VoiceStatus` (`idle / preparing / downloading(progress) / listening / failed(reason)`) and reset `isListening` on failure. |
 | B3 ✅ | Volatile results repeat the same hypothesis, so two identical consecutive words can be passed on a single utterance. | Track a consumed-token watermark per result (or its audio range); only new tokens advance the cursor. |
 | B4 ✅ | One-letter words (و ف ب ل) fuzzy-match any other one-letter word. | Require an exact match below 3 letters. |
-| B5 | "Lost" only triggers when a fragment arrives, so silence never shows it. | Add a session timer that ticks the tracker. |
-| B6 | Swiping or jumping to another page while listening keeps the old cursor. | Reseed the tracker on manual navigation; keep auto-turns separate. |
-| B7 | The page turns only once a word on the *next* page is heard, so that word is never visible being revealed. | Turn when the cursor reaches a page's last word; use the next expected word's page. |
+| B5 ✅ | "Lost" only triggers when a fragment arrives, so silence never shows it. | Add a session timer that ticks the tracker. |
+| B6 ✅ | Swiping or jumping to another page while listening keeps the old cursor. | Reseed the tracker on manual navigation; keep auto-turns separate. |
+| B7 ✅ | The page turns only once a word on the *next* page is heard, so that word is never visible being revealed. | Turn when the cursor reaches a page's last word; use the next expected word's page. |
 | B8 ✅ | 190 Shatibiyyah words store a `normalized` form that keeps ئ/ؤ; the runtime normalizer folds them to ي/و. This costs one edit of fuzz on every such word. | Build `RecitationIndex` from `ArabicNormalize.normalize(word.text)`, or rebuild the stored forms with the same rules. Add a test that both agree. |
 
 ## Phase C — Mistake detection ✅ (first cut)
@@ -92,7 +92,7 @@ Still to do:
 - **Tune `MatchTuning` on a device** with the Phase A clips. Every threshold is provisional.
 - `revealed` (help used) arrives with the stuck-word reveal in Phase E.
 
-## Phase D — Flags and persistence (~2 days)
+## Phase D — Flags and persistence ✅
 
 - SwiftData model `Flag { matnID, bayt, half, wordIndex, createdAt, source }`,
   keyed by `(matnID, bayt, half, wordIndex)` so rebuilding the content JSON never orphans flags.
@@ -102,7 +102,7 @@ Still to do:
 - Review: long-press a red word → "Not a mistake".
 - This is also where to persist the last page per matn and the Library's "Page N" (UX.md §1–2).
 
-## Phase E — Review mode UX (~2–3 days)
+## Phase E — Review mode UX ✅
 
 - Start at the top of the current page; tapping a bayt number starts from that bayt.
 - Stuck: tap the next outline to reveal one word, or after about 8 s it fades in (counts as `revealed`).
@@ -111,6 +111,19 @@ Still to do:
 - No-voice fallback: the mic shows why it's unavailable (no permission → *Open Settings*;
   model missing → *Download* with size and progress from `AssetInventory`). Tap-to-reveal still works.
 - VoiceOver: each bayt is one element, hidden hemistichs read as "hidden", and every gesture has a button or menu.
+
+### How D and E were built (2026-10-12)
+
+- Flags: SwiftData `WordFlag` keyed by `(matnID, bayt, half, wordIndex)`, read through
+  `FlagStore`. Wrong, skipped and revealed words gain a flag; a correct recitation or
+  **Not a mistake** removes it. Read mode underlines flagged words; long-press a
+  half-line to flag or unflag a word. Last page per matn lives in `ReadingPosition`.
+- Review: tap a bayt number to recite from it; tap a blank (or wait 8 s) to reveal the
+  next word; swiping restarts tracking from that page; the page turns after its last
+  word; stopping shows a summary card. Without voice, tapping a blank starts a
+  tap-to-reveal sitting, and the footer says why voice is off (with Open Settings).
+- Not done: showing the model's download *size* (iOS doesn't expose it before the
+  download starts).
 
 ## Phase F — Engine fallback (only if Phase A fails)
 

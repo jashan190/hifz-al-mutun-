@@ -63,4 +63,14 @@ import Testing
         #expect(r.outcome(bayt: 1, half: .sadr, wordIndex: 0) == nil)         // not judged
         #expect(r.outcome(bayt: 99, half: .sadr, wordIndex: 0) == nil)
     }
+
+    @Test func wordsJumpedOverStayHidden() {
+        // Recited a,b (judged), then jumped to bayt 2 and recited e: c,d hidden.
+        let r = RevealState(index: twoBaytIndex(), anchor: 4, cursor: 5,
+                            outcomes: [0: .correct, 1: .correct])
+        #expect(r.revealedWords(bayt: 1, half: .sadr) == 2)
+        #expect(r.revealedWords(bayt: 1, half: .ajuz) == 0)
+        #expect(r.revealedWords(bayt: 2, half: .sadr) == 1)
+    }
 }
+

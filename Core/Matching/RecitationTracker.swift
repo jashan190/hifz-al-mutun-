@@ -30,13 +30,20 @@ enum WordOutcome: Equatable {
     /// Jumped over while re-finding the place after the tracker was lost. The
     /// recognizer may simply have missed these, so they aren't called mistakes.
     case unheard
+    /// Shown as help when the reciter was stuck (a tap, or a long pause).
+    case revealed
 
+    /// A recitation mistake: shown in red, with a haptic.
     var isMistake: Bool {
         switch self {
         case .wrong, .skipped: return true
-        case .correct, .unsure, .unheard: return false
+        case .correct, .unsure, .unheard, .revealed: return false
         }
     }
+
+    /// Marks the word for review later (UX.md "flags"): mistakes, and words
+    /// the reciter needed revealed.
+    var flagsWord: Bool { isMistake || self == .revealed }
 }
 
 /// Every matching threshold in one place. These are provisional: they were
@@ -77,14 +84,18 @@ final class RecitationTracker {
     let words: [String]            // expected words, already normalized
     let tuning: MatchTuning
 
-    /// Words revealed so far: [0, cursor). Follows volatile results too.
+    /// The next word expected; recited words are [anchor, cursor). Follows
+    /// volatile results too.
     var cursor: Int { current.cursor }
+    /// Where the current run began (the session start, or the last jump).
+    var anchor: Int { committed.anchor }
     var lockState: LockState { current.lock }
     /// Outcomes by flat word index, from finalized results only.
     var outcomes: [Int: WordOutcome] { committed.outcomes }
 
     private struct State {
         var cursor: Int
+        var anchor: Int
         var lock: LockState = .idle
         var outcomes: [Int: WordOutcome] = [:]
         /// Final tokens heard since the last match, as (raw, normalized).
@@ -103,14 +114,56 @@ final class RecitationTracker {
         self.words = words
         self.tuning = tuning
         let start = Self.firstNonEmpty(from: min(max(0, startIndex), words.count), in: words)
-        committed = State(cursor: start)
+        committed = State(cursor: start, anchor: start)
         current = committed
     }
 
-    func reset(to index: Int) {
-        committed = State(cursor: Self.firstNonEmpty(from: min(max(0, index), words.count), in: words))
-        current = committed
-        lastProgress = 0
+    /// Continue from `index` (a page or bayt the reciter moved to). Earlier
+    /// judgments are kept; anything from `index` on is forgotten, so jumping
+    /// back to recite a passage again starts it fresh.
+    func jump(to index: Int, at time: TimeInterval) {
+        let start = Self.firstNonEmpty(from: min(max(0, index), words.count), in: words)
+        var s = State(cursor: start, anchor: start)
+        s.outcomes = committed.outcomes.filter { $0.key < start }
+        committed = s
+        current = s
+        lastProgress = time
+    }
+
+    /// Replace a word's judgment (e.g. the reciter says "Not a mistake").
+    func override(_ index: Int, with outcome: WordOutcome) {
+        guard committed.outcomes[index] != nil else { return }
+        committed.outcomes[index] = outcome
+        current.outcomes[index] = outcome
+    }
+
+    /// Show the next expected word as help, and move past it.
+    func revealNext(at time: TimeInterval) {
+        let i = committed.cursor
+        guard i < words.count else { return }
+        committed.outcomes[i] = .revealed
+        committed.cursor = Self.firstNonEmpty(from: i + 1, in: words)
+        committed.lock = .locked           // the place is known again
+        committed.lostBySilence = false
+        committed.pending = []
+        committed.unmatchedRun = 0
+        current = committed                // any volatile guess is superseded
+        lastProgress = time
+    }
+
+    /// Seconds since the cursor last moved.
+    func silence(at time: TimeInterval) -> TimeInterval { time - lastProgress }
+
+    /// Restart the silence clock (e.g. once the microphone is actually live).
+    func restartClock(at time: TimeInterval) { lastProgress = time }
+
+    /// Called on a timer: during a long pause no result arrives at all, so show
+    /// the "lost" cue from here. Display only — it never changes how the next
+    /// final result is judged.
+    func noteSilence(at time: TimeInterval) {
+        if current.lock == .locked, time - lastProgress > tuning.lostAfter {
+            current.lock = .lost
+        }
     }
 
     func consume(_ fragment: TranscriptFragment, at time: TimeInterval) {
