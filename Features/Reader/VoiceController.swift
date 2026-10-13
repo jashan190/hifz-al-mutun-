@@ -9,6 +9,7 @@ final class VoiceController: ObservableObject {
     @Published private(set) var cursor = 0
     @Published private(set) var lockState: LockState = .idle
     @Published private(set) var reveal: RevealState?
+    @Published private(set) var mistakeCount = 0
 
     private var session: RecitationSession?
     private var index: RecitationIndex?
@@ -28,6 +29,7 @@ final class VoiceController: ObservableObject {
         session.$cursor.sink { [weak self] in self?.cursor = $0 }.store(in: &cancellables)
         session.$lockState.sink { [weak self] in self?.lockState = $0 }.store(in: &cancellables)
         session.$reveal.sink { [weak self] in self?.reveal = $0 }.store(in: &cancellables)
+        session.$mistakeCount.sink { [weak self] in self?.mistakeCount = $0 }.store(in: &cancellables)
 
         session.start()
     }
@@ -46,6 +48,7 @@ final class VoiceController: ObservableObject {
         cancellables.removeAll()
         lockState = .idle
         reveal = nil
+        mistakeCount = 0
     }
 
     private func makeSource() -> SpeechSource {

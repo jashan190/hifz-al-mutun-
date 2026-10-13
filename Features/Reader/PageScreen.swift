@@ -41,6 +41,9 @@ struct PageScreen: View {
                 voice.stop()
             }
         }
+        // A light buzz when a new mistake is judged, so the reciter notices
+        // without looking (as Tarteel does).
+        .sensoryFeedback(.warning, trigger: voice.mistakeCount) { old, new in new > old }
         // Never leave the microphone running once the reader is gone.
         .onDisappear {
             isListening = false

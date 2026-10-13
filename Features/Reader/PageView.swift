@@ -171,51 +171,117 @@ private struct LayeredText: View {
     }
 }
 
-// A half-line in Memorize mode: the first `revealed` words shown with their real
-// colours (filling from the right, RTL), the rest left as a faint blank line.
+// A half-line in Memorize mode: the first `revealed` words, each drawn as its
+// own view in its real colours (or its mistake colour), filling from the right
+// (RTL); the rest stays a single faint blank line, so word lengths never show.
 private struct MemorizeHalf: View {
     let half: Hemistich
     let revealed: Int
+    var outcome: (Int) -> WordOutcome? = { _ in nil }
     let fontSize: CGFloat
     let columnWidth: CGFloat
 
     var body: some View {
-        let revealedSegments = HemistichReveal.prefix(half, words: revealed)
-        let revealedPlain = revealedSegments.compactMap(\.text).joined()
-
         // The app lays out right-to-left, so the HStack's first child sits on the
         // right: revealed words start at the column's leading (right) edge, next
         // to the bayt number, and the blank remainder takes the rest on the left.
-        HStack(spacing: 6) {
-            // Revealed words at natural size. justifyWidth: 0 means "no kashida"
-            // (same sentinel headings use) — fixedSize keeps it to its intrinsic
-            // width so the blank takes the rest.
-            if revealed > 0 {
-                LayeredText(
-                    rendered: HemistichText.render(
-                        segments: revealedSegments,
-                        plain: revealedPlain,
-                        size: fontSize,
-                        justifyWidth: 0,
-                        tint: inkColor
-                    ),
-                    font: PageFont.font(size: fontSize),
-                    size: fontSize
-                )
-                .fixedSize()
+        HStack(spacing: 0) {
+            HStack(spacing: PageFont.width(" ", size: fontSize)) {
+                ForEach(0..<revealed, id: \.self) { k in
+                    MemorizeWord(segments: HemistichReveal.span(half, words: k..<(k + 1)),
+                                 outcome: outcome(k), fontSize: fontSize)
+                }
             }
+            .fixedSize()
             // Blank remainder. It flexes to fill whatever space the natural-width
-            // revealed text leaves, so we never measure text width ourselves
+            // revealed words leave, so we never measure text width ourselves
             // (which can disagree with SwiftUI's layout and overflow).
             if revealed < half.words.count {
                 RoundedRectangle(cornerRadius: 1, style: .continuous)
                     .fill(Theme.outline)
                     .frame(height: 2)
                     .frame(maxWidth: .infinity)
+                    .padding(.leading, revealed > 0 ? 6 : 0)
             }
         }
         .frame(width: columnWidth, alignment: .leading)
         .frame(height: fontSize * 1.7, alignment: .center)
+    }
+}
+
+// One recited word, styled by how it was judged:
+//  - correct / not yet judged: the book's own colours
+//  - unsure (a near miss): amber
+//  - wrong: red on a soft red highlight, with what was heard in small type beneath
+//  - skipped: red on a soft red highlight, struck through
+// The highlight keeps a mistake distinct from words the book itself prints red.
+//  - unheard (jumped while re-finding the place): secondary ink
+private struct MemorizeWord: View {
+    let segments: [Segment]
+    let outcome: WordOutcome?
+    let fontSize: CGFloat
+
+    var body: some View {
+        let plain = segments.compactMap(\.text).joined()
+        LayeredText(
+            rendered: HemistichText.render(
+                segments: segments,
+                plain: plain,
+                size: fontSize,
+                justifyWidth: 0,   // "no kashida", the sentinel headings use
+                tint: tint
+            ),
+            font: PageFont.font(size: fontSize),
+            size: fontSize
+        )
+        .fixedSize()
+        .background {
+            if outcome?.isMistake == true {
+                RoundedRectangle(cornerRadius: fontSize * 0.18, style: .continuous)
+                    .fill(Theme.error.opacity(0.13))
+                    .padding(.horizontal, -fontSize * 0.1)
+                    .padding(.vertical, fontSize * 0.12)
+            }
+        }
+        .overlay {
+            if outcome == .skipped {
+                Rectangle().fill(Theme.error)
+                    .frame(height: max(1, fontSize * 0.05))
+                    .offset(y: fontSize * HemistichText.strikeDrop)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if case .wrong(let heard) = outcome {
+                // Floats under the word without taking layout space.
+                Text(heard)
+                    .font(PageFont.font(size: fontSize * 0.42))
+                    .foregroundStyle(Theme.error)
+                    .fixedSize()
+                    .offset(y: fontSize * HemistichText.heardDrop)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(plain)
+        .accessibilityValue(accessibilityNote)
+    }
+
+    private func tint(_ color: SegmentColor) -> Color {
+        switch outcome {
+        case .none, .correct?: return inkColor(color)
+        case .unsure?: return Theme.unsure
+        case .wrong?, .skipped?: return Theme.error
+        case .unheard?: return Theme.inkSecondary
+        }
+    }
+
+    private var accessibilityNote: String {
+        switch outcome {
+        case .none, .correct?: return ""
+        case .unsure?: return "unsure"
+        case .wrong(let heard)?: return "mistake, heard \(heard)"
+        case .skipped?: return "skipped"
+        case .unheard?: return "not heard"
+        }
     }
 }
 
@@ -294,6 +360,7 @@ private struct BaytRow: View {
             MemorizeHalf(
                 half: half,
                 revealed: reveal?.revealedWords(bayt: bayt.number, half: which) ?? 0,
+                outcome: { reveal?.outcome(bayt: bayt.number, half: which, wordIndex: $0) },
                 fontSize: fontSize,
                 columnWidth: columnWidth
             )

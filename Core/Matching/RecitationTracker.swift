@@ -1,9 +1,14 @@
 import Foundation
 
 /// One recognized hint from a `SpeechSource`. `text` is the recognizer's latest
-/// hypothesis (raw, un-normalized); `isFinal` marks a stabilized segment.
-/// (The tracker currently ignores `isFinal` — it only ever advances the cursor,
-/// never retracts, so a volatile and a final hint are handled identically.)
+/// hypothesis for the audio since the last finalized result (raw,
+/// un-normalized); `isFinal` marks that this audio range is now settled.
+///
+/// This mirrors `SpeechTranscriber`: each result covers its own audio range,
+/// a volatile result is *replaced* by the next result for the same range, and a
+/// final result is permanent. So the tracker keeps a committed state built from
+/// final results only, and recomputes a tentative state on top of it for each
+/// volatile result.
 struct TranscriptFragment {
     let text: String
     let isFinal: Bool
@@ -11,32 +16,97 @@ struct TranscriptFragment {
 
 enum LockState { case idle, locked, lost }
 
-/// Walks a cursor forward through a known word sequence, advancing on fuzzy
-/// matches of recognizer hints. Pure logic — no audio, no UI, fully testable.
+/// How a recited word was judged. Only finalized recognizer results produce an
+/// outcome, so a mishearing in a volatile partial that is corrected before it
+/// settles never shows as a mistake.
+enum WordOutcome: Equatable {
+    case correct
+    /// Matched, but not exactly (a near miss) — shown amber, not flagged.
+    case unsure
+    /// Something else was said in this word's place.
+    case wrong(heard: String)
+    /// Passed over between two recited words.
+    case skipped
+    /// Jumped over while re-finding the place after the tracker was lost. The
+    /// recognizer may simply have missed these, so they aren't called mistakes.
+    case unheard
+
+    var isMistake: Bool {
+        switch self {
+        case .wrong, .skipped: return true
+        case .correct, .unsure, .unheard: return false
+        }
+    }
+}
+
+/// Every matching threshold in one place. These are provisional: they were
+/// chosen against scripted tests, not yet tuned on real recitation on a device.
+struct MatchTuning {
+    /// Positions searched past the cursor while locked: the next word plus up
+    /// to `lockedLookahead - 1` skipped words.
+    var lockedLookahead = 4
+    /// Positions searched while lost, to re-find the place.
+    var lostWindow = 12
+    /// Seconds without progress before a locked tracker counts as lost.
+    var lostAfter: TimeInterval = 2.0
+    /// Consecutive unmatched final tokens before a locked tracker counts as lost.
+    var lostAfterUnmatched = 4
+    /// Words shorter than this (e.g. و ف ب ل في من) must match exactly.
+    var exactBelowLength = 3
+    /// While lost, a single matching word re-locks only if it is at least this
+    /// long; shorter words need the next word to match too.
+    var resyncMinLength = 4
+
+    /// Edit distance still accepted as the same word (shown as `.unsure`).
+    func matchThreshold(_ a: String, _ b: String) -> Int {
+        let n = min(a.count, b.count)
+        return n < exactBelowLength ? 0 : max(1, n / 4)
+    }
+
+    /// A heard token this close to the expected word is probably a mishearing
+    /// of it, so it is judged `.unsure` rather than `.wrong`.
+    func nearMissThreshold(_ a: String, _ b: String) -> Int {
+        max(2, min(a.count, b.count) / 2)
+    }
+}
+
+/// Walks a cursor forward through a known word sequence on fuzzy matches of
+/// recognizer hints, and judges each word it passes. Pure logic — no audio, no
+/// UI, fully testable.
 final class RecitationTracker {
     let words: [String]            // expected words, already normalized
-    private(set) var cursor: Int   // confirmed word count; reveal [0, cursor)
-    private(set) var lockState: LockState = .idle
+    let tuning: MatchTuning
+
+    /// Words revealed so far: [0, cursor). Follows volatile results too.
+    var cursor: Int { current.cursor }
+    var lockState: LockState { current.lock }
+    /// Outcomes by flat word index, from finalized results only.
+    var outcomes: [Int: WordOutcome] { committed.outcomes }
+
+    private struct State {
+        var cursor: Int
+        var lock: LockState = .idle
+        var outcomes: [Int: WordOutcome] = [:]
+        /// Final tokens heard since the last match, as (raw, normalized).
+        var pending: [(raw: String, norm: String)] = []
+        var unmatchedRun = 0
+    }
+
+    private var committed: State
+    private var current: State
     private var lastProgress: TimeInterval = 0
 
-    private let window: Int        // re-sync look-ahead when lost
-    private let maxSkip: Int       // forward skip tolerance when locked
-    private let lostAfter: TimeInterval
-
-    init(words: [String], startIndex: Int = 0,
-         window: Int = 12, maxSkip: Int = 3, lostAfter: TimeInterval = 2.0) {
+    init(words: [String], startIndex: Int = 0, tuning: MatchTuning = MatchTuning()) {
         self.words = words
-        self.cursor = min(max(0, startIndex), words.count)
-        self.window = window
-        self.maxSkip = maxSkip
-        self.lostAfter = lostAfter
-        skipEmpties(from: &cursor)
+        self.tuning = tuning
+        let start = Self.firstNonEmpty(from: min(max(0, startIndex), words.count), in: words)
+        committed = State(cursor: start)
+        current = committed
     }
 
     func reset(to index: Int) {
-        cursor = min(max(0, index), words.count)
-        skipEmpties(from: &cursor)
-        lockState = .idle
+        committed = State(cursor: Self.firstNonEmpty(from: min(max(0, index), words.count), in: words))
+        current = committed
         lastProgress = 0
     }
 
@@ -45,52 +115,108 @@ final class RecitationTracker {
         // ArabicNormalize.normalize strips spaces, so normalizing the whole
         // string would collapse multi-word fragments into one run of letters.
         let tokens = fragment.text
-            .split(separator: " ")
-            .map { ArabicNormalize.normalize(String($0)) }
-            .filter { !$0.isEmpty }
+            .split(whereSeparator: \.isWhitespace)
+            .map { (raw: String($0), norm: ArabicNormalize.normalize(String($0))) }
+            .filter { !$0.norm.isEmpty }
 
-        var p = cursor
-        // +1 so the range covers the cursor position itself plus `maxSkip`
-        // words ahead (to step over up to `maxSkip` dropped words when locked).
-        let lookahead = (lockState == .lost) ? window : (maxSkip + 1)
-        for token in tokens {
-            let end = min(words.count, p + lookahead)
-            if let hit = matchIndex(token, in: p..<end) {
-                p = hit + 1
-                skipEmpties(from: &p)
-            }
-        }
-        if p > cursor {
-            cursor = p
+        // A volatile result replaces the previous one, so always build on the
+        // committed state; a final result becomes the new committed state.
+        var next = committed
+        apply(tokens, to: &next)
+
+        if next.cursor > current.cursor {
             lastProgress = time
-            lockState = .locked
-        } else if lockState == .locked, time - lastProgress > lostAfter {
-            // Only locked → lost; we never fire "lost" from idle (before the
-            // first matched word). reset() is the only way back to idle.
-            lockState = .lost
+        } else if next.lock == .locked, time - lastProgress > tuning.lostAfter {
+            // Only locked → lost; never from idle (before the first match).
+            next.lock = .lost
+        }
+        if fragment.isFinal {
+            committed = next
+        } else if next.lock == .lost {
+            committed.lock = .lost   // being lost widens the search for what follows
+        }
+        current = next
+    }
+
+    // MARK: - Alignment
+
+    private func apply(_ tokens: [(raw: String, norm: String)], to s: inout State) {
+        var i = 0
+        while i < tokens.count {
+            let token = tokens[i]
+            let lost = s.lock == .lost
+            let end = min(words.count, s.cursor + (lost ? tuning.lostWindow : tuning.lockedLookahead))
+            if let (hit, exact) = match(token.norm, in: s.cursor..<end),
+               !lost || resyncAccepted(hit, tokens: tokens, at: i) {
+                // Before the first match (idle) a gap is as uncertain as a lost one.
+                judgeGap(upTo: hit, in: &s, lost: s.lock != .locked)
+                s.outcomes[hit] = exact ? .correct : .unsure
+                s.cursor = Self.firstNonEmpty(from: hit + 1, in: words)
+                s.lock = .locked
+                s.pending = []
+                s.unmatchedRun = 0
+            } else if s.lock != .idle {
+                s.pending.append(token)
+                s.unmatchedRun += 1
+                if s.unmatchedRun >= tuning.lostAfterUnmatched {
+                    s.lock = .lost
+                    s.pending = []   // can't pair these with a slot once lost
+                }
+            }
+            i += 1
         }
     }
 
-    // MARK: - Matching helpers
+    /// Judge the expected words passed over between the cursor and a match at
+    /// `hit`. While locked, heard-but-unmatched tokens fill those slots in
+    /// order (a substitution); slots left over were skipped. Words jumped while
+    /// re-syncing from lost are `.unheard`.
+    private func judgeGap(upTo hit: Int, in s: inout State, lost: Bool) {
+        let gap = (s.cursor..<hit).filter { !words[$0].isEmpty }
+        guard !gap.isEmpty else { return }   // tokens before an in-place match are extra words
+        if lost {
+            for w in gap { s.outcomes[w] = .unheard }
+            return
+        }
+        for (k, w) in gap.enumerated() {
+            guard k < s.pending.count else { s.outcomes[w] = .skipped; continue }
+            // Any extra heard tokens beyond the gap belong to its last slot.
+            let heard = k == gap.count - 1 ? s.pending[k...] : s.pending[k...k]
+            let rawHeard = heard.map(\.raw).joined(separator: " ")
+            let near = heard.contains {
+                levenshtein($0.norm, words[w]) <= tuning.nearMissThreshold($0.norm, words[w])
+            }
+            s.outcomes[w] = near ? .unsure : .wrong(heard: rawHeard)
+        }
+    }
 
-    private func matchIndex(_ token: String, in range: Range<Int>) -> Int? {
+    /// While lost, accept a re-lock only on good evidence: a long word, or the
+    /// next token matching the next word too. Short common words (في، من) would
+    /// otherwise snap the cursor to the wrong place.
+    private func resyncAccepted(_ hit: Int, tokens: [(raw: String, norm: String)], at i: Int) -> Bool {
+        if words[hit].count >= tuning.resyncMinLength { return true }
+        let after = Self.firstNonEmpty(from: hit + 1, in: words)
+        guard i + 1 < tokens.count, after < words.count else { return false }
+        return isMatch(tokens[i + 1].norm, words[after]) != nil
+    }
+
+    /// First position in `range` the token matches, and whether exactly.
+    private func match(_ token: String, in range: Range<Int>) -> (Int, Bool)? {
         for i in range where !words[i].isEmpty {
-            if fuzzyEqual(token, words[i]) { return i }
+            if let exact = isMatch(token, words[i]) { return (i, exact) }
         }
         return nil
     }
 
-    private func fuzzyEqual(_ a: String, _ b: String) -> Bool {
+    /// nil if no match; true if exact, false if within the fuzzy threshold.
+    private func isMatch(_ a: String, _ b: String) -> Bool? {
         if a == b { return true }
-        // Caveat: for length-1 tokens the threshold is 1, so any single letter
-        // matches any other. Fine for multi-letter words; single-letter Arabic
-        // particles (و، ف، ب، ل) can false-match. Skip tolerance usually carries
-        // the cursor over them anyway. Revisit if fixture tests show drift.
-        let threshold = max(1, min(a.count, b.count) / 4)
-        return levenshtein(a, b) <= threshold
+        return levenshtein(a, b) <= tuning.matchThreshold(a, b) ? false : nil
     }
 
-    private func skipEmpties(from i: inout Int) {
+    private static func firstNonEmpty(from i: Int, in words: [String]) -> Int {
+        var i = i
         while i < words.count && words[i].isEmpty { i += 1 }
+        return i
     }
 }

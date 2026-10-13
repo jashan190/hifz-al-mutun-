@@ -16,7 +16,7 @@ SpeechSource (AppleSpeechSource | FileSpeechSource | MockSpeechSource)
    → RecitationSession → RecitationTracker (pure) → RevealState → PageView
 ```
 
-Not built yet: mistake detection, flags, persistence, the stuck-word reveal, the
+Mistake detection (Phase C) is in, as a first cut. Not built yet: flags, persistence, the stuck-word reveal, the
 stop card, and the no-voice fallback. **Arabic support on a real device is
 still unproven:** the GATE spike (`FileTranscriptionSpikeTests`) has never run
 on a phone.
@@ -57,26 +57,36 @@ Ordered by severity. Each needs a unit test, and most can use `MockSpeechSource`
 |---|---|---|
 | B1 | Stopping the mic while permission or the model download is pending is ignored; the engine then starts with no owner, so **the mic stays on**. | Keep the start `Task`. In `stop()`, set a `stopRequested` flag and cancel the task; check the flag before `engine.start()`. |
 | B2 | Start errors are swallowed (`try?`): denied permission or an unsupported locale leaves the UI "listening" forever. | Publish a `VoiceStatus` (`idle / preparing / downloading(progress) / listening / failed(reason)`) and reset `isListening` on failure. |
-| B3 | Volatile results repeat the same hypothesis, so two identical consecutive words can be passed on a single utterance. | Track a consumed-token watermark per result (or its audio range); only new tokens advance the cursor. |
-| B4 | One-letter words (و ف ب ل) fuzzy-match any other one-letter word. | Require an exact match below 3 letters. |
+| B3 ✅ | Volatile results repeat the same hypothesis, so two identical consecutive words can be passed on a single utterance. | Track a consumed-token watermark per result (or its audio range); only new tokens advance the cursor. |
+| B4 ✅ | One-letter words (و ف ب ل) fuzzy-match any other one-letter word. | Require an exact match below 3 letters. |
 | B5 | "Lost" only triggers when a fragment arrives, so silence never shows it. | Add a session timer that ticks the tracker. |
 | B6 | Swiping or jumping to another page while listening keeps the old cursor. | Reseed the tracker on manual navigation; keep auto-turns separate. |
 | B7 | The page turns only once a word on the *next* page is heard, so that word is never visible being revealed. | Turn when the cursor reaches a page's last word; use the next expected word's page. |
-| B8 | 190 Shatibiyyah words store a `normalized` form that keeps ئ/ؤ; the runtime normalizer folds them to ي/و. This costs one edit of fuzz on every such word. | Build `RecitationIndex` from `ArabicNormalize.normalize(word.text)`, or rebuild the stored forms with the same rules. Add a test that both agree. |
+| B8 ✅ | 190 Shatibiyyah words store a `normalized` form that keeps ئ/ؤ; the runtime normalizer folds them to ي/و. This costs one edit of fuzz on every such word. | Build `RecitationIndex` from `ArabicNormalize.normalize(word.text)`, or rebuild the stored forms with the same rules. Add a test that both agree. |
 
-## Phase C — Mistake detection (~2–3 days)
+## Phase C — Mistake detection ✅ (first cut)
 
-The tracker currently only moves a cursor. Make it emit **per-word outcomes**:
+Done (`RecitationTracker`, `MatchTuning`, `MemorizeWord`):
 
-- `correct` (exact or within threshold), `unsure` (borderline distance, shown amber and not flagged),
-  `wrong(heard:)` (the expected word in red, the heard word in small type beneath),
-  `skipped` (passed over by a skip, shown red and struck through), `revealed` (help used, secondary ink).
-- Store the outcomes in a `[wordIndex: WordOutcome]` map in the session; `RevealState`
-  then carries a style per word, not just a count.
-- Tune the thresholds against the Phase A fixtures. Chanting stretches vowels,
-  so normalized forms already ignore them. Add a short-word rule (B4) and a
-  confidence cut for `unsure`.
-- Unit-test with scripted fragments for each outcome.
+- The tracker keeps a **committed** state built from final results only and recomputes a
+  **tentative** state for each volatile result (which replaces the last one), as
+  `SpeechTranscriber` reports results per audio range. Reveal follows volatile text;
+  only final text can judge a word, so a corrected partial is never a mistake (fixes B3).
+- Outcomes per word: `correct`, `unsure` (fuzzy match or near-miss substitution, amber,
+  not a mistake), `wrong(heard:)` (red on a soft red highlight, heard text beneath),
+  `skipped` (red highlight, struck through), `unheard` (jumped while re-finding the
+  place, or before the first match — secondary ink, not a mistake).
+- Words under 3 letters must match exactly (B4). While lost, re-locking needs a word of
+  4+ letters or two words in a row. Extra words aren't flagged.
+- A haptic on each new mistake; results stay on screen after the mic stops.
+- Checked on all three mutun: a perfect recitation gives 0 mistakes in 14,078 words; with
+  one word dropped per bayt, all 1,343 drops come back as skips (8 land one word off
+  where neighbouring words look alike).
+
+Still to do:
+
+- **Tune `MatchTuning` on a device** with the Phase A clips. Every threshold is provisional.
+- `revealed` (help used) arrives with the stuck-word reveal in Phase E.
 
 ## Phase D — Flags and persistence (~2 days)
 
