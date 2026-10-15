@@ -1,0 +1,187 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch / PR cancels the run it supersedes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Newest GA Xcode on the macos-26 hosted image (iOS 26.5 SDK). Xcode 27 is
+  # only on the `xcode-27` preview image so far — see docs/ci.md.
+  XCODE_APP: /Applications/Xcode_26.6.app
+  PROJECT: HifzAlMutun.xcodeproj
+  SCHEME: HifzAlMutun
+  SPM_DIR: SourcePackages
+
+jobs:
+  content:
+    name: Validate content JSON
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Normalizer self-check
+        run: python3 Tools/normalize.py
+
+      - name: Validate matn files
+        # validate_matn.py understands the bayt-list schema (schemaVersion 1).
+        # Page-based files (schemaVersion 2, e.g. shatibiyya.json) only get a
+        # JSON parse + count sanity check until the validator learns that shape.
+        run: |
+          set -euo pipefail
+          status=0
+          for f in Resources/Content/*.json; do
+            v=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("schemaVersion", 1))' "$f")
+            if [ "$v" = "1" ]; then
+              python3 Tools/validate_matn.py "$f" || status=1
+            else
+              python3 - "$f" <<'PY' || status=1
+          import json, sys
+          path = sys.argv[1]
+          doc = json.load(open(path, encoding="utf-8"))
+          pages = doc.get("pages", [])
+          print(f"{path}: schemaVersion {doc.get('schemaVersion')} — parse check only")
+          if doc.get("pageCount") != len(pages):
+              sys.exit(f"  ERROR: pageCount {doc.get('pageCount')} != {len(pages)} pages")
+          print(f"  OK — {len(pages)} pages, {len(doc.get('babs', []))} babs")
+          PY
+            fi
+          done
+          exit $status
+
+  test:
+    name: Build & unit tests (Simulator)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Cache Swift packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.SPM_DIR }}
+          key: spm-${{ runner.os }}-${{ env.XCODE_APP }}-${{ hashFiles('project.yml') }}
+          restore-keys: spm-${{ runner.os }}-${{ env.XCODE_APP }}-
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project "$PROJECT" -scheme "$SCHEME" \
+            -clonedSourcePackagesDirPath "$SPM_DIR"
+
+      - name: Pick an iPhone simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          # Newest iOS runtime that has an available iPhone; prefer a "Pro".
+          udid=$(xcrun simctl list devices available -j | python3 -c '
+          import json, re, sys
+          devs = json.load(sys.stdin)["devices"]
+          def ver(rt):
+              m = re.search(r"iOS-(\d+)-(\d+)", rt)
+              return (int(m.group(1)), int(m.group(2))) if m else None
+          best = None
+          for rt, ds in devs.items():
+              v = ver(rt)
+              if not v:
+                  continue
+              phones = [d for d in ds if d.get("isAvailable") and d["name"].startswith("iPhone")]
+              if not phones:
+                  continue
+              phones.sort(key=lambda d: ("Pro" not in d["name"], d["name"]))
+              if best is None or v > best[0]:
+                  best = (v, phones[0])
+          if best is None:
+              sys.exit("no available iPhone simulator")
+          (major, minor), dev = best
+          print("Using iOS %d.%d %s" % (major, minor, dev["name"]), file=sys.stderr)
+          print(best[1]["udid"])
+          ')
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        # WHISPER_E2E is deliberately NOT set: those tests download a 632 MB model.
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "$PROJECT" -scheme "$SCHEME" \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -clonedSourcePackagesDirPath "$SPM_DIR" \
+            -skipPackagePluginValidation -skipMacroValidation \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: TestResults-xcresult
+          path: TestResults.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
+
+  device-build:
+    name: Unsigned device build
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Cache Swift packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.SPM_DIR }}
+          key: spm-${{ runner.os }}-${{ env.XCODE_APP }}-${{ hashFiles('project.yml') }}
+          restore-keys: spm-${{ runner.os }}-${{ env.XCODE_APP }}-
+
+      - name: Build for generic iOS device (no signing)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project "$PROJECT" -scheme "$SCHEME" \
+            -destination 'generic/platform=iOS' \
+            -clonedSourcePackagesDirPath "$SPM_DIR" \
+            -skipPackagePluginValidation -skipMacroValidation \
+            -resultBundlePath DeviceBuild.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload build results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: DeviceBuild-xcresult
+          path: DeviceBuild.xcresult
+          if-no-files-found: ignore
+          retention-days: 7

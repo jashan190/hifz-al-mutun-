@@ -1,5 +1,7 @@
 # Hifz al-Mutun
 
+[![CI](https://github.com/jashan190/hifz-al-mutun-/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jashan190/hifz-al-mutun-/actions/workflows/ci.yml)
+
 A native iOS app (SwiftUI, iOS 26+) for memorizing three classical
 Arabic didactic poems (mutun) in tajwīd and qirā’āt: **Tuhfat al-Atfal**,
 **al-Muqaddimah al-Jazariyyah**, and **ash-Shatibiyyah (Hirz al-Amani)**.
@@ -21,6 +23,8 @@ Pick an iPhone (iOS 26+) and press Run. The app opens to the Library; tap a
 matn to open the paged Reader. Voice review listens with Whisper (WhisperKit),
 which downloads its model on first use and also runs in the Simulator with the
 Mac's microphone. Tests: `HifzAlMutunTests` (⌘U).
+GitHub Actions runs the tests, an unsigned device build and the content
+validator on every PR — see [docs/ci.md](docs/ci.md).
 
 ## Project layout
 
