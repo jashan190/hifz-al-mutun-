@@ -8,6 +8,7 @@ struct SettingsSheet: View {
     @EnvironmentObject private var flagStore: FlagStore
     @State private var confirmClear = false
     @AppStorage(WhisperModel.defaultsKey) private var voiceModelRaw = WhisperModel.turbo.rawValue
+    @AppStorage(MistakeSound.enabledKey) private var mistakeSound = true
     /// Bumped after removing a download, so the "Downloaded" labels refresh.
     @State private var storageVersion = 0
 
@@ -77,6 +78,16 @@ struct SettingsSheet: View {
                 voiceOption(model)
             }
             .id(storageVersion)
+            Divider().overlay(Theme.outline)
+            Toggle(isOn: $mistakeSound) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sound on mistakes").font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink)
+                    Text("A short tone when a word is judged wrong or skipped")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.ink.opacity(0.7))
+                }
+            }
+            .tint(Theme.accent)
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))

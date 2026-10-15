@@ -47,6 +47,8 @@ targets:
         buildPhase: resources
       - path: Resources/Fonts
         buildPhase: resources
+      - path: Resources/Sounds
+        buildPhase: resources
       - path: Resources/Assets.xcassets
     dependencies:
       - package: WhisperKit

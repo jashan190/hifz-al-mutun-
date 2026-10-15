@@ -2,10 +2,22 @@ import SwiftUI
 import Combine
 
 /// What a finished Review sitting covered, for the stop card.
+/// What a sitting (one press of the mic, until it stops) came to.
 struct ReviewSummary: Equatable {
     let baytsRecited: Int
-    let mistakes: Int
     let revealed: Int
+    /// Each mistake, in recitation order.
+    let mistakes: [Mistake]
+
+    struct Mistake: Equatable, Identifiable {
+        let id: Int              // flat word index
+        let page: Int
+        let bayt: Int
+        let half: Half
+        let expected: String     // the word as written
+        /// What the recognizer heard in its place; nil when it was skipped.
+        let heard: String?
+    }
 }
 
 /// Owns the live RecitationSession and mirrors its published state so PageScreen
@@ -100,10 +112,17 @@ final class VoiceController: ObservableObject {
 
     private func makeSummary(_ judged: [Int: WordOutcome]) -> ReviewSummary? {
         guard !judged.isEmpty, let index else { return nil }
+        let mistakes = judged.filter(\.value.isMistake).keys.sorted().map { i -> ReviewSummary.Mistake in
+            let ref = index.refs[i]
+            var heard: String?
+            if case .wrong(let said) = judged[i] { heard = said }
+            return .init(id: i, page: ref.page, bayt: ref.bayt, half: ref.half,
+                         expected: index.displayWords[i], heard: heard)
+        }
         return ReviewSummary(
             baytsRecited: Set(judged.keys.map { index.refs[$0].bayt }).count,
-            mistakes: judged.values.filter(\.isMistake).count,
-            revealed: judged.values.filter { $0 == .revealed }.count
+            revealed: judged.values.filter { $0 == .revealed }.count,
+            mistakes: mistakes
         )
     }
 
