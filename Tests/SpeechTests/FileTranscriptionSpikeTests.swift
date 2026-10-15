@@ -17,15 +17,22 @@ import Speech
         print("ARABIC SUPPORTED: \(hasArabic)")
     }
 
-    @Test func transcribesArabicClip() async throws {
-        // The on-device speech models ship only on physical devices; the
-        // Simulator reports zero supported locales. Skip there — this spike is
-        // the device-only GATE for Apple's Arabic recognition.
-        let supported = await SpeechTranscriber.supportedLocales
-        guard !supported.isEmpty else {
-            print("SPIKE skipped: no speech models on this runtime (Simulator). Run on a physical iOS 26 device.")
-            return
-        }
+    /// The on-device speech models ship only on physical devices; the
+    /// Simulator reports zero supported locales.
+    static var onSimulator: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    // The device-only GATE for Apple's Arabic recognition (roadmap Phase A).
+    // Skipped on the Simulator; on a phone, no Arabic model fails it.
+    @Test(.disabled(if: onSimulator, "No speech models in the Simulator — run on a physical iOS 26+ device."))
+    func transcribesArabicClip() async throws {
+        let locale = try await SpeechModel.resolveLocale(Locale(identifier: "ar"))
+        print("SPIKE Arabic locale: \(locale.identifier(.bcp47))")
 
         let url = try #require(
             Bundle(for: SpikeAnchor.self).url(forResource: "shatibiyya_clip", withExtension: "m4a"),

@@ -21,3 +21,6 @@ source/*.pdf
 
 # Raw recital recording (source for the test fixture; converted clip is versioned)
 /Shatibiyya Test Recording.m4a
+
+# This Mac's signing team and bundle id (see Config/Signing.xcconfig)
+Config/Local.xcconfig

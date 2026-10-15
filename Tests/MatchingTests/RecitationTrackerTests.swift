@@ -63,13 +63,14 @@ import Testing
         #expect(t.cursor == 3)
     }
 
-    @Test func resetMovesCursor() {
+    @Test func jumpKeepsEarlierJudgmentsAndForgetsLaterOnes() {
         let t = tracker()
-        final(t, "يقول راجي")
-        t.reset(to: 0)
-        #expect(t.cursor == 0)
+        final(t, "يقول راجي عفو")
+        t.jump(to: 1, at: 1)               // back to recite راجي again
+        #expect(t.cursor == 1 && t.anchor == 1)
+        #expect(t.outcomes[0] == .correct)
+        #expect(t.outcomes[1] == nil && t.outcomes[2] == nil)
         #expect(t.lockState == .idle)
-        #expect(t.outcomes.isEmpty)
     }
 
     // MARK: - Judging words
@@ -183,5 +184,37 @@ import Testing
         final(t, "عفو")              // the recognizer missed the opening words
         #expect(t.cursor == 3)
         #expect(t.outcomes[0] == .unheard && t.outcomes[1] == .unheard)
+    }
+
+    // MARK: - Help and corrections
+
+    @Test func overrideClearsAMistake() {
+        let t = tracker()
+        final(t, "يقول")
+        final(t, "عفو")                    // راجي skipped
+        t.override(1, with: .correct)
+        #expect(t.outcomes[1] == .correct)
+        t.override(5, with: .correct)      // never judged: ignored
+        #expect(t.outcomes[5] == nil)
+    }
+
+    @Test func revealNextShowsTheWordAsHelp() {
+        let t = tracker()
+        final(t, "يقول")
+        t.revealNext(at: 9)
+        #expect(t.outcomes[1] == .revealed)
+        #expect(t.cursor == 2)
+        #expect(t.silence(at: 9) == 0)
+        final(t, "عفو", at: 10)            // carries on from the revealed word
+        #expect(t.outcomes[2] == .correct)
+    }
+
+    @Test func silenceShowsLostWithoutChangingJudging() {
+        let t = tracker()
+        final(t, "يقول", at: 0)
+        t.noteSilence(at: 5)
+        #expect(t.lockState == .lost)      // the cue shows during the pause…
+        final(t, "عفو", at: 5.5)
+        #expect(t.outcomes[1] == .skipped) // …but the next word is judged as before
     }
 }

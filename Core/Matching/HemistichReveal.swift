@@ -42,6 +42,20 @@ enum HemistichReveal {
         return result
     }
 
+    /// Scalar range in `text` of each word (letter-bearing token), in order.
+    static func wordRanges(in text: String) -> [Range<Int>] {
+        var ranges: [Range<Int>] = []
+        var offset = 0
+        for token in text.split(separator: " ", omittingEmptySubsequences: false) {
+            let len = token.unicodeScalars.count
+            if !ArabicNormalize.normalize(String(token)).isEmpty {
+                ranges.append(offset..<(offset + len))
+            }
+            offset += len + 1
+        }
+        return ranges
+    }
+
     /// Scalar offset in `text` just past the `k`-th (1-based) word token.
     static func scalarEnd(ofWord k: Int, in text: String) -> Int {
         var offset = 0

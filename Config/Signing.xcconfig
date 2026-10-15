@@ -1,0 +1,9 @@
+// Signing defaults for the shared project. To run on your own iPhone, copy
+// Local.xcconfig.example to Local.xcconfig (git-ignored) and set your team and
+// a bundle id prefix only you use — a free Personal Team can't sign an id
+// someone else has registered.
+BUNDLE_ID_PREFIX = com.farhan
+DEVELOPMENT_TEAM =
+CODE_SIGN_STYLE = Automatic
+
+#include? "Local.xcconfig"

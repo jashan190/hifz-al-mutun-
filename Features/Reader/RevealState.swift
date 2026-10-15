@@ -17,28 +17,51 @@ struct RevealLayout {
 }
 
 /// Answers "how many words of this hemistich are revealed, and how was each
-/// one judged?" from a global cursor and the tracker's outcomes. Lookups during
-/// rendering are O(1).
+/// one judged?". A word is revealed once judged, or while it sits in the
+/// current run [anchor, cursor) — which follows volatile results ahead of the
+/// judgments. Words never reached (e.g. pages jumped over) stay hidden.
 struct RevealState {
     private let layout: RevealLayout
+    private let anchor: Int
     private let cursor: Int
     private let outcomes: [Int: WordOutcome]
 
-    init(layout: RevealLayout, cursor: Int, outcomes: [Int: WordOutcome] = [:]) {
+    init(layout: RevealLayout, anchor: Int = 0, cursor: Int, outcomes: [Int: WordOutcome] = [:]) {
         self.layout = layout
+        self.anchor = anchor
         self.cursor = cursor
         self.outcomes = outcomes
     }
 
-    init(index: RecitationIndex, cursor: Int, outcomes: [Int: WordOutcome] = [:]) {
-        self.init(layout: RevealLayout(index: index), cursor: cursor, outcomes: outcomes)
+    init(index: RecitationIndex, anchor: Int = 0, cursor: Int, outcomes: [Int: WordOutcome] = [:]) {
+        self.init(layout: RevealLayout(index: index), anchor: anchor, cursor: cursor, outcomes: outcomes)
     }
 
-    /// Number of words revealed in this hemistich (0 … its word count).
+    private func isRevealed(_ i: Int) -> Bool {
+        outcomes[i] != nil || (anchor <= i && i < cursor)
+    }
+
+    /// Number of words revealed from the start of this hemistich (0 … its
+    /// word count). Runs start at hemistich boundaries, so this is a prefix.
     func revealedWords(bayt: Int, half: Half) -> Int {
         let key = RevealLayout.HalfKey(bayt: bayt, half: half)
         guard let start = layout.startByHalf[key], let total = layout.countByHalf[key] else { return 0 }
-        return min(max(0, cursor - start), total)
+        var k = 0
+        while k < total && isRevealed(start + k) { k += 1 }
+        return k
+    }
+
+    /// Whether the next expected word is in this hemistich (its blank is the
+    /// one to tap to reveal it).
+    func holdsCursor(bayt: Int, half: Half) -> Bool {
+        let key = RevealLayout.HalfKey(bayt: bayt, half: half)
+        guard let start = layout.startByHalf[key], let total = layout.countByHalf[key] else { return false }
+        return start <= cursor && cursor < start + total
+    }
+
+    /// Flat index of a hemistich's word, for acting on it (e.g. dismissing).
+    func flatIndex(bayt: Int, half: Half, wordIndex: Int) -> Int? {
+        layout.startByHalf[RevealLayout.HalfKey(bayt: bayt, half: half)].map { $0 + wordIndex }
     }
 
     /// How the word at `wordIndex` in this hemistich was judged, if it has been.

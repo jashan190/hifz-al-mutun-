@@ -12,10 +12,15 @@ options:
   createIntermediateGroups: true
   groupSortPosition: top
 
+# Team and bundle id prefix come from Config/Signing.xcconfig, which pulls in
+# a git-ignored Config/Local.xcconfig for running on your own device.
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    DEVELOPMENT_TEAM: ""            # set this to your Apple team id when you run on device
     GENERATE_INFOPLIST_FILE: YES
     MARKETING_VERSION: "0.1"
     CURRENT_PROJECT_VERSION: "1"
@@ -40,7 +45,7 @@ targets:
       - path: Resources/Assets.xcassets
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.farhan.hifzalmutun
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_ID_PREFIX).hifzalmutun
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_KEY_CFBundleDisplayName: "حفظ المتون"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -62,7 +67,7 @@ targets:
       - target: HifzAlMutun
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.farhan.hifzalmutun.tests
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_ID_PREFIX).hifzalmutun.tests
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:

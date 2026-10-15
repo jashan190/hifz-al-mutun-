@@ -6,65 +6,130 @@ import SwiftUI
 struct PageScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @EnvironmentObject private var flagStore: FlagStore
 
     let matn: Matn
-    @State private var currentPage = max(1, UserDefaults.standard.integer(forKey: "openReaderPage"))  // 1 unless a debug launch arg overrides
+    @State private var currentPage: Int
     @State private var mode: PageMode = .read
     @State private var barsVisible = true
     @State private var showIndex = false
-    @State private var isListening = false
     @StateObject private var voice = VoiceController()
+    /// The page an automatic turn is heading to, so it isn't taken for the
+    /// reciter swiping by hand (which restarts tracking from that page).
+    @State private var autoTurnTarget: Int?
+
+    init(matn: Matn) {
+        self.matn = matn
+        // A debug launch arg wins; otherwise reopen at the last page read.
+        let debugPage = UserDefaults.standard.integer(forKey: "openReaderPage")
+        let page = debugPage > 0 ? debugPage : ReadingPosition.lastPage(of: matn.id) ?? 1
+        _currentPage = State(initialValue: min(max(1, page), matn.pageCount))
+    }
 
     var body: some View {
         TabView(selection: $currentPage) {
             ForEach(1...matn.pageCount, id: \.self) { page in
                 PageView(matn: matn, page: page, mode: mode,
-                         reveal: (mode == .memorize && page == currentPage) ? voice.reveal : nil)
+                         reveal: mode == .memorize ? voice.reveal : nil)
                     .tag(page)
                     .contentShape(Rectangle())
                     .onTapGesture { toggleBars() }
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        .environment(\.readerActions, actions)
         .background(Theme.page.ignoresSafeArea())
         .safeAreaInset(edge: .top, spacing: 0) { if barsVisible { topBar } }
-        .safeAreaInset(edge: .bottom, spacing: 0) { if barsVisible { footer } }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                if let summary = voice.summary, mode == .memorize {
+                    SummaryCard(summary: summary,
+                                reviewAgain: { startVoice() },
+                                backToRead: { setMode(.read) })
+                        .padding(.horizontal, Theme.margin)
+                        .padding(.bottom, 10)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                if barsVisible { footer }
+            }
+        }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         .sheet(isPresented: $showIndex) {
             IndexSheet(matn: matn, currentPage: $currentPage)
         }
-        .onChange(of: isListening) { _, listening in
-            if listening {
-                voice.start(matn: matn, fromPage: currentPage)
-            } else {
-                voice.stop()
+        .onChange(of: currentPage) { _, page in
+            ReadingPosition.save(page: page, of: matn.id)
+            // Swiped (or jumped) by hand while reciting: carry on from this page.
+            // (Only while a sitting runs: after a stop, swiping back to look at
+            // the results must not reset them.)
+            if voice.isActive, mode == .memorize, page != autoTurnTarget {
+                voice.jump(toPage: page)
             }
+            autoTurnTarget = nil
+        }
+        // Turn the page as soon as its last word is recited.
+        .onChange(of: voice.cursor) { _, c in
+            guard mode == .memorize, voice.isActive,
+                  let target = voice.page(forCursor: c), target != currentPage else { return }
+            autoTurnTarget = target
+            if reduceMotion { currentPage = target } else { withAnimation { currentPage = target } }
         }
         // A light buzz when a new mistake is judged, so the reciter notices
         // without looking (as Tarteel does).
         .sensoryFeedback(.warning, trigger: voice.mistakeCount) { old, new in new > old }
-        // Never leave the microphone running once the reader is gone.
-        .onDisappear {
-            isListening = false
-            voice.clear()
+        // A light tap when a flag is set by hand (not by voice, which has its own).
+        .sensoryFeedback(.impact(weight: .light), trigger: flagStore.count(for: matn.id)) { old, new in
+            new > old && (mode == .read || !voice.isLive)
         }
+        // Voice couldn't start (no permission, no Arabic model): Review carries
+        // on by tap from the same place (UX.md "Without voice").
+        .onChange(of: voice.status) { _, status in
+            if case .failed = status, mode == .memorize {
+                voice.fallBackToManual(matn: matn, page: currentPage)
+            }
+        }
+        // Never leave the microphone running once the reader is gone.
+        .onDisappear { voice.clear() }
         #if DEBUG
-        // Debug-only: `-debugRecite` (see VoiceController) opens straight into
-        // Memorize and replays the scripted recitation.
+        // Debug-only: `-debugRecite` / `-debugVoiceFail` (see VoiceController)
+        // open straight into Memorize and start a sitting.
         .onAppear {
-            if UserDefaults.standard.string(forKey: "debugRecite") != nil {
+            let d = UserDefaults.standard
+            if d.string(forKey: "debugRecite") != nil || d.string(forKey: "debugVoiceFail") != nil {
                 mode = .memorize
-                isListening = true
+                startVoice()
+            }
+            // `-debugStopAfter 5` stops the sitting after 5 s (shows the summary).
+            let stopAfter = d.double(forKey: "debugStopAfter")
+            if stopAfter > 0 {
+                Task {
+                    try? await Task.sleep(for: .seconds(stopAfter))
+                    voice.stop()
+                }
             }
         }
         #endif
-        .onChange(of: voice.cursor) { _, c in
-            guard mode == .memorize, isListening, let target = voice.page(forCursor: c) else { return }
-            if target != currentPage {
-                withAnimation { currentPage = target }
+    }
+
+    private var actions: ReaderActions {
+        ReaderActions(
+            startFromBayt: { bayt in
+                if voice.isLive { voice.jump(toBayt: bayt) } else { startVoice(bayt: bayt) }
+            },
+            revealNext: { _ in voice.revealNext() },
+            dismissMistake: { bayt, half, word in
+                voice.dismissMistake(bayt: bayt, half: half, wordIndex: word)
             }
-        }
+        )
+    }
+
+    private func startVoice(bayt: Int? = nil) {
+        voice.start(matn: matn, fromPage: currentPage, bayt: bayt, flags: flagStore)
+    }
+
+    private func setMode(_ m: PageMode) {
+        if reduceMotion { mode = m } else { withAnimation(.easeInOut(duration: 0.22)) { mode = m } }
     }
 
     private func toggleBars() {
@@ -102,23 +167,29 @@ struct PageScreen: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 12) {
-            ModeToggle(mode: $mode)
+        VStack(alignment: .leading, spacing: 6) {
+            // What voice review is doing, on its own line so it never squeezes
+            // the controls.
             if mode == .memorize {
-                MicButton(isListening: $isListening)
-                    .transition(.scale.combined(with: .opacity))
-                if voice.lockState == .lost {
-                    Text("listening…")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.onChromeDim)
-                        .transition(.opacity)
-                }
+                VoiceStatusLabel(voice: voice)
+                    .transition(.opacity)
             }
-            Spacer(minLength: 0)
-            Text("\(Numerals.eastern(currentPage)) / \(Numerals.eastern(matn.pageCount))")
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(Theme.onChromeDim)
-                .fixedSize()
+            HStack(spacing: 12) {
+                ModeToggle(mode: $mode)
+                    .fixedSize()
+                if mode == .memorize {
+                    MicButton(isListening: Binding(
+                        get: { voice.isLive },
+                        set: { on in on ? startVoice() : voice.stop() }
+                    ))
+                    .transition(.scale.combined(with: .opacity))
+                }
+                Spacer(minLength: 0)
+                Text("\(Numerals.eastern(currentPage)) / \(Numerals.eastern(matn.pageCount))")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Theme.onChromeDim)
+                    .fixedSize()
+            }
         }
         .padding(.horizontal, Theme.margin)
         .padding(.vertical, 7)
@@ -128,11 +199,110 @@ struct PageScreen: View {
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .onChange(of: mode) { _, m in
-            if m != .memorize {
-                isListening = false
-                voice.clear()
+            if m != .memorize { voice.clear() }
+        }
+    }
+}
+
+// Beside the mic: what voice review is doing, and what to do when it can't
+// (UX.md: "the mic button says why and offers … Open Settings").
+private struct VoiceStatusLabel: View {
+    @ObservedObject var voice: VoiceController
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        switch voice.status {
+        case .preparing:
+            label("Getting ready…")
+        case .downloading(let p):
+            label("Downloading Arabic voice \(Int((p * 100).rounded()))%")
+        case .listening:
+            if voice.isManual {
+                if let failure = voice.voiceFailure { failed(failure) } else { label("Tap the blank to reveal the next word.") }
+            } else if voice.lockState == .lost {
+                label("listening…")
+            }
+        case .failed(let failure):
+            failed(failure)
+        case .idle:
+            EmptyView()
+        }
+    }
+
+    private func failed(_ failure: VoiceFailure) -> some View {
+        HStack(spacing: 8) {
+            label(message(failure))
+            if failure == .micDenied || failure == .speechDenied {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.onChrome)
+                .fixedSize()
             }
         }
+    }
+
+    private func message(_ failure: VoiceFailure) -> String {
+        switch failure {
+        case .micDenied: return "Microphone is off. Tap the blank to reveal."
+        case .speechDenied: return "Speech recognition is off. Tap the blank to reveal."
+        case .arabicUnsupported: return "No Arabic voice on this device. Tap the blank to reveal."
+        case .other: return "Voice isn't available. Tap the blank to reveal."
+        }
+    }
+
+    private func label(_ text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(Theme.onChrome.opacity(0.85))
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// Shown when a Review sitting stops (UX.md): what was covered, then Review
+// again or go back to reading.
+private struct SummaryCard: View {
+    let summary: ReviewSummary
+    let reviewAgain: () -> Void
+    let backToRead: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Review finished")
+                .font(.headline)
+                .foregroundStyle(Theme.ink)
+            HStack(spacing: 18) {
+                stat(summary.baytsRecited, summary.baytsRecited == 1 ? "bayt recited" : "bayts recited")
+                stat(summary.mistakes, summary.mistakes == 1 ? "mistake" : "mistakes")
+                if summary.revealed > 0 { stat(summary.revealed, "revealed") }
+            }
+            HStack(spacing: 10) {
+                Button(action: reviewAgain) {
+                    Text("Review again").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                Button(action: backToRead) {
+                    Text("Back to Read").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+            .tint(Theme.accent)
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.ink.opacity(0.08)))
+        .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
+        .accessibilityElement(children: .contain)
+    }
+
+    private func stat(_ n: Int, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("\(n)").font(.title2.weight(.semibold)).foregroundStyle(Theme.ink)
+            Text(label).font(.caption).foregroundStyle(Theme.ink.opacity(0.7))
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

@@ -8,6 +8,7 @@ import Speech
 /// install path with the live source via `SpeechModel`.
 final class FileSpeechSource: SpeechSource {
     let fragments: AsyncStream<TranscriptFragment>
+    var onEvent: (@Sendable (SpeechSourceEvent) -> Void)?
     private let continuation: AsyncStream<TranscriptFragment>.Continuation
     private let url: URL
     private let locale: Locale
@@ -21,12 +22,13 @@ final class FileSpeechSource: SpeechSource {
 
     func start() async throws {
         let transcriber = SpeechTranscriber(
-            locale: locale,
+            locale: try await SpeechModel.resolveLocale(locale),
             transcriptionOptions: [],
             reportingOptions: [.volatileResults],
             attributeOptions: []
         )
-        try await SpeechModel.ensureInstalled(transcriber, locale: locale)
+        try await SpeechModel.ensureInstalled(transcriber) { [onEvent] in onEvent?(.downloading($0)) }
+        onEvent?(.listening)
 
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         let file = try AVAudioFile(forReading: url)
