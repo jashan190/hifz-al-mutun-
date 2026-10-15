@@ -36,9 +36,10 @@ final class RecitationSession: ObservableObject {
     /// Reveal state for the UI, rebuilt only when the cursor or the judged
     /// outcomes change.
     @Published private(set) var reveal: RevealState
-    /// Words judged wrong or skipped so far (finalized results only).
+    /// Words shown wrong or skipped so far (for the haptic). Includes
+    /// judgments from the recognizer's guess that aren't finalized yet.
     @Published private(set) var mistakeCount = 0
-    /// Every judged word, by flat index (for flags and the summary).
+    /// Every finalized judgment, by flat index (for flags and the summary).
     @Published private(set) var outcomes: [Int: WordOutcome] = [:]
 
     /// Reveal the next word after this long without progress (UX.md: "about 8
@@ -53,6 +54,7 @@ final class RecitationSession: ObservableObject {
     private var clock: Task<Void, Never>?
     private var startTime = Date()
     private var anchor: Int
+    private var shown: [Int: WordOutcome] = [:]
     /// Set by stop(): late events from the source (a download still finishing,
     /// a "listening" that crossed paths with the stop) must not revive it.
     private var stopped = false
@@ -180,12 +182,15 @@ final class RecitationSession: ObservableObject {
     private func publish() {
         if lockState != tracker.lockState { lockState = tracker.lockState }
         let latest = tracker.outcomes
-        guard tracker.cursor != cursor || tracker.anchor != anchor || latest != outcomes else { return }
+        let nowShown = tracker.shownOutcomes
+        guard tracker.cursor != cursor || tracker.anchor != anchor || latest != outcomes || nowShown != shown
+        else { return }
         cursor = tracker.cursor
         anchor = tracker.anchor
-        outcomes = latest
-        reveal = RevealState(layout: layout, anchor: anchor, cursor: cursor, outcomes: latest)
-        let mistakes = latest.values.filter(\.isMistake).count
+        if latest != outcomes { outcomes = latest }
+        shown = nowShown
+        reveal = RevealState(layout: layout, anchor: anchor, cursor: cursor, outcomes: nowShown)
+        let mistakes = nowShown.values.filter(\.isMistake).count
         if mistakes != mistakeCount { mistakeCount = mistakes }
     }
 }

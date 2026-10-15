@@ -92,8 +92,16 @@ final class RecitationTracker {
     /// Where the current run began (the session start, or the last jump).
     var anchor: Int { committed.anchor }
     var lockState: LockState { current.lock }
-    /// Outcomes by flat word index, from finalized results only.
-    var outcomes: [Int: WordOutcome] { committed.outcomes }
+    /// Outcomes by flat word index, from finalized results only. These are
+    /// kept: flags and the summary come from them.
+    var outcomes: [Int: WordOutcome] { applyingOverrides(committed.outcomes) }
+    /// What to show now: the finalized outcomes, plus settled judgments from
+    /// the recognizer's current guess (see `updateTentative`). A mistake
+    /// shows within an update of the next words being heard, instead of
+    /// waiting for the recognizer to finalize the passage.
+    var shownOutcomes: [Int: WordOutcome] {
+        applyingOverrides(committed.outcomes.merging(stable) { kept, _ in kept })
+    }
 
     private struct State {
         var cursor: Int
@@ -111,6 +119,19 @@ final class RecitationTracker {
     private var committed: State
     private var current: State
     private var lastProgress: TimeInterval = 0
+    /// Judgments from the current guess, beyond the finalized ones: the last
+    /// update's, and those the last two updates agreed on.
+    private var tentative: [Int: WordOutcome] = [:]
+    private var stable: [Int: WordOutcome] = [:]
+    /// The reciter's corrections ("Not a mistake"), kept over later judgments
+    /// of the same word (a shown guess that is then finalized).
+    private var overrides: [Int: WordOutcome] = [:]
+
+    private func applyingOverrides(_ judged: [Int: WordOutcome]) -> [Int: WordOutcome] {
+        var judged = judged
+        for (i, o) in overrides where judged[i] != nil { judged[i] = o }
+        return judged
+    }
 
     init(words: [String], startIndex: Int = 0, tuning: MatchTuning = MatchTuning()) {
         self.words = words
@@ -126,17 +147,18 @@ final class RecitationTracker {
     func jump(to index: Int, at time: TimeInterval) {
         let start = Self.firstNonEmpty(from: min(max(0, index), words.count), in: words)
         var s = State(cursor: start, anchor: start)
-        s.outcomes = committed.outcomes.filter { $0.key < start }
+        s.outcomes = outcomes.filter { $0.key < start }
+        overrides = overrides.filter { $0.key < start }
         committed = s
         current = s
+        clearTentative()
         lastProgress = time
     }
 
     /// Replace a word's judgment (e.g. the reciter says "Not a mistake").
     func override(_ index: Int, with outcome: WordOutcome) {
-        guard committed.outcomes[index] != nil else { return }
-        committed.outcomes[index] = outcome
-        current.outcomes[index] = outcome
+        guard shownOutcomes[index] != nil else { return }
+        overrides[index] = outcome
     }
 
     /// Show the next expected word, and move past it: as help (`.revealed`,
@@ -144,6 +166,7 @@ final class RecitationTracker {
     func revealNext(at time: TimeInterval, as outcome: WordOutcome = .revealed) {
         let i = committed.cursor
         guard i < words.count else { return }
+        overrides[i] = nil
         committed.outcomes[i] = outcome
         committed.cursor = Self.firstNonEmpty(from: i + 1, in: words)
         committed.lock = .locked           // the place is known again
@@ -151,6 +174,7 @@ final class RecitationTracker {
         committed.pending = []
         committed.unmatchedRun = 0
         current = committed                // any volatile guess is superseded
+        clearTentative()
         lastProgress = time
     }
 
@@ -195,6 +219,30 @@ final class RecitationTracker {
         }
         if fragment.isFinal { committed = next }
         current = next
+        updateTentative()
+    }
+
+    /// A judgment from the guess is shown once it is settled: the last two
+    /// updates agree on it, or two recited words already follow it in this
+    /// guess (the recognizer revises mostly its last word or two).
+    private func updateTentative() {
+        // The guess only judges words from the committed cursor on.
+        let latest = current.outcomes.filter { $0.key >= committed.cursor && committed.outcomes[$0.key] == nil }
+        stable = latest.filter { judged in
+            if tentative[judged.key] == judged.value { return true }
+            var after = 0
+            for i in (judged.key + 1)..<max(judged.key + 1, current.cursor) {
+                if current.outcomes[i] == .correct || current.outcomes[i] == .unsure { after += 1 }
+                if after == 2 { return true }
+            }
+            return false
+        }
+        tentative = latest
+    }
+
+    private func clearTentative() {
+        tentative = [:]
+        stable = [:]
     }
 
     // MARK: - Alignment
@@ -206,15 +254,35 @@ final class RecitationTracker {
             let near = s.cursor..<min(words.count, s.cursor + tuning.lockedLookahead)
             let wide = s.cursor..<min(words.count, s.cursor + tuning.lostWindow)
             var found: (hit: Int, exact: Bool, uncertainGap: Bool)?
-            if s.lock != .lost || s.lostBySilence, let (hit, exact) = match(token.norm, in: near) {
+            // Words the token covers before `hit` (a prefix written apart, e.g.
+            // بِـ: بِسْمِ heard as ببسم): judged with it, not as a gap.
+            var joinedFrom: Int?
+            let placeKnown = s.lock != .lost || s.lostBySilence
+            if placeKnown, let joined = matchJoined(token.norm, in: near),
+               joined.exact || !(match(token.norm, in: near)?.1 ?? false) {
+                found = (joined.end, joined.exact, false)
+                joinedFrom = s.cursor
+            } else if placeKnown, let (hit, exact) = match(token.norm, in: near) {
                 // Before the first match (idle) a gap is as uncertain as a lost one.
                 found = (hit, exact, s.lock == .idle)
+            } else if placeKnown, s.lock != .idle, let last = s.pending.last,
+                      let (hit, exact) = match(last.norm + token.norm, in: near) {
+                // One word heard as two (كالأترج heard as كل ترجح): the last
+                // unmatched token and this one together.
+                s.pending.removeLast()
+                found = (hit, exact, false)
             } else if s.lock == .lost, let (hit, exact) = match(token.norm, in: wide),
                       resyncAccepted(hit, tokens: tokens, at: i) {
                 found = (hit, exact, true)
             }
             if let found {
-                judgeGap(upTo: found.hit, in: &s, lost: found.uncertainGap)
+                if let from = joinedFrom {
+                    for w in from..<found.hit where !words[w].isEmpty {
+                        s.outcomes[w] = found.exact ? .correct : .unsure
+                    }
+                } else {
+                    judgeGap(upTo: found.hit, in: &s, lost: found.uncertainGap)
+                }
                 s.outcomes[found.hit] = found.exact ? .correct : .unsure
                 s.cursor = Self.firstNonEmpty(from: found.hit + 1, in: words)
                 s.lock = .locked
@@ -246,7 +314,12 @@ final class RecitationTracker {
             return
         }
         for (k, w) in gap.enumerated() {
-            guard k < s.pending.count else { s.outcomes[w] = .skipped; continue }
+            guard k < s.pending.count else {
+                // A lone letter (a prefix written apart) is hard to hear and
+                // easily dropped by the recognizer: check it, don't call it wrong.
+                s.outcomes[w] = words[w].count == 1 ? .unsure : .skipped
+                continue
+            }
             // Any extra heard tokens beyond the gap belong to its last slot.
             let heard = k == gap.count - 1 ? s.pending[k...] : s.pending[k...k]
             let rawHeard = heard.map(\.raw).joined(separator: " ")
@@ -265,6 +338,24 @@ final class RecitationTracker {
         let after = Self.firstNonEmpty(from: hit + 1, in: words)
         guard i + 1 < tokens.count, after < words.count else { return false }
         return isMatch(tokens[i + 1].norm, words[after]) != nil
+    }
+
+    /// The token heard as several expected words run together, starting at
+    /// `start`: the last word it covers, and whether exactly. Only runs whose
+    /// words before the last are short (a prefix or particle written apart),
+    /// so a long skipped word is never absorbed.
+    private func matchJoined(_ token: String, in range: Range<Int>) -> (end: Int, exact: Bool)? {
+        var joined = ""
+        var count = 0
+        var lastLength = 0
+        for i in range where !words[i].isEmpty {
+            if count > 0, lastLength > 2 { return nil }   // previous piece too long to be a prefix
+            joined += words[i]
+            lastLength = words[i].count
+            count += 1
+            if count >= 2, let exact = isMatch(token, joined) { return (i, exact) }
+        }
+        return nil
     }
 
     /// First position in `range` the token matches, and whether exactly.

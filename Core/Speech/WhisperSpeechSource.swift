@@ -91,6 +91,9 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
             tokenizer: tokenizer,
             audioProcessor: audioInput ?? whisper.audioProcessor,
             decodingOptions: options,
+            // Confirm a segment once one newer segment follows it (default 2):
+            // finals land a pass sooner and each pass re-reads less audio.
+            requiredSegmentsForConfirmation: 1,
             useVAD: true                 // don't transcribe silence (Whisper invents text on it)
         ) { [weak self] _, state in
             self?.receive(state)
