@@ -135,6 +135,10 @@ enum HemistichText {
         var base: AttributedString
         var above: AttributedString?
         var below: AttributedString?
+        /// The kasra of a below nun. A kasra is drawn under its base letter while
+        /// the small nun is drawn above it, so shifting both by `noonFall` would
+        /// leave the kasra a letter-height under the nun; it gets its own offset.
+        var belowKasra: AttributedString?
         var footnotes: [Footnote]
     }
 
@@ -146,7 +150,7 @@ enum HemistichText {
         var lead: CGFloat
     }
 
-    private enum Slot { case normal, above, below }
+    private enum Slot { case normal, above, below, belowKasra }
 
     /// Build the base text plus optional above/below nun layers and footnote
     /// layers for a half-line. `plain` is the half-line's `text`.
@@ -163,9 +167,10 @@ enum HemistichText {
         var base = AttributedString()
         var above = AttributedString()
         var below = AttributedString()
+        var belowKasra = AttributedString()
         var prefixPlain = ""        // display text so far (with tatweel), for width
         var footnotes: [Footnote] = []
-        var hasAbove = false, hasBelow = false
+        var hasAbove = false, hasBelow = false, hasBelowKasra = false
 
         // Append the same glyph to every layer, visible only on the slot that owns
         // it, so all layers share identical metrics → identical x positions.
@@ -178,6 +183,7 @@ enum HemistichText {
             base += piece(slot == .normal ? color : .clear)
             above += piece(slot == .above ? color : .clear)
             below += piece(slot == .below ? color : .clear)
+            belowKasra += piece(slot == .belowKasra ? color : .clear)
             prefixPlain += text
         }
 
@@ -201,14 +207,26 @@ enum HemistichText {
                 global += 1
                 var piece = String(s)
                 if let place = placements[pidx], s.value == smallNoon, place != .natural {
-                    // Pull the nun's vowel (kasra below, fatḥa/ḍamma above) into the
-                    // same shifted piece so the mark travels with the nun.
+                    let slot: Slot = place == .above ? .above : .below
+                    if place == .above { hasAbove = true } else { hasBelow = true }
+                    // The nun's vowel travels with it. A kasra under a below nun
+                    // goes on its own layer (see `Rendered.belowKasra`); fatḥa,
+                    // ḍamma and sukun sit above the nun and share its layer.
                     if i + 1 < run.count, isNoonHaraka(run[i + 1].value) {
-                        piece += String(run[i + 1]); i += 1; global += 1
+                        let vowel = run[i + 1]; i += 1; global += 1
+                        if slot == .below, vowel.value == kasra {
+                            add(piece, color: color, slot: .below)
+                            piece = String(vowel)
+                            if let n = insertions[global] { piece += String(repeating: "\u{0640}", count: n) }
+                            hasBelowKasra = true
+                            add(piece, color: color, slot: .belowKasra)
+                            i += 1
+                            continue
+                        }
+                        piece += String(vowel)
                     }
                     if let n = insertions[global] { piece += String(repeating: "\u{0640}", count: n) }
-                    if place == .above { hasAbove = true } else { hasBelow = true }
-                    add(piece, color: color, slot: place == .above ? .above : .below)
+                    add(piece, color: color, slot: slot)
                 } else {
                     if let n = insertions[global] { piece += String(repeating: "\u{0640}", count: n) }
                     add(piece, color: color, slot: .normal)
@@ -221,6 +239,7 @@ enum HemistichText {
             base: base,
             above: hasAbove ? above : nil,
             below: hasBelow ? below : nil,
+            belowKasra: hasBelowKasra ? belowKasra : nil,
             footnotes: footnotes
         )
     }
@@ -229,5 +248,10 @@ enum HemistichText {
     static let noonRise: CGFloat = 0.45    // fatḥa/ḍamma nun, just above the word
     static let noonFall: CGFloat = 1.45    // kasra nun, clearly below the word
     static let noonShift: CGFloat = 0.32   // nudge left (into the gap between words)
+    // How far to raise a below nun's kasra so it sits just under the nun rather
+    // than under the word. Measured in Amiri Quran: the small nun's ink spans
+    // +0.82…+1.20 and a kasra's −0.33…−0.49 (× size, from the baseline), so
+    // (0.82 − 0.06 gap) − (−0.33) = 1.09.
+    static let noonKasraLift: CGFloat = 1.09
     static let footnoteLift: CGFloat = 1.15 // footnote marker, above the line
 }

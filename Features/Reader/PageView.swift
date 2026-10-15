@@ -142,6 +142,10 @@ private struct LayeredText: View {
             if let below = rendered.below {
                 layer(below).offset(x: size * HemistichText.noonShift, y: size * HemistichText.noonFall)
             }
+            if let kasra = rendered.belowKasra {
+                layer(kasra).offset(x: size * HemistichText.noonShift,
+                                    y: size * (HemistichText.noonFall - HemistichText.noonKasraLift))
+            }
             // Footnote markers float above the line at their x, so they never steal
             // width from the bayt. `lead` is the distance from the leading (right,
             // in RTL) edge; move left by that to sit just after the footnoted word.
