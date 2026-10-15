@@ -24,3 +24,6 @@ source/*.pdf
 
 # This Mac's signing team and bundle id (see Config/Signing.xcconfig)
 Config/Local.xcconfig
+
+# Claude Code agent worktrees
+.claude/worktrees/

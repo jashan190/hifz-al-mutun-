@@ -150,6 +150,19 @@ Still to do:
   unofficial conversion with no model card.
 - Fed the Turbo transcript, the tracker follows bayts 1–10 to the end with
   3 red words, the rest correct or amber (`WhisperTests`).
+- Accuracy and speed (2026-10-14):
+  - A heard word can match several written words run together. Shatibiyyah
+    writes 117 one-letter prefixes apart (بِـ: بِسْمِ); recited and transcribed
+    joined, each used to count as a skip. A whole-text check of all three mutun,
+    recited the way Whisper writes them, now gives 0 false mistakes. A word
+    heard as two tokens also matches, and a dropped lone letter is amber, not red.
+  - Mistakes show from Whisper's current guess once settled (two updates agree,
+    or two recited words follow), not only after it finalizes; flags and the
+    summary still use finalized results. Segments confirm after 1 newer one.
+  - Measured live in the Simulator with two words cut from the clip's audio:
+    a skip used to show ~25 s after the next word; now 11–13 s (2 passes). The
+    phone's passes should be much shorter; the floor is "the next word is
+    heard, plus a pass or two".
 - Known limits: WhisperKit's streamer keeps the whole sitting's audio
   (~4 MB a minute) and re-reads it each pass; fine for a page or two, worth
   a rolling buffer if long sittings get slow. Whisper invents text on

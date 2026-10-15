@@ -92,7 +92,10 @@ import CoreML
 
     /// Replays a transcript the way the streamer delivers it: growing guesses,
     /// with every few words confirmed.
-    static func stream(_ text: String, into tracker: RecitationTracker) {
+    /// `onUpdate` gets, after each fragment, how many transcript words the
+    /// recognizer has delivered so far.
+    static func stream(_ text: String, into tracker: RecitationTracker,
+                       onUpdate: (Int) -> Void = { _ in }) {
         let words = text.split(separator: " ").map(String.init)
         var f = WhisperFragments()
         var confirmed: [WhisperFragments.Segment] = []
@@ -105,12 +108,16 @@ import CoreML
                                                        start: at, end: at + Float(n))
                 for fragment in f.update(confirmed: confirmed, unconfirmed: [partial]) {
                     tracker.consume(fragment, at: t)
+                    onUpdate(chunk + n)
                 }
                 t += 0.4
             }
             confirmed.append(.init(text: segment.joined(separator: " "), start: at, end: at + Float(segment.count)))
         }
-        for fragment in f.update(confirmed: confirmed, unconfirmed: []) { tracker.consume(fragment, at: t) }
+        for fragment in f.update(confirmed: confirmed, unconfirmed: []) {
+            tracker.consume(fragment, at: t)
+            onUpdate(words.count)
+        }
     }
 
     @Test func turboTranscriptFollowsTheClip() throws {
@@ -196,6 +203,63 @@ import CoreML
         #expect(tracker.cursor >= end - 2)
         #expect(mistakes.count <= 12)
     }
+
+    /// The clip with two words cut out of the audio (الناس at 14.1 s and
+    /// كتابه at 35.0 s), streamed live: both are caught, and this prints how
+    /// long after the next word was spoken each one shows, and is finalized.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WHISPER_E2E"] == "1"),
+          .timeLimit(.minutes(20)))
+    func catchesRealSkipsLive() async throws {
+        let clip = try #require(Bundle(for: BundleToken.self).url(forResource: "shatibiyya_clip_skips", withExtension: "m4a"))
+        let audio = try FileFedAudio(path: clip.path)
+        let source = WhisperSpeechSource(model: .turbo, audioInput: audio)
+        let index = try Self.shatibiyya()
+        let tracker = RecitationTracker(words: index.normalizedWords, startIndex: 0)
+        // Each cut word, and when (in the cut audio) the word after it starts.
+        let targets = [(word: try #require(index.normalizedWords.firstIndex(of: "الناس")), next: 14.12),
+                       (word: try #require(index.normalizedWords.firstIndex(of: "كتابه")), next: 34.34)]
+
+        let start = Task { try await source.start() }
+        // Times are seconds of audio fed; passes count the recognizer's
+        // updates (fragments arriving together are one pass), which carries
+        // over to the phone better than Simulator seconds do.
+        typealias Seen = (time: Double, pass: Int)
+        let drain = Task { () -> [(shown: Seen?, kept: Seen?, nextPass: Int?)] in
+            var seen = targets.map { _ in (shown: Seen?.none, kept: Seen?.none, nextPass: Int?.none) }
+            var pass = 0
+            var lastAt = -1.0
+            for await fragment in source.fragments {
+                let now = audio.elapsed
+                if now != lastAt { pass += 1; lastAt = now }
+                tracker.consume(fragment, at: now)
+                for (k, target) in targets.enumerated() {
+                    if seen[k].nextPass == nil, now >= target.next + 0.6 { seen[k].nextPass = pass }
+                    if seen[k].shown == nil, tracker.shownOutcomes[target.word]?.isMistake == true {
+                        seen[k].shown = (now, pass)
+                    }
+                    if seen[k].kept == nil, tracker.outcomes[target.word]?.isMistake == true {
+                        seen[k].kept = (now, pass)
+                    }
+                }
+            }
+            return seen
+        }
+        while !audio.finished { try await Task.sleep(for: .milliseconds(200)) }
+        try await Task.sleep(for: .seconds(3))
+        source.stop()
+        let seen = await drain.value
+        _ = try? await start.value
+
+        for (target, s) in zip(targets, seen) {
+            func after(_ t: Seen?) -> String {
+                guard let t else { return "never" }
+                let passes = s.nextPass.map { "\(t.pass - $0 + 1) pass(es)" } ?? "?"
+                return String(format: "%.1f s / ", t.time - target.next) + passes
+            }
+            print("SKIP word \(target.word): shown \(after(s.shown)) after the next word, finalized \(after(s.kept))")
+            #expect(s.shown != nil)
+        }
+    }
 }
 
 private final class BundleToken {}
@@ -217,6 +281,8 @@ private final class FileFedAudio: AudioProcessing, @unchecked Sendable {
     }
 
     var finished: Bool { lock.withLock { done } }
+    /// Seconds of audio fed so far (the clock of the "recitation").
+    var elapsed: Double { lock.withLock { Double(buffer.count) / Double(WhisperKit.sampleRate) } }
     var audioSamples: ContiguousArray<Float> { lock.withLock { buffer } }
     var relativeEnergy: [Float] { lock.withLock { energy } }
     func purgeAudioSamples(keepingLast keep: Int) {}
