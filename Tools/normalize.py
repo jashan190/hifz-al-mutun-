@@ -16,6 +16,7 @@ normalized form is only ever used for *matching*, never for display.
 """
 
 import re
+import sys
 import unicodedata
 
 # Combining marks we want gone: Arabic tashkeel, Quranic annotation signs,
@@ -73,3 +74,4 @@ if __name__ == "__main__":
             ok = False
         print(f"  {flag}: {raw!r} -> {got!r} (expected {expected!r})")
     print("all good" if ok else "SOME CHECKS FAILED")
+    sys.exit(0 if ok else 1)
