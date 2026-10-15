@@ -34,31 +34,12 @@ jobs:
         run: python3 Tools/normalize.py
 
       - name: Validate matn files
-        # validate_matn.py understands the bayt-list schema (schemaVersion 1).
-        # Page-based files (schemaVersion 2, e.g. shatibiyya.json) only get a
-        # JSON parse + count sanity check until the validator learns that shape.
+        # Both layouts: bayt list (schemaVersion 1) and pages (schemaVersion 2).
         run: |
           set -euo pipefail
           status=0
           for f in Resources/Content/*.json; do
-            v=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("schemaVersion", 1))' "$f")
-            if [ "$v" = "1" ]; then
-              python3 Tools/validate_matn.py "$f" || status=1
-            elif [ "$v" != "2" ]; then
-              echo "$f: unsupported schemaVersion $v (expected 1 or 2)"
-              status=1
-            else
-              python3 - "$f" <<'PY' || status=1
-          import json, sys
-          path = sys.argv[1]
-          doc = json.load(open(path, encoding="utf-8"))
-          pages = doc.get("pages", [])
-          print(f"{path}: schemaVersion {doc.get('schemaVersion')} — parse check only")
-          if doc.get("pageCount") != len(pages):
-              sys.exit(f"  ERROR: pageCount {doc.get('pageCount')} != {len(pages)} pages")
-          print(f"  OK — {len(pages)} pages, {len(doc.get('babs', []))} babs")
-          PY
-            fi
+            python3 Tools/validate_matn.py "$f" || status=1
           done
           exit $status
 
