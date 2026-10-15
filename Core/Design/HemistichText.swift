@@ -254,4 +254,6 @@ enum HemistichText {
     // (0.82 − 0.06 gap) − (−0.33) = 1.09.
     static let noonKasraLift: CGFloat = 1.09
     static let footnoteLift: CGFloat = 1.15 // footnote marker, above the line
+    static let heardDrop: CGFloat = 0.55    // heard-word caption under a wrong word
+    static let strikeDrop: CGFloat = 0.3    // strike line through a skipped word
 }

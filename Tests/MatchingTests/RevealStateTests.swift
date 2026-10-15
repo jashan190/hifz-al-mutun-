@@ -53,4 +53,14 @@ import Testing
         #expect(r.revealedWords(bayt: 1, half: .ajuz) == 2)   // clamped to the hemistich's 2 words
         #expect(r.revealedWords(bayt: 99, half: .sadr) == 0)  // unknown bayt → 0
     }
+
+    @Test func looksUpOutcomesPerWord() {
+        let r = RevealState(index: twoBaytIndex(), cursor: 6,
+                            outcomes: [1: .skipped, 4: .wrong(heard: "x"), 5: .correct])
+        #expect(r.outcome(bayt: 1, half: .sadr, wordIndex: 1) == .skipped)    // "b"
+        #expect(r.outcome(bayt: 2, half: .sadr, wordIndex: 0) == .wrong(heard: "x"))  // "e"
+        #expect(r.outcome(bayt: 2, half: .sadr, wordIndex: 1) == .correct)    // "f"
+        #expect(r.outcome(bayt: 1, half: .sadr, wordIndex: 0) == nil)         // not judged
+        #expect(r.outcome(bayt: 99, half: .sadr, wordIndex: 0) == nil)
+    }
 }

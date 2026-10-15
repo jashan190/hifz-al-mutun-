@@ -1,40 +1,43 @@
 import Foundation
 
-/// Slices a hemistich's display `segments` to just the first `k` words, so the
-/// Memorize reveal can show recited words with their real colours and leave the
-/// rest blank. Operates on unicode scalars so a cut never splits a grapheme.
+/// Slices a hemistich's display `segments` to a run of its words, so Memorize
+/// can draw each recited word on its own with its real colours. Operates on
+/// unicode scalars so a cut never splits a grapheme.
 ///
 /// Relies on the content invariant that a hemistich's `segments` text (text
 /// runs only) concatenates exactly to its `text`, and that `words` are the
 /// space-separated tokens of `text` that contain letters. Punctuation-only
-/// tokens (the book's "-" and "،") sit in `text` but aren't words.
+/// tokens (the book's "-" and "،") sit in `text` but aren't words; one belongs
+/// to the word after it.
 enum HemistichReveal {
-    static func prefix(_ hemistich: Hemistich, words k: Int) -> [Segment] {
-        if k <= 0 { return [] }
-        if k >= hemistich.words.count { return hemistich.segments }
+    /// The segments for `words` (0-based, half-open). A footnote marker goes
+    /// with the word it follows.
+    static func span(_ hemistich: Hemistich, words: Range<Int>) -> [Segment] {
+        let count = hemistich.words.count
+        let lower = max(0, words.lowerBound), upper = min(count, words.upperBound)
+        guard lower < upper else { return [] }
 
-        let cut = scalarEnd(ofWord: k, in: hemistich.text)
+        let total = hemistich.text.unicodeScalars.count
+        let prevEnd = lower == 0 ? -1 : scalarEnd(ofWord: lower, in: hemistich.text)
+        let from = lower == 0 ? 0 : prevEnd + 1               // past the space
+        let to = upper == count ? total : scalarEnd(ofWord: upper, in: hemistich.text)
 
         var result: [Segment] = []
         var consumed = 0
         for seg in hemistich.segments {
             guard let text = seg.text else {
-                // Footnote marker: keep it only if it sits within the revealed span.
-                if consumed < cut { result.append(seg) }
+                if consumed > prevEnd && consumed <= to { result.append(seg) }
                 continue
             }
             let len = text.unicodeScalars.count
-            if consumed + len <= cut {
-                result.append(seg)
-                consumed += len
-            } else if consumed < cut {
-                let take = cut - consumed
-                let piece = String(String.UnicodeScalarView(text.unicodeScalars.prefix(take)))
-                result.append(Segment(text: piece, color: seg.color, footnote: nil))
-                break
-            } else {
-                break
+            let a = max(from, consumed), b = min(to, consumed + len)
+            if a < b {
+                let scalars = text.unicodeScalars
+                let lo = scalars.index(scalars.startIndex, offsetBy: a - consumed)
+                let hi = scalars.index(scalars.startIndex, offsetBy: b - consumed)
+                result.append(Segment(text: String(scalars[lo..<hi]), color: seg.color, footnote: nil))
             }
+            consumed += len
         }
         return result
     }

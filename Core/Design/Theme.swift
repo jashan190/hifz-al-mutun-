@@ -29,7 +29,8 @@ enum Theme {
     // Surfaces and ink
     static let page = Color.dynamic(light: 0xFBF8F1, dark: 0x141413)
     static let ink = Color.dynamic(light: 0x1D1B18, dark: 0xE9E5DD)
-    static let inkSecondary = ink.opacity(0.45)   // revealed hints, dimmed text
+    // UX.md asks for ≥4.5:1 on the page; its 45% gave 2.8:1 (light), so 62%.
+    static let inkSecondary = ink.opacity(0.62)   // revealed hints, dimmed text
     static let numeral = ink.opacity(0.75)        // page / bayt / footnote numbers
     static let outline = ink.opacity(0.12)         // hidden hemistichs in Test
 
@@ -37,7 +38,8 @@ enum Theme {
     static let accent = Color.dynamic(light: 0x1E5B3A, dark: 0x5FB585)   // Madinah green
     static let flag = Color.dynamic(light: 0xB4532A, dark: 0xE08A5F)
     static let error = Color.dynamic(light: 0xC62828, dark: 0xEF6B6B)
-    static let unsure = Color.dynamic(light: 0xB7860B, dark: 0xE0B341)
+    // UX.md's light amber #B7860B is 3.1:1 on the page; darkened to 4.9:1.
+    static let unsure = Color.dynamic(light: 0x8C6608, dark: 0xE0B341)
 
     // Chrome — the original Madinah-green "covers" (header/footer). Solid, the
     // green first chosen for the app; kept deep in dark mode so cream text reads.

@@ -7,22 +7,25 @@ import SwiftUI
 final class RecitationSession: ObservableObject {
     @Published private(set) var cursor: Int
     @Published private(set) var lockState: LockState = .idle
-    /// Reveal state for the UI, cached and rebuilt only when the cursor advances
-    /// (RevealState init is O(words); rebuilding per SwiftUI read would be wasteful).
+    /// Reveal state for the UI, rebuilt only when the cursor or the judged
+    /// outcomes change.
     @Published private(set) var reveal: RevealState
+    /// Words judged wrong or skipped so far (finalized results only).
+    @Published private(set) var mistakeCount = 0
 
-    private let index: RecitationIndex
+    private let layout: RevealLayout
     private let tracker: RecitationTracker
     private let source: SpeechSource
     private var pump: Task<Void, Never>?
     private var startTime = Date()
+    private var judged = 0   // outcomes.count when `reveal` was last built
 
     init(index: RecitationIndex, source: SpeechSource, startWordIndex: Int) {
-        self.index = index
+        self.layout = RevealLayout(index: index)
         self.source = source
         self.tracker = RecitationTracker(words: index.normalizedWords, startIndex: startWordIndex)
         self.cursor = startWordIndex
-        self.reveal = RevealState(index: index, cursor: startWordIndex)
+        self.reveal = RevealState(layout: layout, cursor: startWordIndex)
     }
 
     func start() {
@@ -43,9 +46,13 @@ final class RecitationSession: ObservableObject {
         for await fragment in source.fragments {
             tracker.consume(fragment, at: Date().timeIntervalSince(startTime))
             lockState = tracker.lockState
-            if tracker.cursor != cursor {       // rebuild reveal only on real progress
+            let outcomes = tracker.outcomes
+            if tracker.cursor != cursor || outcomes.count != judged {
                 cursor = tracker.cursor
-                reveal = RevealState(index: index, cursor: cursor)
+                judged = outcomes.count
+                reveal = RevealState(layout: layout, cursor: cursor, outcomes: outcomes)
+                let mistakes = outcomes.values.filter(\.isMistake).count
+                if mistakes != mistakeCount { mistakeCount = mistakes }
             }
         }
     }

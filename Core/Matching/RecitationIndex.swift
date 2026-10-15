@@ -28,7 +28,10 @@ struct RecitationIndex {
                 guard case .bayt(let bayt) = item else { continue }
                 for (half, hemi) in [(Half.sadr, bayt.sadr), (Half.ajuz, bayt.ajuz)] {
                     for (wi, word) in hemi.words.enumerated() {
-                        words.append(word.normalized)
+                        // Normalize at runtime with the same function the tracker
+                        // applies to recognizer output, so both sides always agree
+                        // (the stored forms can differ, e.g. keeping ئ/ؤ).
+                        words.append(ArabicNormalize.normalize(word.text))
                         refs.append(WordRef(page: page.page, bayt: bayt.number,
                                             half: half, wordIndex: wi))
                     }

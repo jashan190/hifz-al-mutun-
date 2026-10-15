@@ -41,11 +41,24 @@ struct PageScreen: View {
                 voice.stop()
             }
         }
+        // A light buzz when a new mistake is judged, so the reciter notices
+        // without looking (as Tarteel does).
+        .sensoryFeedback(.warning, trigger: voice.mistakeCount) { old, new in new > old }
         // Never leave the microphone running once the reader is gone.
         .onDisappear {
             isListening = false
-            voice.stop()
+            voice.clear()
         }
+        #if DEBUG
+        // Debug-only: `-debugRecite` (see VoiceController) opens straight into
+        // Memorize and replays the scripted recitation.
+        .onAppear {
+            if UserDefaults.standard.string(forKey: "debugRecite") != nil {
+                mode = .memorize
+                isListening = true
+            }
+        }
+        #endif
         .onChange(of: voice.cursor) { _, c in
             guard mode == .memorize, isListening, let target = voice.page(forCursor: c) else { return }
             if target != currentPage {
@@ -114,7 +127,12 @@ struct PageScreen: View {
             Rectangle().fill(Theme.chromeHairline).frame(height: 1)
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))
-        .onChange(of: mode) { _, m in if m != .memorize { isListening = false } }
+        .onChange(of: mode) { _, m in
+            if m != .memorize {
+                isListening = false
+                voice.clear()
+            }
+        }
     }
 }
 
