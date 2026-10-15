@@ -94,17 +94,21 @@ jobs:
         id: sim
         run: |
           set -euo pipefail
-          # Newest iOS runtime that has an available iPhone; prefer a "Pro".
+          # Newest iOS runtime the selected Xcode's SDK can target that has an
+          # available iPhone; prefer a "Pro".
+          sdk=$(xcrun --sdk iphonesimulator --show-sdk-version)
+          echo "Simulator SDK: $sdk"
           udid=$(xcrun simctl list devices available -j | python3 -c '
           import json, re, sys
           devs = json.load(sys.stdin)["devices"]
           def ver(rt):
               m = re.search(r"iOS-(\d+)-(\d+)", rt)
               return (int(m.group(1)), int(m.group(2))) if m else None
+          sdk = tuple(int(x) for x in (sys.argv[1].split(".") + ["0"])[:2])
           best = None
           for rt, ds in devs.items():
               v = ver(rt)
-              if not v:
+              if not v or v > sdk:
                   continue
               phones = [d for d in ds if d.get("isAvailable") and d["name"].startswith("iPhone")]
               if not phones:
@@ -117,7 +121,7 @@ jobs:
           (major, minor), dev = best
           print("Using iOS %d.%d %s" % (major, minor, dev["name"]), file=sys.stderr)
           print(best[1]["udid"])
-          ')
+          ' "$sdk")
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
 
       - name: Build and test
