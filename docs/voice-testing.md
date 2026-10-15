@@ -1,8 +1,11 @@
 # Testing voice on your iPhone
 
-Voice review runs Apple's on-device speech recognizer, which isn't available in the
-Simulator. Everything else (the reveal, mistakes, flags, page turns, the summary)
-can be exercised in the Simulator with the debug launch arguments at the end.
+Voice review listens with Whisper (WhisperKit), on the phone. The model downloads
+once, the first time you tap the mic (632 MB for Turbo, the default; 216 MB for
+Small, under **Library → Settings → Voice model**), so be on Wi-Fi. It also runs
+in the Simulator, using the Mac's microphone. Everything else (the reveal,
+mistakes, flags, page turns, the summary) can be scripted in the Simulator with
+the debug launch arguments at the end.
 
 ## One-time setup
 
@@ -15,22 +18,23 @@ can be exercised in the Simulator with the debug launch arguments at the end.
    menu, press **⌘R**. The first run creates a development certificate; on the phone,
    trust it under **Settings → General → VPN & Device Management**.
 
-## Step 1 — the gate: does Arabic work on this phone?
+## Step 1 — first start
 
-With the phone selected, press **⌘U** (run tests). `transcribesArabicClip` runs only
-on a device. It:
-- resolves an Arabic locale (prints e.g. `SPIKE Arabic locale: ar-SA`) — failing here
-  means this phone's speech model doesn't support Arabic;
-- transcribes the bundled Shatibiyyah clip and prints the transcript.
+Open a matn, switch to **Memorize**, tap the mic. The footer shows, in order:
+1. the microphone prompt (allow it);
+2. "Downloading Arabic voice N% (once)" — a few minutes on Wi-Fi;
+3. "Preparing Arabic voice… the first time takes a minute." — iOS compiles the
+   model for this phone. Later starts take a few seconds (again after an iOS update).
 
-If it fails, stop and tell me: the next options are Apple's older
-`DictationTranscriber`, then WhisperKit (roadmap Phase F).
+Then recite. Words appear about a second after you say them: Whisper listens in
+one-second steps.
+
+Optional: the same check as the Mac ran on the bundled clip, on the phone —
+**Product → Scheme → Edit Scheme → Test → Arguments → Environment Variables**,
+add `WHISPER_E2E` = `1`, then **⌘U**. `transcribesTheClip` prints `WHISPER clip:`
+and the transcript.
 
 ## Step 2 — recite
-
-Open a matn, switch to **Memorize**, tap the mic. The first time, iOS asks for the
-microphone and speech recognition, and may download the Arabic model (the footer
-shows "Downloading Arabic voice N%").
 
 Try each of these and note what happens:
 
@@ -38,6 +42,7 @@ Try each of these and note what happens:
 |---|---|
 | Recite a page correctly at your normal pace | Words appear as you say them; nothing red. Amber is a near miss, not a mistake. |
 | Recite in your melodic style, then fast drill style | Same — note which style produces amber or red words that were right |
+| Try **Whisper Small** in Settings | Faster to start, less accurate — is it good enough on your phone? |
 | Leave out a word | It shows red, struck through |
 | Say a different word | Red with what you said beneath it |
 | Pause ~3 s | "listening…" in the footer |
@@ -56,18 +61,19 @@ must not come on afterwards.
 Early runs will flag words wrongly (recognizer noise, or the 8 s reveal firing while you
 recite correctly). Clear them under **Library → Settings (gear) → Flags → Clear all flags**.
 
-If voice can't start (permission off, no Arabic model), the footer says why and the
+If voice can't start (microphone off, no internet for the first download), the footer says why and the
 sitting carries on by tap: tap the blank holding the next word to reveal it.
 
 ## Step 3 — send me what you saw
 
 - Which words went amber/red that you recited correctly (bayt and word), and in which
   style. These tune `MatchTuning` in `Core/Matching/RecitationTracker.swift`.
+- How long the first download and "Preparing…" took, and whether recognition
+  keeps up with you (the lag between saying a word and seeing it).
 - The recognizer log. In **Console.app** on the Mac, select the iPhone, filter
   `subsystem:com.farhan.hifzalmutun category:speech`, recite a bayt or two, and copy
-  the lines. Each shows `volatile`/`FINAL`, the audio range, and the text — this
-  checks the tracker's assumption that a volatile result is replaced by the next one
-  for the same audio range.
+  the lines. Each shows `volatile` (Whisper's current guess) or `FINAL` (confirmed)
+  and the text.
 
 ## Simulator: debug launch arguments (DEBUG builds only)
 
@@ -80,4 +86,4 @@ Set in Xcode (**Product → Scheme → Edit Scheme → Run → Arguments**) or w
 | `-debugRecite "يقول راجي\|رحمة\|~الغفور"` | Replay a recitation (`\|` separates results, `~` marks volatile) |
 | `-debugReciteInterval 0.8` | Pace the replay like live speech (stays live after) |
 | `-debugStopAfter 12` | Stop the sitting after 12 s (shows the summary) |
-| `-debugVoiceFail mic\|speech\|arabic` | Simulate a failure to start |
+| `-debugVoiceFail mic\|download` | Simulate a failure to start |

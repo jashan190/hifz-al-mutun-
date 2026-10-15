@@ -1,12 +1,15 @@
 import SwiftUI
 
 // Settings — our own layout (not a stock Form): appearance (the dark-mode
-// control) and the flags. More settings can slot into this list later.
+// control), the voice model and the flags. More settings can slot into this list later.
 struct SettingsSheet: View {
     @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.system.rawValue
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var flagStore: FlagStore
     @State private var confirmClear = false
+    @AppStorage(WhisperModel.defaultsKey) private var voiceModelRaw = WhisperModel.turbo.rawValue
+    /// Bumped after removing a download, so the "Downloaded" labels refresh.
+    @State private var storageVersion = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,6 +17,7 @@ struct SettingsSheet: View {
             ScrollView {
                 VStack(spacing: 18) {
                     appearanceCard
+                    voiceCard
                     flagsCard
                 }
                 .padding(Theme.margin)
@@ -60,6 +64,55 @@ struct SettingsSheet: View {
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.ink.opacity(0.06)))
         .shadow(color: .black.opacity(0.04), radius: 8, y: 3)
+    }
+
+    // Which Whisper model listens. Each downloads once, the first time voice
+    // review starts with it.
+    private var voiceCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Voice model")
+                .font(.system(.headline, design: .serif))
+                .foregroundStyle(Theme.ink)
+            ForEach(WhisperModel.allCases) { model in
+                voiceOption(model)
+            }
+            .id(storageVersion)
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.ink.opacity(0.06)))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 3)
+    }
+
+    private func voiceOption(_ model: WhisperModel) -> some View {
+        let selected = voiceModelRaw == model.rawValue
+        return Button {
+            voiceModelRaw = model.rawValue
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(selected ? Theme.accent : Theme.ink.opacity(0.4))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.title).font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink)
+                    Text(model.detail + (model.isDownloaded ? " · Downloaded" : ""))
+                        .font(.footnote)
+                        .foregroundStyle(Theme.ink.opacity(0.7))
+                }
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .contextMenu {
+            if model.isDownloaded {
+                Button("Remove download", systemImage: "trash", role: .destructive) {
+                    model.remove()
+                    storageVersion += 1
+                }
+            }
+        }
+        .accessibilityLabel("\(model.title), \(model.detail)\(model.isDownloaded ? ", downloaded" : "")\(selected ? ", selected" : "")")
     }
 
     // Flags gather from voice review; early testing can leave wrong ones.

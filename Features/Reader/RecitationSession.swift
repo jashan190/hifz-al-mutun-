@@ -5,7 +5,8 @@ import SwiftUI
 enum VoiceStatus: Equatable {
     case idle
     case preparing                 // asking permission, loading the model
-    case downloading(Double)       // fetching the on-device model, 0…1
+    case downloading(Double)       // fetching the speech model, 0…1
+    case loadingModel              // loading it (compiling it, the first time)
     case listening
     case failed(VoiceFailure)
 }
@@ -13,15 +14,13 @@ enum VoiceStatus: Equatable {
 /// Why voice review couldn't start, phrased for what the reciter can do.
 enum VoiceFailure: Equatable {
     case micDenied                 // → Open Settings
-    case speechDenied              // → Open Settings
-    case arabicUnsupported         // this device has no Arabic speech model
+    case downloadFailed            // no internet for the first download
     case other(String)
 
     init(_ error: Error) {
         switch error as? SpeechSourceError {
         case .micNotAuthorized?: self = .micDenied
-        case .speechNotAuthorized?: self = .speechDenied
-        case .localeUnsupported?: self = .arabicUnsupported
+        case .modelDownloadFailed?: self = .downloadFailed
         case nil: self = .other(error.localizedDescription)
         }
     }
@@ -140,6 +139,8 @@ final class RecitationSession: ObservableObject {
         switch event {
         case .downloading(let p):
             status = .downloading(p)
+        case .loadingModel:
+            status = .loadingModel
         case .listening:
             status = .listening
             tracker.restartClock(at: now)

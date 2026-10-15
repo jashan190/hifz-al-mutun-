@@ -9,7 +9,7 @@ import Foundation
 /// final result is permanent. So the tracker keeps a committed state built from
 /// final results only, and recomputes a tentative state on top of it for each
 /// volatile result.
-struct TranscriptFragment {
+struct TranscriptFragment: Equatable {
     let text: String
     let isFinal: Bool
 }

@@ -1,15 +1,25 @@
 import Foundation
 
+/// Errors a speech source can raise before it produces any audio.
+enum SpeechSourceError: Error, Equatable {
+    case micNotAuthorized
+    /// The speech model couldn't be fetched (usually no internet on first use).
+    case modelDownloadFailed
+}
+
 /// Progress a source reports while it gets ready, before any fragment.
 enum SpeechSourceEvent: Equatable {
     /// Fetching the on-device model, 0…1.
     case downloading(Double)
+    /// Loading the model into memory (the first load also compiles it for
+    /// this phone, which can take a minute).
+    case loadingModel
     /// The microphone (or file) is live; fragments will follow.
     case listening
 }
 
-/// Produces a stream of recognized text fragments. The engine (Apple, file,
-/// mock) is hidden behind this so the tracker/UI never import Speech directly.
+/// Produces a stream of recognized text fragments. The engine (Whisper, mock)
+/// is hidden behind this so the tracker/UI never import WhisperKit directly.
 protocol SpeechSource: AnyObject {
     /// An async stream of recognized fragments, oldest first.
     var fragments: AsyncStream<TranscriptFragment> { get }
