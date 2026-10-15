@@ -41,7 +41,7 @@ final class VoiceController: ObservableObject {
     var isActive: Bool {
         guard session != nil else { return false }
         switch status {
-        case .preparing, .downloading, .listening: return true
+        case .preparing, .downloading, .loadingModel, .listening: return true
         case .idle, .failed: return false
         }
     }
@@ -49,7 +49,7 @@ final class VoiceController: ObservableObject {
     var isLive: Bool {
         guard !isManual else { return false }
         switch status {
-        case .preparing, .downloading, .listening: return true
+        case .preparing, .downloading, .loadingModel, .listening: return true
         case .idle, .failed: return false
         }
     }
@@ -189,8 +189,7 @@ final class VoiceController: ObservableObject {
         #if DEBUG
         let defaults = UserDefaults.standard
         if let fail = defaults.string(forKey: "debugVoiceFail") {
-            let error: SpeechSourceError = fail == "speech" ? .speechNotAuthorized
-                : fail == "arabic" ? .localeUnsupported : .micNotAuthorized
+            let error: SpeechSourceError = fail == "download" ? .modelDownloadFailed : .micNotAuthorized
             return MockSpeechSource(script: [], failure: error)
         }
         if let script = defaults.string(forKey: "debugRecite") {
@@ -199,15 +198,14 @@ final class VoiceController: ObservableObject {
                                     interval: pace > 0 ? .milliseconds(Int(pace * 1000)) : nil)
         }
         #endif
-        return AppleSpeechSource()
+        return WhisperSpeechSource()
     }
 
     #if DEBUG
     /// Debug-only: launch with `-debugRecite "frag|frag|~frag"` to replay a
-    /// scripted recitation instead of the microphone (the Simulator has no
-    /// speech models). Fragments are separated by `|`; a leading `~` marks a
+    /// scripted recitation instead of the microphone. Fragments are separated by `|`; a leading `~` marks a
     /// volatile (not yet final) result. `-debugReciteInterval 0.8` paces them
-    /// like live speech; `-debugVoiceFail mic|speech|arabic` simulates a
+    /// like live speech; `-debugVoiceFail mic|download` simulates a
     /// failure to start.
     static func parseDebugScript(_ script: String) -> [TranscriptFragment] {
         script.split(separator: "|").map { raw in

@@ -92,11 +92,13 @@ struct PageScreen: View {
         // Never leave the microphone running once the reader is gone.
         .onDisappear { voice.clear() }
         #if DEBUG
-        // Debug-only: `-debugRecite` / `-debugVoiceFail` (see VoiceController)
-        // open straight into Memorize and start a sitting.
+        // Debug-only: `-debugRecite` / `-debugVoiceFail` (see VoiceController),
+        // or `-debugListen YES` (the real microphone), open straight into
+        // Memorize and start a sitting.
         .onAppear {
             let d = UserDefaults.standard
-            if d.string(forKey: "debugRecite") != nil || d.string(forKey: "debugVoiceFail") != nil {
+            if d.string(forKey: "debugRecite") != nil || d.string(forKey: "debugVoiceFail") != nil
+                || d.bool(forKey: "debugListen") {
                 mode = .memorize
                 startVoice()
             }
@@ -215,7 +217,9 @@ private struct VoiceStatusLabel: View {
         case .preparing:
             label("Getting ready…")
         case .downloading(let p):
-            label("Downloading Arabic voice \(Int((p * 100).rounded()))%")
+            label("Downloading Arabic voice \(Int((p * 100).rounded()))% (once)")
+        case .loadingModel:
+            label("Preparing Arabic voice… the first time takes a minute.")
         case .listening:
             if voice.isManual {
                 if let failure = voice.voiceFailure { failed(failure) } else { label("Tap the blank to reveal the next word.") }
@@ -232,7 +236,7 @@ private struct VoiceStatusLabel: View {
     private func failed(_ failure: VoiceFailure) -> some View {
         HStack(spacing: 8) {
             label(message(failure))
-            if failure == .micDenied || failure == .speechDenied {
+            if failure == .micDenied {
                 Button("Open Settings") {
                     if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                 }
@@ -246,8 +250,7 @@ private struct VoiceStatusLabel: View {
     private func message(_ failure: VoiceFailure) -> String {
         switch failure {
         case .micDenied: return "Microphone is off. Tap the blank to reveal."
-        case .speechDenied: return "Speech recognition is off. Tap the blank to reveal."
-        case .arabicUnsupported: return "No Arabic voice on this device. Tap the blank to reveal."
+        case .downloadFailed: return "Couldn't download the Arabic voice. Connect to the internet and try again, or tap the blank to reveal."
         case .other: return "Voice isn't available. Tap the blank to reveal."
         }
     }

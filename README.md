@@ -18,8 +18,9 @@ open HifzAlMutun.xcodeproj
 ```
 
 Pick an iPhone (iOS 26+) and press Run. The app opens to the Library; tap a
-matn to open the paged Reader. Voice tracking needs a physical device — the
-Simulator ships no on-device speech models. Tests: `HifzAlMutunTests` (⌘U).
+matn to open the paged Reader. Voice review listens with Whisper (WhisperKit),
+which downloads its model on first use and also runs in the Simulator with the
+Mac's microphone. Tests: `HifzAlMutunTests` (⌘U).
 
 ## Project layout
 
@@ -30,12 +31,12 @@ Core/
   Content/     loads the bundled matn JSON
   Design/      theme tokens, page font, hemistich renderer, shared controls
   Matching/    Arabic normalizer, recitation index + tracker, word reveal
-  Speech/      SpeechSource protocol; Apple SpeechAnalyzer (live mic + file)
+  Speech/      SpeechSource protocol; WhisperKit live-mic source and models
   Settings/    appearance mode
 Features/
   Reader/      page screen, page view, mode toggle, mic, voice session
   Settings/    settings sheet
-Tests/         unit tests (matching) + device-only speech spike
+Tests/         unit tests (matching, Whisper fragments) + opt-in Whisper run
 Resources/
   Content/     bundled matn JSON  (tuhfa.json, jazariyya.json, shatibiyya.json)
   Fonts/
@@ -65,10 +66,10 @@ that re-building a matn's text never erases a user's marks.
   Mistake history.
 - **Phase 3:** reference audio — forced alignment + listen-and-loop.
 - **Phase 4:** voice review. Word-by-word follow-along is done: reciting in
-  Memorize mode reveals the matn via Apple's on-device `SpeechAnalyzer`, matched
+  Memorize mode reveals the matn via Whisper (WhisperKit, on-device), matched
   against the known text. Still to come: device gate, hardening, mistake
   detection, flags, and the Review screen — see `docs/voice-roadmap.md`.
-  WhisperKit remains a possible engine swap behind `SpeechSource`.
+  Apple's `SpeechAnalyzer` was dropped: it didn't recognise Arabic on device.
 - **Phase 5:** polish — finished-matn taper, settings, backup/export, widgets,
   reminders.
 

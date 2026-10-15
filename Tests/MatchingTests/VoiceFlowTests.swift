@@ -81,9 +81,35 @@ import Foundation
         await settle()
         session.stop()
         source.onEvent?(.downloading(0.5))
+        source.onEvent?(.loadingModel)
         source.onEvent?(.listening)
         await settle()
         #expect(session.status == .idle)
+    }
+
+    @Test func loadingTheModelIsShown() async {
+        let source = HeldSource()
+        let session = RecitationSession(index: RecitationIndex(matn: matn()), source: source, startWordIndex: 0)
+        session.start()
+        await settle()
+        source.onEvent?(.downloading(0.4))
+        await settle()
+        #expect(session.status == .downloading(0.4))
+        source.onEvent?(.loadingModel)
+        await settle()
+        #expect(session.status == .loadingModel)
+        source.onEvent?(.listening)
+        await settle()
+        #expect(session.status == .listening)
+        session.stop()
+    }
+
+    @Test func failedDownloadIsReported() async {
+        let mock = MockSpeechSource(script: [], failure: .modelDownloadFailed)
+        let session = RecitationSession(index: RecitationIndex(matn: matn()), source: mock, startWordIndex: 0)
+        session.start()
+        await settle()
+        #expect(session.status == .failed(.downloadFailed))
     }
 
     // After a stop the results stay put: swiping back or tapping a blank to

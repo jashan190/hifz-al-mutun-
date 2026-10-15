@@ -17,18 +17,24 @@ SpeechSource (AppleSpeechSource | FileSpeechSource | MockSpeechSource)
 ```
 
 **Phases B–E are built** (as of 2026-10-12): hardening, mistake detection, flags,
-and the Review UX. **What's left is the device:** Arabic support on a real phone
-is unproven, and every `MatchTuning` threshold is provisional. Next step:
-`docs/voice-testing.md`.
+and the Review UX.
+
+**Phase F is built (2026-10-14).** Apple's recognizer didn't recognise Arabic
+on the device, so voice review now uses WhisperKit (`WhisperSpeechSource`):
+
+```
+SpeechSource (WhisperSpeechSource | MockSpeechSource | SilentSpeechSource)
+```
+
+Every `MatchTuning` threshold is still provisional: it was tuned for Apple's
+result timing. Next step: `docs/voice-testing.md`.
 
 ## Decisions needed first (owner: you)
 
 1. **Mode names.** UX.md says `Memorize | Review`, with Review being the blanked,
    voice-driven page. The code has `Read | Memorize`, with voice inside Memorize.
    Rename to match UX.md (Read→Memorize, Memorize→Review), or update UX.md?
-2. **Engine.** UX.md specifies WhisperKit. PR #1 chose Apple `SpeechAnalyzer`
-   (no download, streaming partials) behind the `SpeechSource` protocol.
-   Recommendation: keep Apple if Phase A passes, and fall back to WhisperKit only if it fails.
+2. ~~**Engine.**~~ Decided: WhisperKit (Apple's recognizer failed on Arabic).
 3. **iOS 26 minimum.** PR #1 raised the deployment target from 18 to 26. Your phone
    must be on iOS 26 to install.
 
@@ -125,11 +131,29 @@ Still to do:
 - Not done: showing the model's download *size* (iOS doesn't expose it before the
   download starts).
 
-## Phase F — Engine fallback (only if Phase A fails)
+## Phase F ✅ — Engine swap to WhisperKit (Phase A failed on device)
 
-- `WhisperKitSource: SpeechSource`. Use a small Arabic-capable model, downloaded in the app
-  with progress, and a streaming loop over about 1 s windows.
-- The tracker and UI stay unchanged. Re-run the Phase A fixtures to compare engines.
+- `WhisperSpeechSource` wraps WhisperKit 1.1.1's `AudioStreamTranscriber`.
+  `WhisperFragments` maps its state to fragments: each newly confirmed segment
+  is final, the unconfirmed text is volatile, and on stop the last guess
+  becomes final.
+- Models (Settings → Voice model), scored on the 80 s Shatibiyyah clip
+  (bayts 1–10), word error rate after `ArabicNormalize`:
+
+  | Model | Size | WER |
+  |---|---|---|
+  | `openai_whisper-large-v3-v20240930_turbo_632MB` (default) | 632 MB | 13% |
+  | `openai_whisper-small_216MB` | 216 MB | 36% |
+  | Tarteel's Quran-tuned base (`hrun28/whisperkit-quran`, not shipped) | 160 MB | 51% |
+
+  The Quran-tuned model pulls words toward Qur'anic vocabulary; it is also an
+  unofficial conversion with no model card.
+- Fed the Turbo transcript, the tracker follows bayts 1–10 to the end with
+  3 red words, the rest correct or amber (`WhisperTests`).
+- Known limits: WhisperKit's streamer keeps the whole sitting's audio
+  (~4 MB a minute) and re-reads it each pass; fine for a page or two, worth
+  a rolling buffer if long sittings get slow. Whisper invents text on
+  silence; VAD is on to stop that.
 
 ## Testing strategy
 
