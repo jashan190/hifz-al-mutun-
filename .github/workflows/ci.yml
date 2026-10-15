@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Normalizer self-check
         run: python3 Tools/normalize.py
@@ -44,6 +44,9 @@ jobs:
             v=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("schemaVersion", 1))' "$f")
             if [ "$v" = "1" ]; then
               python3 Tools/validate_matn.py "$f" || status=1
+            elif [ "$v" != "2" ]; then
+              echo "$f: unsupported schemaVersion $v (expected 1 or 2)"
+              status=1
             else
               python3 - "$f" <<'PY' || status=1
           import json, sys
@@ -64,7 +67,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Select Xcode
         run: |
@@ -78,7 +81,7 @@ jobs:
         run: xcodegen generate
 
       - name: Cache Swift packages
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ${{ env.SPM_DIR }}
           key: spm-${{ runner.os }}-${{ env.XCODE_APP }}-${{ hashFiles('project.yml') }}
@@ -94,34 +97,8 @@ jobs:
         id: sim
         run: |
           set -euo pipefail
-          # Newest iOS runtime the selected Xcode's SDK can target that has an
-          # available iPhone; prefer a "Pro".
-          sdk=$(xcrun --sdk iphonesimulator --show-sdk-version)
-          echo "Simulator SDK: $sdk"
-          udid=$(xcrun simctl list devices available -j | python3 -c '
-          import json, re, sys
-          devs = json.load(sys.stdin)["devices"]
-          def ver(rt):
-              m = re.search(r"iOS-(\d+)-(\d+)", rt)
-              return (int(m.group(1)), int(m.group(2))) if m else None
-          sdk = tuple(int(x) for x in (sys.argv[1].split(".") + ["0"])[:2])
-          best = None
-          for rt, ds in devs.items():
-              v = ver(rt)
-              if not v or v > sdk:
-                  continue
-              phones = [d for d in ds if d.get("isAvailable") and d["name"].startswith("iPhone")]
-              if not phones:
-                  continue
-              phones.sort(key=lambda d: ("Pro" not in d["name"], d["name"]))
-              if best is None or v > best[0]:
-                  best = (v, phones[0])
-          if best is None:
-              sys.exit("no available iPhone simulator")
-          (major, minor), dev = best
-          print("Using iOS %d.%d %s" % (major, minor, dev["name"]), file=sys.stderr)
-          print(best[1]["udid"])
-          ' "$sdk")
+          # Shared with docs/ci.md's local command.
+          udid=$(python3 .github/scripts/pick_simulator.py)
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
 
       - name: Build and test
@@ -138,7 +115,7 @@ jobs:
 
       - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: TestResults-xcresult
           path: TestResults.xcresult
@@ -150,7 +127,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Select Xcode
         run: |
@@ -164,7 +141,7 @@ jobs:
         run: xcodegen generate
 
       - name: Cache Swift packages
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ${{ env.SPM_DIR }}
           key: spm-${{ runner.os }}-${{ env.XCODE_APP }}-${{ hashFiles('project.yml') }}
@@ -183,7 +160,7 @@ jobs:
 
       - name: Upload build results
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: DeviceBuild-xcresult
           path: DeviceBuild.xcresult

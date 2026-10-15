@@ -35,7 +35,7 @@ Reproduce the test job locally:
 ```sh
 xcodegen generate
 xcodebuild -project HifzAlMutun.xcodeproj -scheme HifzAlMutun \
-  -destination "id=$(xcrun simctl list devices available | grep -m1 -oE 'iPhone[^(]*\(([0-9A-F-]{36})\)' | grep -oE '[0-9A-F-]{36}')" \
+  -destination "id=$(python3 .github/scripts/pick_simulator.py)" \
   CODE_SIGNING_ALLOWED=NO test
 ```
 
