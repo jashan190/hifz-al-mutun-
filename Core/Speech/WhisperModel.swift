@@ -87,5 +87,6 @@ enum WhisperModel: String, CaseIterable, Identifiable {
     /// Free the space (Settings).
     func remove() {
         try? FileManager.default.removeItem(at: folder)
+        Task { [self] in await WhisperEngine.shared.forget(self) }
     }
 }

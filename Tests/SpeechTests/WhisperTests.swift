@@ -1,6 +1,8 @@
 import Testing
 import Foundation
 import WhisperKit
+import AVFoundation
+import CoreML
 @testable import HifzAlMutun
 
 /// Whisper output → tracker fragments, and what the tracker makes of a real
@@ -8,21 +10,28 @@ import WhisperKit
 @Suite struct WhisperTests {
     // MARK: - Fragments
 
+    /// Segments one second each, in order: seg("أ", 0) covers 0–1 s.
+    private func seg(_ text: String, _ at: Float) -> WhisperFragments.Segment {
+        .init(text: text, start: at, end: at + 1)
+    }
+
     @Test func unconfirmedTextIsVolatileAndReplacedWhole() {
         var f = WhisperFragments()
-        #expect(f.update(confirmed: [], unconfirmed: [" بدأت"]) == [.init(text: "بدأت", isFinal: false)])
-        #expect(f.update(confirmed: [], unconfirmed: [" بدأت ببسم الله"]) == [.init(text: "بدأت ببسم الله", isFinal: false)])
-        #expect(f.update(confirmed: [], unconfirmed: [" بدأت ببسم الله"]).isEmpty)   // unchanged: nothing new
+        #expect(f.update(confirmed: [], unconfirmed: [seg(" بدأت", 0)]) == [.init(text: "بدأت", isFinal: false)])
+        #expect(f.update(confirmed: [], unconfirmed: [seg(" بدأت ببسم الله", 0)])
+                == [.init(text: "بدأت ببسم الله", isFinal: false)])
+        #expect(f.update(confirmed: [], unconfirmed: [seg(" بدأت ببسم الله", 0)]).isEmpty)   // unchanged
     }
 
     @Test func newlyConfirmedSegmentsAreFinalOnce() {
         var f = WhisperFragments()
-        _ = f.update(confirmed: [], unconfirmed: ["أ", "ب", "ج"])
-        #expect(f.update(confirmed: ["أ"], unconfirmed: ["ب", "ج"])
+        _ = f.update(confirmed: [], unconfirmed: [seg("أ", 0), seg("ب", 1), seg("ج", 2)])
+        #expect(f.update(confirmed: [seg("أ", 0)], unconfirmed: [seg("ب", 1), seg("ج", 2)])
                 == [.init(text: "أ", isFinal: true), .init(text: "ب ج", isFinal: false)])
         // The same confirmed list again adds nothing final.
-        #expect(f.update(confirmed: ["أ"], unconfirmed: ["ب", "ج د"]) == [.init(text: "ب ج د", isFinal: false)])
-        #expect(f.update(confirmed: ["أ", "ب"], unconfirmed: ["ج د"])
+        #expect(f.update(confirmed: [seg("أ", 0)], unconfirmed: [seg("ب", 1), seg("ج د", 2)])
+                == [.init(text: "ب ج د", isFinal: false)])
+        #expect(f.update(confirmed: [seg("أ", 0), seg("ب", 1)], unconfirmed: [seg("ج د", 2)])
                 == [.init(text: "ب", isFinal: true), .init(text: "ج د", isFinal: false)])
     }
 
@@ -30,22 +39,41 @@ import WhisperKit
         // The tracker drops its tentative state when a final lands, so the
         // guess must come again even if its text didn't change.
         var f = WhisperFragments()
-        _ = f.update(confirmed: [], unconfirmed: ["ج"])
-        #expect(f.update(confirmed: ["أ"], unconfirmed: ["ج"])
+        _ = f.update(confirmed: [], unconfirmed: [seg("ج", 1)])
+        #expect(f.update(confirmed: [seg("أ", 0)], unconfirmed: [seg("ج", 1)])
                 == [.init(text: "أ", isFinal: true), .init(text: "ج", isFinal: false)])
+    }
+
+    @Test func aStaleGuessDoesntRepeatConfirmedWords() {
+        // WhisperKit sets the confirmed list one step before the new guess:
+        // for that update the guess still holds the words just confirmed.
+        var f = WhisperFragments()
+        _ = f.update(confirmed: [], unconfirmed: [seg("أ", 0), seg("ب", 1), seg("ج", 2)])
+        #expect(f.update(confirmed: [seg("أ", 0)], unconfirmed: [seg("أ", 0), seg("ب", 1), seg("ج", 2)])
+                == [.init(text: "أ", isFinal: true), .init(text: "ب ج", isFinal: false)])
+        // Then the real guess lands: same text, nothing new.
+        #expect(f.update(confirmed: [seg("أ", 0)], unconfirmed: [seg("ب", 1), seg("ج", 2)]).isEmpty)
     }
 
     @Test func stopTurnsTheLastGuessFinal() {
         var f = WhisperFragments()
-        _ = f.update(confirmed: [], unconfirmed: ["هو الحر"])
+        _ = f.update(confirmed: [], unconfirmed: [seg("هو الحر", 0)])
         #expect(f.flush() == .init(text: "هو الحر", isFinal: true))
         #expect(f.flush() == nil)
     }
 
+    @Test func silenceHallucinationsAreDropped() {
+        // Both heard from the Simulator's microphone in a quiet room.
+        var f = WhisperFragments()
+        #expect(f.update(confirmed: [], unconfirmed: [seg("ترجمة نانسي قنقر", 0)]).isEmpty)
+        #expect(f.update(confirmed: [], unconfirmed: [seg("موسيقى شكراً لك", 0)]).isEmpty)
+        #expect(f.update(confirmed: [], unconfirmed: [seg("بدأت ببسم الله", 0)]) == [.init(text: "بدأت ببسم الله", isFinal: false)])
+    }
+
     @Test func nonSpeechMarkersAreDropped() {
         var f = WhisperFragments()
-        #expect(f.update(confirmed: [], unconfirmed: ["[موسيقى]"]).isEmpty)
-        #expect(f.update(confirmed: ["(تصفيق)", "بدأت"], unconfirmed: [])
+        #expect(f.update(confirmed: [], unconfirmed: [seg("[موسيقى]", 0)]).isEmpty)
+        #expect(f.update(confirmed: [seg("(تصفيق)", 0), seg("بدأت", 1)], unconfirmed: [])
                 == [.init(text: "بدأت", isFinal: true)])
     }
 
@@ -67,18 +95,20 @@ import WhisperKit
     static func stream(_ text: String, into tracker: RecitationTracker) {
         let words = text.split(separator: " ").map(String.init)
         var f = WhisperFragments()
-        var confirmed: [String] = []
+        var confirmed: [WhisperFragments.Segment] = []
         var t = 0.0
         for chunk in stride(from: 0, to: words.count, by: 4) {
-            let segment = words[chunk..<min(words.count, chunk + 4)].joined(separator: " ")
-            for n in 1...segment.split(separator: " ").count {      // the guess grows a word at a time
-                let partial = segment.split(separator: " ").prefix(n).joined(separator: " ")
+            let segment = Array(words[chunk..<min(words.count, chunk + 4)])
+            let at = Float(chunk)                                     // a second a word
+            for n in 1...segment.count {                              // the guess grows a word at a time
+                let partial = WhisperFragments.Segment(text: segment.prefix(n).joined(separator: " "),
+                                                       start: at, end: at + Float(n))
                 for fragment in f.update(confirmed: confirmed, unconfirmed: [partial]) {
                     tracker.consume(fragment, at: t)
                 }
                 t += 0.4
             }
-            confirmed.append(segment)
+            confirmed.append(.init(text: segment.joined(separator: " "), start: at, end: at + Float(segment.count)))
         }
         for fragment in f.update(confirmed: confirmed, unconfirmed: []) { tracker.consume(fragment, at: t) }
     }
@@ -125,6 +155,114 @@ import WhisperKit
         #expect(tracker.cursor >= end - 2)
         #expect(tracker.outcomes.filter { $0.key < end && $0.value.isMistake }.count <= 12)
     }
+
+    /// The live path: the clip fed at real-time pace through WhisperKit's
+    /// streamer (1 s passes, VAD, confirmation) and `WhisperSpeechSource`
+    /// into the tracker, then stopped — as with the microphone. Opt-in like
+    /// the test above; takes about 90 s.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WHISPER_E2E"] == "1"),
+          .timeLimit(.minutes(20)))
+    func streamsTheClipLive() async throws {
+        let clip = try #require(Bundle(for: BundleToken.self).url(forResource: "shatibiyya_clip", withExtension: "m4a"))
+        let audio = try FileFedAudio(path: clip.path)
+        let source = WhisperSpeechSource(model: .turbo, audioInput: audio)
+        let index = try Self.shatibiyya()
+        let tracker = RecitationTracker(words: index.normalizedWords, startIndex: 0)
+
+        let started = Date()
+        let start = Task { try await source.start() }
+        let drain = Task { () -> (finals: Int, lostWhileReciting: Int) in
+            var finals = 0, lost = 0
+            for await fragment in source.fragments {
+                let t = Date().timeIntervalSince(started)
+                tracker.consume(fragment, at: t)
+                if fragment.isFinal { finals += 1 }
+                if tracker.lockState == .lost { lost += 1 }
+                print("STREAM \(String(format: "%5.1f", t)) \(fragment.isFinal ? "FINAL   " : "volatile") \(fragment.text)")
+            }
+            return (finals, lost)
+        }
+        // Wait for the clip to play through, then stop as the mic button does.
+        while !audio.finished { try await Task.sleep(for: .milliseconds(200)) }
+        try await Task.sleep(for: .seconds(3))
+        source.stop()
+        let (finals, lost) = await drain.value
+        _ = try? await start.value
+
+        let end = try #require(index.firstWordIndex(ofBayt: 11))
+        let mistakes = tracker.outcomes.filter { $0.key < end && $0.value.isMistake }
+        print("STREAM cursor \(tracker.cursor)/\(end), finals \(finals), lost \(lost), mistakes \(mistakes.sorted { $0.key < $1.key })")
+        #expect(finals > 0)
+        #expect(tracker.cursor >= end - 2)
+        #expect(mistakes.count <= 12)
+    }
 }
 
 private final class BundleToken {}
+
+/// Plays an audio file into WhisperKit as if from the microphone: 100 ms
+/// buffers at real-time pace, with the same energy bookkeeping VAD reads.
+private final class FileFedAudio: AudioProcessing, @unchecked Sendable {
+    private let samples: [Float]
+    private let lock = NSLock()
+    private var buffer: ContiguousArray<Float> = []
+    private var energy: [Float] = []
+    private var averages: [Float] = []
+    private var feeder: Task<Void, Never>?
+    private var done = false
+    var relativeEnergyWindow = 20
+
+    init(path: String) throws {
+        samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: path)
+    }
+
+    var finished: Bool { lock.withLock { done } }
+    var audioSamples: ContiguousArray<Float> { lock.withLock { buffer } }
+    var relativeEnergy: [Float] { lock.withLock { energy } }
+    func purgeAudioSamples(keepingLast keep: Int) {}
+
+    func startRecordingLive(inputDeviceID: DeviceID?, callback: (([Float]) -> Void)?) throws {
+        let step = WhisperKit.sampleRate / 10
+        let samples = self.samples
+        feeder = Task { [weak self] in
+            for at in stride(from: 0, to: samples.count, by: step) {
+                guard let self, !Task.isCancelled else { return }
+                let chunk = Array(samples[at..<min(samples.count, at + step)])
+                self.lock.withLock {
+                    let floor = self.averages.suffix(20).min() ?? .infinity
+                    self.energy.append(AudioProcessor.calculateRelativeEnergy(of: chunk, relativeTo: floor))
+                    self.averages.append(AudioProcessor.calculateEnergy(of: chunk).avg)
+                    self.buffer.append(contentsOf: chunk)
+                }
+                callback?(chunk)
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            self?.lock.withLock { self?.done = true }
+        }
+    }
+
+    func stopRecording() { feeder?.cancel() }
+    func pauseRecording() { feeder?.cancel() }
+    func resumeRecordingLive(inputDeviceID: DeviceID?, callback: (([Float]) -> Void)?) throws {}
+    func startStreamingRecordingLive(inputDeviceID: DeviceID?)
+        -> (AsyncThrowingStream<[Float], Error>, AsyncThrowingStream<[Float], Error>.Continuation) {
+        AsyncThrowingStream.makeStream()
+    }
+
+    static func loadAudio(fromPath audioFilePath: String, channelMode: ChannelMode, startTime: Double?,
+                          endTime: Double?, maxReadFrameSize: AVAudioFrameCount?) throws -> AVAudioPCMBuffer {
+        try AudioProcessor.loadAudio(fromPath: audioFilePath, channelMode: channelMode, startTime: startTime,
+                                     endTime: endTime, maxReadFrameSize: maxReadFrameSize)
+    }
+    static func loadAudio(at audioPaths: [String], channelMode: ChannelMode) async -> [Result<[Float], Swift.Error>] {
+        await AudioProcessor.loadAudio(at: audioPaths, channelMode: channelMode)
+    }
+    static func padOrTrimAudio(fromArray audioArray: [Float], startAt startIndex: Int, toLength frameLength: Int,
+                               saveSegment: Bool) -> MLMultiArray? {
+        AudioProcessor.padOrTrimAudio(fromArray: audioArray, startAt: startIndex, toLength: frameLength, saveSegment: saveSegment)
+    }
+    func padOrTrim(fromArray audioArray: [Float], startAt startIndex: Int, toLength frameLength: Int)
+        -> (any AudioProcessorOutputType)? {
+        AudioProcessor.padOrTrimAudio(fromArray: audioArray, startAt: startIndex, toLength: frameLength, saveSegment: false)
+    }
+}

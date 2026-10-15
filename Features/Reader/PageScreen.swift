@@ -92,11 +92,13 @@ struct PageScreen: View {
         // Never leave the microphone running once the reader is gone.
         .onDisappear { voice.clear() }
         #if DEBUG
-        // Debug-only: `-debugRecite` / `-debugVoiceFail` (see VoiceController)
-        // open straight into Memorize and start a sitting.
+        // Debug-only: `-debugRecite` / `-debugVoiceFail` (see VoiceController),
+        // or `-debugListen YES` (the real microphone), open straight into
+        // Memorize and start a sitting.
         .onAppear {
             let d = UserDefaults.standard
-            if d.string(forKey: "debugRecite") != nil || d.string(forKey: "debugVoiceFail") != nil {
+            if d.string(forKey: "debugRecite") != nil || d.string(forKey: "debugVoiceFail") != nil
+                || d.bool(forKey: "debugListen") {
                 mode = .memorize
                 startVoice()
             }

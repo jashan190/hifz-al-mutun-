@@ -9,20 +9,33 @@ import Foundation
 /// - the unconfirmed text → a volatile fragment, which replaces the previous
 ///   one (it always covers everything since the last confirmed segment).
 struct WhisperFragments {
+    /// One transcribed segment; times are seconds into the sitting.
+    struct Segment: Equatable {
+        var text: String
+        var start: Float
+        var end: Float
+    }
+
     private var confirmedCount = 0
+    private var confirmedEnd: Float = 0
     private var lastVolatile = ""
 
-    /// Fragments for a new streaming state, given the text of every confirmed
-    /// segment so far and of the unconfirmed ones.
-    mutating func update(confirmed: [String], unconfirmed: [String]) -> [TranscriptFragment] {
+    /// Fragments for a new streaming state, given every confirmed segment so
+    /// far and the unconfirmed ones.
+    mutating func update(confirmed: [Segment], unconfirmed: [Segment]) -> [TranscriptFragment] {
         var out: [TranscriptFragment] = []
         if confirmed.count > confirmedCount {
-            let text = Self.join(confirmed[confirmedCount...])
+            let new = confirmed[confirmedCount...]
             confirmedCount = confirmed.count
+            confirmedEnd = max(confirmedEnd, new.map(\.end).max() ?? 0)
+            let text = Self.join(new)
             if !text.isEmpty { out.append(.init(text: text, isFinal: true)) }
             lastVolatile = ""   // a final supersedes the guess: resend it
         }
-        let guess = Self.join(unconfirmed[...])
+        // WhisperKit publishes the confirmed list a moment before the new
+        // guess, so for one update the guess still holds the words just
+        // confirmed. Only segments after the confirmed audio are a guess.
+        let guess = Self.join(unconfirmed.filter { $0.start >= confirmedEnd - 0.1 }[...])
         if guess != lastVolatile {
             lastVolatile = guess
             if !guess.isEmpty { out.append(.init(text: guess, isFinal: false)) }
@@ -37,10 +50,23 @@ struct WhisperFragments {
         return lastVolatile.isEmpty ? nil : .init(text: lastVolatile, isFinal: true)
     }
 
-    private static func join(_ segments: ArraySlice<String>) -> String {
-        segments.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            // Whisper marks non-speech as e.g. "[موسيقى]"; it isn't recitation.
-            .filter { !$0.isEmpty && !$0.hasPrefix("[") && !$0.hasPrefix("(") }
+    private static func join(_ segments: ArraySlice<Segment>) -> String {
+        segments.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && !isNoise($0) }
             .joined(separator: " ")
     }
+
+    /// Text Whisper produces for silence or noise rather than speech: its
+    /// non-speech markers ("[موسيقى]") and lines from the subtitled videos it
+    /// was trained on, which it repeats on near-silence (both seen live).
+    static func isNoise(_ text: String) -> Bool {
+        if text.hasPrefix("[") || text.hasPrefix("(") { return true }
+        let norm = ArabicNormalize.normalize(text)
+        return hallucinations.contains { norm.contains($0) }
+    }
+
+    private static let hallucinations = [
+        "ترجمة نانسي قنقر", "نانسي قنقر", "موسيقي", "شكرا لك", "شكرا للمشاهدة",
+        "اشتركوا في القناة", "اشترك في القناة", "لا تنسوا الاشتراك",
+    ].map(ArabicNormalize.normalize)
 }

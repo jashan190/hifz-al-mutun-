@@ -22,7 +22,8 @@ the debug launch arguments at the end.
 
 Open a matn, switch to **Memorize**, tap the mic. The footer shows, in order:
 1. the microphone prompt (allow it);
-2. "Downloading Arabic voice N% (once)" — a few minutes on Wi-Fi;
+2. "Downloading Arabic voice N% (once)" — a few minutes on Wi-Fi; keep the app
+   open until it finishes;
 3. "Preparing Arabic voice… the first time takes a minute." — iOS compiles the
    model for this phone. Later starts take a few seconds (again after an iOS update).
 
@@ -69,11 +70,14 @@ sitting carries on by tap: tap the blank holding the next word to reveal it.
 - Which words went amber/red that you recited correctly (bayt and word), and in which
   style. These tune `MatchTuning` in `Core/Matching/RecitationTracker.swift`.
 - How long the first download and "Preparing…" took, and whether recognition
-  keeps up with you (the lag between saying a word and seeing it).
+  keeps up with you (the lag between saying a word and seeing it). In the
+  Simulator (no Neural Engine) each pass took 7–11 s, far too slow; the phone
+  should be much faster but hasn't been measured. If it lags more than ~2 s,
+  try **Whisper Small**.
 - The recognizer log. In **Console.app** on the Mac, select the iPhone, filter
   `subsystem:com.farhan.hifzalmutun category:speech`, recite a bayt or two, and copy
   the lines. Each shows `volatile` (Whisper's current guess) or `FINAL` (confirmed)
-  and the text.
+  and the text; `pass N s` lines show the lag.
 
 ## Simulator: debug launch arguments (DEBUG builds only)
 
@@ -87,3 +91,4 @@ Set in Xcode (**Product → Scheme → Edit Scheme → Run → Arguments**) or w
 | `-debugReciteInterval 0.8` | Pace the replay like live speech (stays live after) |
 | `-debugStopAfter 12` | Stop the sitting after 12 s (shows the summary) |
 | `-debugVoiceFail mic\|download` | Simulate a failure to start |
+| `-debugListen YES` | Start listening with the real microphone on open |

@@ -26,10 +26,15 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
 
     #if DEBUG
     private static let log = Logger(subsystem: "com.farhan.hifzalmutun", category: "speech")
+    private let lastUpdate = OSAllocatedUnfairLock(initialState: Date())
     #endif
 
-    init(model: WhisperModel = .selected) {
+    /// Audio from somewhere other than the microphone (tests feed a file).
+    private let audioInput: (any AudioProcessing)?
+
+    init(model: WhisperModel = .selected, audioInput: (any AudioProcessing)? = nil) {
         self.model = model
+        self.audioInput = audioInput
         (fragments, continuation) = AsyncStream.makeStream(of: TranscriptFragment.self)
     }
 
@@ -55,31 +60,17 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
     private func run() async throws {
         // WhisperKit's own start returns silently when the mic is refused, so
         // ask first and say why.
-        guard await AVAudioApplication.requestRecordPermission() else {
-            throw SpeechSourceError.micNotAuthorized
+        if audioInput == nil {
+            guard await AVAudioApplication.requestRecordPermission() else {
+                throw SpeechSourceError.micNotAuthorized
+            }
         }
         try checkNotStopped()
 
-        try await model.download { [onEvent] in onEvent?(.downloading($0)) }
-        try checkNotStopped()
-
-        onEvent?(.loadingModel)
-        let config = WhisperKitConfig(
-            modelFolder: model.folder.path,
-            tokenizerFolder: WhisperModel.storage,
-            verbose: false,
-            logLevel: .error,
-            prewarm: true,
-            load: true,
-            download: false
-        )
-        let whisper: WhisperKit
-        do {
-            whisper = try await WhisperKit(config)
-        } catch {
-            // Most likely the tokenizer, fetched on the first load.
-            throw SpeechSourceError.modelDownloadFailed
-        }
+        let whisper = try await WhisperEngine.shared.whisper(
+            for: model,
+            progress: { [onEvent] in onEvent?(.downloading($0)) },
+            loading: { [onEvent] in onEvent?(.loadingModel) })
         try checkNotStopped()
         guard let tokenizer = whisper.tokenizer else { throw SpeechSourceError.modelDownloadFailed }
 
@@ -98,7 +89,7 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
             segmentSeeker: whisper.segmentSeeker,
             textDecoder: whisper.textDecoder,
             tokenizer: tokenizer,
-            audioProcessor: whisper.audioProcessor,
+            audioProcessor: audioInput ?? whisper.audioProcessor,
             decodingOptions: options,
             useVAD: true                 // don't transcribe silence (Whisper invents text on it)
         ) { [weak self] _, state in
@@ -129,9 +120,23 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
     }
 
     private func receive(_ state: AudioStreamTranscriber.State) {
-        let confirmed = state.confirmedSegments.map(\.text)
-        let unconfirmed = state.unconfirmedSegments.map(\.text)
+        func segments(_ list: [TranscriptionSegment]) -> [WhisperFragments.Segment] {
+            list.map { .init(text: $0.text, start: $0.start, end: $0.end) }
+        }
+        let confirmed = segments(state.confirmedSegments)
+        let unconfirmed = segments(state.unconfirmedSegments)
         let out = emitter.withLock { $0.update(confirmed: confirmed, unconfirmed: unconfirmed) }
+        #if DEBUG
+        if !out.isEmpty {
+            // How far behind live speech words appear: the time since the last
+            // update is about one transcription pass (the lag), next to how
+            // much audio this pass covered.
+            let now = Date()
+            let gap = now.timeIntervalSince(lastUpdate.withLock { last in defer { last = now }; return last })
+            let heard = Float(state.lastBufferSize) / Float(WhisperKit.sampleRate)
+            Self.log.debug("pass \(gap, format: .fixed(precision: 1), privacy: .public)s after the last, audio to \(heard, format: .fixed(precision: 1), privacy: .public)s")
+        }
+        #endif
         for fragment in out {
             log(fragment)
             continuation.yield(fragment)
@@ -158,8 +163,12 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
         switch previous {
         case .idle:
             continuation.finish()      // never started: just end the stream
-        case .starting, .stopped:
-            break                      // start() sees `.stopped` at its next check and ends the stream
+        case .starting:
+            // Nothing is recording yet; a download or load still in flight
+            // finishes in the background (WhisperEngine) for next time.
+            continuation.finish()
+        case .stopped:
+            break
         case .running:
             // Ends the streamer's loop; start() then flushes and finishes. A
             // stop that reaches the streamer before its loop begins would be
