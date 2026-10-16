@@ -6,7 +6,7 @@ push to the same PR/branch cancels the older run.
 
 | job | runner | what it does |
 |-----|--------|--------------|
-| **Validate content JSON** | `ubuntu-latest` | `Tools/normalize.py` self-check; `Tools/validate_matn.py` on every schemaVersion 1 file in `Resources/Content/`. Page-based files (schemaVersion 2, currently `shatibiyya.json`) get a parse check and a `pageCount` check only, because the validator doesn't know that format yet. Stdlib only, takes a few seconds. |
+| **Validate content JSON** | `ubuntu-latest` | `Tools/normalize.py` self-check; `Tools/validate_matn.py` on every file in `Resources/Content/`, in both layouts (bayt list, schemaVersion 1; pages, schemaVersion 2). Stdlib only, takes a few seconds. |
 | **Build & unit tests** | `macos-26`, Xcode 26.6 | `xcodegen generate`, resolve SPM (WhisperKit), pick the newest available iPhone simulator from `simctl list -j`, then `xcodebuild test`. On failure the `.xcresult` is uploaded as an artifact (kept 7 days). |
 | **Unsigned device build** | `macos-26`, Xcode 26.6 | `xcodebuild build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`. Catches device-only build breaks without needing certificates. |
 

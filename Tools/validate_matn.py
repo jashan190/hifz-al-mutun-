@@ -4,12 +4,28 @@
 Usage:
     python3 Tools/validate_matn.py Resources/Content/tuhfa.json
 
-Checks:
+Two layouts are understood: the bayt list (schemaVersion 1: tuhfa, jazariyya)
+and the page list (schemaVersion 2: shatibiyya, laid out page by page as in the
+printed book). Any other schemaVersion fails.
+
+Checks (schemaVersion 1):
   1. bayt numbers are continuous 1..N with no gaps or duplicates
   2. every bayt has a non-empty sadr and ajuz (and matching word lists)
   3. page/row match the declared baytsPerPage
   4. babs are contiguous, non-overlapping, and cover every bayt exactly once
   5. declared baytCount / pageCount agree with the actual bayts
+
+Checks (schemaVersion 2):
+  1. pages are numbered 1..pageCount in order; items are bayts or headings
+  2. bayt numbers run 1..N across pages with no gaps or duplicates
+  3. every half has text; its text runs concatenate to that text; its word
+     list matches the words of the text (stand-alone punctuation aside), and
+     each word normalizes to something
+  4. no page holds more than baytsPerPage + 2 bayts
+  5. babs start on pages in order, each where a heading with its title stands,
+     and headings and babs are one-to-one
+  6. review notes point at a bayt that exists on that page
+  7. declared baytCount / pageCount agree with the actual content
 
 Exits non-zero if any check fails, so it can gate the pipeline.
 """
@@ -127,6 +143,91 @@ def validate(doc):
     return errors, warnings
 
 
+def validate_pages(doc):
+    errors = []
+    warnings = []
+    pages = doc.get("pages", [])
+    per_page = doc.get("baytsPerPage", 10)
+
+    # 1. page numbering and item types
+    for i, page in enumerate(pages):
+        if page.get("page") != i + 1:
+            errors.append(f"page at position {i + 1} is numbered {page.get('page')}")
+        for item in page.get("items", []):
+            if item.get("type") not in ("bayt", "heading"):
+                errors.append(f"page {page.get('page')}: unknown item type {item.get('type')!r}")
+
+    bayts = [(page.get("page"), item) for page in pages
+             for item in page.get("items", []) if item.get("type") == "bayt"]
+    headings = [(page.get("page"), item.get("text")) for page in pages
+                for item in page.get("items", []) if item.get("type") == "heading"]
+
+    # 2. continuous numbering
+    numbers = [b.get("n") for _, b in bayts]
+    for i, n in enumerate(numbers):
+        if n != i + 1:
+            errors.append(f"bayt numbering breaks at position {i + 1}: expected {i + 1}, got {n}")
+            break
+
+    # 3. halves: text, runs, words
+    for page_no, b in bayts:
+        n = b.get("n")
+        for side in ("sadr", "ajuz"):
+            half = b.get(side) or {}
+            text = half.get("text", "")
+            if not text.strip():
+                errors.append(f"bayt {n}: empty {side}")
+                continue
+            runs = "".join(seg.get("text", "") for seg in half.get("segments", [])
+                           if "footnote" not in seg)
+            if runs != text:
+                errors.append(f"bayt {n} {side}: text runs don't concatenate to the text")
+            words = half.get("words", [])
+            # Stand-alone punctuation ("،") isn't a word.
+            spoken = [t for t in text.split() if any(c.isalpha() for c in t)]
+            if [w.get("text") for w in words] != spoken:
+                errors.append(f"bayt {n} {side}: word list != words of the text")
+            for w in words:
+                if not w.get("normalized"):
+                    warnings.append(f"bayt {n} {side}: word {w.get('text')!r} normalizes to empty")
+
+    # 4. page capacity
+    from collections import Counter
+    for p, count in Counter(p for p, _ in bayts).items():
+        if count > per_page + 2:
+            errors.append(f"page {p} holds {count} bayts (> {per_page} + 2)")
+
+    # 5. babs line up with headings
+    babs = doc.get("babs", [])
+    last = 0
+    for bab in babs:
+        start = bab.get("startPage")
+        if not isinstance(start, int) or not 1 <= start <= len(pages):
+            errors.append(f"bab {bab.get('id')!r}: startPage {start!r} out of range")
+            continue
+        if start < last:
+            errors.append(f"bab {bab.get('id')!r}: starts on page {start}, before the previous bab")
+        last = start
+        if (start, bab.get("title")) not in headings:
+            errors.append(f"bab {bab.get('id')!r}: no heading {bab.get('title')!r} on page {start}")
+    if len(babs) != len(headings):
+        errors.append(f"{len(babs)} babs but {len(headings)} headings")
+
+    # 6. review notes
+    on_page = {(p, b.get("n")) for p, b in bayts}
+    for note in doc.get("reviewNotes", []):
+        if (note.get("page"), note.get("n")) not in on_page:
+            errors.append(f"review note for bayt {note.get('n')} on page {note.get('page')}: no such bayt there")
+
+    # 7. declared counts
+    if doc.get("baytCount") != len(bayts):
+        errors.append(f"baytCount {doc.get('baytCount')} != actual {len(bayts)}")
+    if doc.get("pageCount") != len(pages):
+        errors.append(f"pageCount {doc.get('pageCount')} != actual {len(pages)} pages")
+
+    return errors, warnings, len(bayts)
+
+
 def main(argv):
     if len(argv) != 2:
         print("usage: python3 validate_matn.py <matn.json>", file=sys.stderr)
@@ -134,10 +235,18 @@ def main(argv):
     with open(argv[1], encoding="utf-8") as f:
         doc = json.load(f)
 
-    errors, warnings = validate(doc)
+    version = doc.get("schemaVersion", 1)
+    if version == 1:
+        errors, warnings = validate(doc)
+        bayt_count = len(doc.get("bayts", []))
+    elif version == 2:
+        errors, warnings, bayt_count = validate_pages(doc)
+    else:
+        print(f"unsupported schemaVersion {version!r} (expected 1 or 2)")
+        return 1
 
     title = doc.get("titleLatin") or doc.get("id")
-    print(f"Validating {title}: {len(doc.get('bayts', []))} bayts, "
+    print(f"Validating {title} (schemaVersion {version}): {bayt_count} bayts, "
           f"{len(doc.get('babs', []))} babs, {doc.get('pageCount')} pages")
 
     for w in warnings:

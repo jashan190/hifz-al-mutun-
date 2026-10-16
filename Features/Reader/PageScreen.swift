@@ -45,7 +45,11 @@ struct PageScreen: View {
                 if let summary = voice.summary, mode == .memorize {
                     SummaryCard(summary: summary,
                                 reviewAgain: { startVoice() },
-                                backToRead: { setMode(.read) })
+                                backToRead: { setMode(.read) },
+                                show: { mistake in
+                                    if reduceMotion { currentPage = mistake.page }
+                                    else { withAnimation { currentPage = mistake.page } }
+                                })
                         .padding(.horizontal, Theme.margin)
                         .padding(.bottom, 10)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -75,9 +79,12 @@ struct PageScreen: View {
             autoTurnTarget = target
             if reduceMotion { currentPage = target } else { withAnimation { currentPage = target } }
         }
-        // A light buzz when a new mistake is judged, so the reciter notices
-        // without looking (as Tarteel does).
+        // A light buzz and a short tone when a new mistake is judged, so the
+        // reciter notices without looking (as Tarteel does).
         .sensoryFeedback(.warning, trigger: voice.mistakeCount) { old, new in new > old }
+        .onChange(of: voice.mistakeCount) { old, new in
+            if new > old, voice.isLive { MistakeSound.play() }
+        }
         // A light tap when a flag is set by hand (not by voice, which has its own).
         .sensoryFeedback(.impact(weight: .light), trigger: flagStore.count(for: matn.id)) { old, new in
             new > old && (mode == .read || !voice.isLive)
@@ -266,20 +273,46 @@ private struct VoiceStatusLabel: View {
 
 // Shown when a Review sitting stops (UX.md): what was covered, then Review
 // again or go back to reading.
+// After each sitting (one press of the mic until it stops): what was recited,
+// and every mistake — the word as written, and what was heard in its place.
+// Tapping a mistake turns to its page.
 private struct SummaryCard: View {
     let summary: ReviewSummary
     let reviewAgain: () -> Void
     let backToRead: () -> Void
+    let show: (ReviewSummary.Mistake) -> Void
+    /// The list's natural height, measured, so it shrinks to fit a few rows.
+    @State private var listHeight: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Review finished")
+            Text("Session review")
                 .font(.headline)
                 .foregroundStyle(Theme.ink)
             HStack(spacing: 18) {
                 stat(summary.baytsRecited, summary.baytsRecited == 1 ? "bayt recited" : "bayts recited")
-                stat(summary.mistakes, summary.mistakes == 1 ? "mistake" : "mistakes")
+                stat(summary.mistakes.count, summary.mistakes.count == 1 ? "mistake" : "mistakes")
                 if summary.revealed > 0 { stat(summary.revealed, "revealed") }
+            }
+            if summary.mistakes.isEmpty {
+                Text("No mistakes this session.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.ink.opacity(0.7))
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(summary.mistakes) { mistake in
+                            MistakeRow(mistake: mistake) { show(mistake) }
+                            if mistake.id != summary.mistakes.last?.id {
+                                Divider().overlay(Theme.outline)
+                            }
+                        }
+                    }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { listHeight = $0 }
+                }
+                // As tall as its rows, up to about three; then it scrolls.
+                .frame(height: min(260, max(listHeight, 1)))
+                .scrollBounceBehavior(.basedOnSize)
             }
             HStack(spacing: 10) {
                 Button(action: reviewAgain) {
@@ -306,6 +339,57 @@ private struct SummaryCard: View {
             Text(label).font(.caption).foregroundStyle(Theme.ink.opacity(0.7))
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+// One mistake: where it was, the word as written, and what was heard.
+private struct MistakeRow: View {
+    let mistake: ReviewSummary.Mistake
+    let action: () -> Void
+
+    private var place: String {
+        "Bayt \(mistake.bayt) · \(mistake.half == .sadr ? "first half" : "second half")"
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(place)
+                        .font(.caption)
+                        .foregroundStyle(Theme.ink.opacity(0.7))
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Text("Should be")
+                            .font(.caption)
+                            .foregroundStyle(Theme.ink.opacity(0.7))
+                        Text(mistake.expected)
+                            .font(PageFont.font(size: 20))
+                            .foregroundStyle(Theme.ink)
+                        Text(mistake.heard == nil ? "· skipped" : "· you said")
+                            .font(.caption)
+                            .foregroundStyle(Theme.error)
+                        if let heard = mistake.heard {
+                            Text(heard)
+                                .font(PageFont.font(size: 20))
+                                .foregroundStyle(Theme.error)
+                        }
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.forward")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.ink.opacity(0.35))
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(place). Should be \(mistake.expected). "
+                            + (mistake.heard.map { "You said \($0)." } ?? "You skipped it."))
+        .accessibilityHint("Shows this bayt's page")
     }
 }
 

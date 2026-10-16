@@ -129,7 +129,32 @@ import Foundation
         #expect(before == .skipped)
         #expect(voice.reveal?.outcome(bayt: 1, half: .sadr, wordIndex: 1) == .skipped)
         #expect(voice.reveal?.revealedWords(bayt: 1, half: .ajuz) == 1)   // nothing new revealed
-        #expect(voice.summary?.mistakes == 1)
+        #expect(voice.summary?.mistakes.count == 1)
+    }
+
+    // Each sitting's review lists every mistake: where, the word as written,
+    // and what was heard in its place (nothing, for a skip).
+    @Test func sessionReviewListsEachMistake() async throws {
+        let voice = VoiceController()
+        UserDefaults.standard.set("يقول راجي|سمع رب|محمد", forKey: "debugRecite")
+        defer { UserDefaults.standard.removeObject(forKey: "debugRecite") }
+        voice.start(matn: matn(), fromPage: 1, flags: FlagStore.inMemory())
+        await settle()
+        voice.stop()
+        let summary = try #require(voice.summary)
+        #expect(summary.baytsRecited == 2)
+        #expect(summary.mistakes.map(\.expected) == ["عفو", "قادر"])
+        #expect(summary.mistakes.map(\.heard) == ["سمع", nil])
+        #expect(summary.mistakes.map(\.bayt) == [1, 2])
+        #expect(summary.mistakes.map(\.half) == [.ajuz, .sadr])
+        #expect(summary.mistakes.map(\.page) == [1, 2])
+
+        // A new sitting starts a new review.
+        UserDefaults.standard.set("قادر محمد", forKey: "debugRecite")
+        voice.start(matn: matn(), fromPage: 2, flags: FlagStore.inMemory())
+        await settle()
+        voice.stop()
+        #expect(voice.summary?.mistakes.isEmpty == true)
     }
 
     @Test func voiceFailureFallsBackToTapKeepingTheReason() async {

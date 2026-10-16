@@ -15,12 +15,15 @@ struct WordRef: Hashable {
 /// order: sadr then ajuz within each bayt) plus a parallel list of back-refs.
 struct RecitationIndex {
     let normalizedWords: [String]
+    /// The words as written (with harakat), parallel to `normalizedWords`.
+    let displayWords: [String]
     let refs: [WordRef]
     private let pageStart: [Int: Int]   // page number → first flat word index
     private let baytStart: [Int: Int]   // bayt number → first flat word index
 
     init(matn: Matn) {
         var words: [String] = []
+        var display: [String] = []
         var refs: [WordRef] = []
         var pageStart: [Int: Int] = [:]
         var baytStart: [Int: Int] = [:]
@@ -35,6 +38,7 @@ struct RecitationIndex {
                         // applies to recognizer output, so both sides always agree
                         // (the stored forms can differ, e.g. keeping ئ/ؤ).
                         words.append(ArabicNormalize.normalize(word.text))
+                        display.append(word.text)
                         refs.append(WordRef(page: page.page, bayt: bayt.number,
                                             half: half, wordIndex: wi))
                     }
@@ -42,6 +46,7 @@ struct RecitationIndex {
             }
         }
         self.normalizedWords = words
+        self.displayWords = display
         self.refs = refs
         self.pageStart = pageStart
         self.baytStart = baytStart

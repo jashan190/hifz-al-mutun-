@@ -19,7 +19,7 @@ No third-party Python packages are needed — everything uses the standard libra
 | `render_pages.py`  | Renders PDF page ranges to PNGs so you can verify text by eye. |
 | `normalize.py`     | Shared Arabic normalization (also runnable for a self-check). |
 | `build_matn.py`    | Builds a matn JSON from a `sources/<id>.txt` transcription. |
-| `validate_matn.py` | Validates a built JSON (numbering, halves, pages, babs). |
+| `validate_matn.py` | Validates a matn JSON, either layout (numbering, halves, words, pages, babs). |
 
 ## Typical flow for a new matn
 
