@@ -10,7 +10,7 @@ the vowel on the noon: kasra → below the line, fatha/damma → above, sukun �
 - **Tuhfat al-Atfal:** none (the PDF prints none).
 - **al-Jazariyyah:** 3 — bayt 38 رَبْوَةٍۨ اجْتُثَّتْ (below), 44 فَتْحٍۨ أَوْ (above),
   65 إِظْهَارٌۨ ادْغَامٌ (below).
-- **ash-Shatibiyyah:** 48, below. Removed after the scan because the book
+- **ash-Shatibiyyah:** 48 in total (17 below, 29 above, 2 inline), listed in the table. Removed after the scan because the book
   doesn't print them: bayts 29, 36, 38, 173, 182, 494, 514 (×2), 542, 548, 628, 656,
   718, 729, 789, 851 (×2), 947, 953, 962, 1033, 1107, 1172.
 
