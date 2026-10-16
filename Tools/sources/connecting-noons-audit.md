@@ -1,80 +1,66 @@
-# Connecting Noons — complete audit (v2)
+# Connecting noons — matched to the PDF
 
-**70 connecting noons** in the Shatibiyyah matn — below/kasra: 39, above (fatḥa/ḍamma): 28, mid-word: 3.
+Every connecting noon (U+06E8, then its vowel) in the three mutun, checked page by
+page against the PDFs on 2026-10-15/16: the Suwaid edition of the Shatibiyyah
+(منظومة_حرز_الأماني_ووجه_التهاني.pdf, 118 pages) and Tuhfah + Jazariyya.pdf.
+The rule is the book: a noon is here only if the book prints it. Position follows
+the vowel on the noon: kasra → below the line, fatha/damma → above, sukun → inline
+(mid-word).
 
-Scope: every hamzat-waṣl recitation junction (tanwīn → bare-alif / الـ). Hamzat-qaṭʿ (أ/إ/آ) junctions are excluded (not connecting noons). Position derives from the vowel: kasra→below, fatḥa/ḍamma→above.
+- **Tuhfat al-Atfal:** none (the PDF prints none).
+- **al-Jazariyyah:** 3 — bayt 38 رَبْوَةٍۨ اجْتُثَّتْ (below), 44 فَتْحٍۨ أَوْ (above),
+  65 إِظْهَارٌۨ ادْغَامٌ (below).
+- **ash-Shatibiyyah:** 48, below. Removed after the scan because the book
+  doesn't print them: bayts 29, 36, 38, 173, 182, 494, 514 (×2), 542, 548, 628, 656,
+  718, 729, 789, 851 (×2), 947, 953, 962, 1033, 1107, 1172.
 
-⚑ = derived by the sākinayn break-rule (bare-alif verbs the book drew faintly/omitted); verify against the book.
-
-| Bayt | Half | Noon on | Position | Vowel | ⚑ |
-|------|------|---------|----------|-------|---|
-| 2 | ajuz | مُحَمَّدٍۨ | ▼ below | kasra |  |
-| 29 | ajuz | عَمْرٍوۨ | ▼ below | kasra |  |
-| 35 | sadr | وَعَاصِمٌۨ | ▼ below | kasra |  |
-| 36 | sadr | بَكْرٍۨ | ▼ below | kasra |  |
-| 38 | sadr | وَخَلَّادٌۨ | ▼ below | kasra |  |
-| 59 | ajuz | وَتَحْرِيكٍۨ | ▲ above | ḍamma |  |
-| 116 | ajuz | عَمْرٍوِۨ | ▼ below | kasra |  |
-| 128 | sadr | هَاءٌَۨ | ▲ above | fatḥa |  |
-| 128 | ajuz | وَاوٍُۨ | ▲ above | ḍamma |  |
-| 173 | ajuz | وَمَسْـُٔولًاۨ | ▼ below | kasra | ⚑ |
-| 175 | sadr | وَعَادًاۨ | ▼ below | kasra |  |
-| 179 | ajuz | بِكِلْمَةٍۨ | ▲ above | fatḥa |  |
-| 182 | ajuz | كُلٍّۨ | ▼ below | kasra |  |
-| 189 | ajuz | ثَالِثاًۨ | ▲ above | ḍamma |  |
-| 209 | ajuz | أُمَّةًۨ | ▲ above | ḍamma |  |
-| 216 | ajuz | مَجْزُومٍۨ | ▲ above | ḍamma |  |
-| 226 | sadr | سَاكِنٍۨ | ▲ above | fatḥa |  |
-| 230 | sadr | عَادًاۨ | ▼ below | kasra |  |
-| 251 | sadr | وَاوٌۨ | ▼ below | kasra | ⚑ |
-| 310 | ajuz | صُحْبَةٍَۨ | ▲ above | fatḥa |  |
-| 395 | sadr | وَأَرْبَعٌۨ | ▼ below | kasra |  |
-| 458 | ajuz | نَافِعٍۨ | ▲ above | fatḥa |  |
-| 494 | sadr | خُطْوَٰتٌۨ | ▼ below | kasra |  |
-| 496 | ajuz | وَمَحْظُوراًۨ | ▼ below | kasra |  |
-| 508 | ajuz | نُقْطَةٌۨ | ▲ above | fatḥa |  |
-| 514 | sadr | وَصِيَّةًۨ | ▼ below | kasra | ⚑ |
-| 514 | ajuz | قُنْبُلٍۨ | ▼ below | kasra | ⚑ |
-| 542 | sadr | تِجَٰرَةٌۨ | ▼ below | kasra | ⚑ |
-| 548 | sadr | وَرِضْوَٰنٌۨ | ▲ above | ḍamma | ⚑ |
-| 628 | sadr | عُيُونًاۨ | ▼ below | kasra |  |
-| 656 | ajuz | رٌۨ | ▼ below | kasra |  |
-| 689 | ajuz | نُقْطَةٌۨ | ▲ above | fatḥa |  |
-| 705 | sadr | وَبَيْـَٔسٍۨ | ▲ above | fatḥa |  |
-| 718 | ajuz | حَقّاًۨ | ▼ below | kasra |  |
-| 729 | ajuz | وَرَحْمَةٌۨ | ▼ below | kasra |  |
-| 765 | ajuz | حَقٌّۨ | ▼ below | kasra |  |
-| 772 | ajuz | ءَايَٰتٌۨ | ▼ below | kasra |  |
-| 773 | ajuz | وَتَأْمَُۨ | • inline | fatḥa |  |
-| 784 | sadr | نُۨ | • inline | sukūn |  |
-| 787 | sadr | صِنْوَانٍۨ | ▲ above | fatḥa |  |
-| 789 | ajuz | اسْتِفْهَامٍۨ | ▼ below | kasra |  |
-| 799 | sadr | وَصْلٍۨ | ▲ above | fatḥa |  |
-| 851 | sadr | حَقٍّۨ | ▼ below | kasra |  |
-| 851 | ajuz | ـقٍۨ | ▼ below | kasra |  |
-| 855 | ajuz | رَدْمًاۨ | ▼ below | kasra |  |
-| 866 | ajuz | رِءْيًاۨ | ▲ above | fatḥa |  |
-| 891 | ajuz | وَنُـۨ | • inline | sukūn |  |
-| 900 | sadr | وَبَصْرِيٌّۨ | ▼ below | kasra |  |
-| 915 | sadr | وَدُرِّيٌّۨ | ▼ below | kasra |  |
-| 947 | sadr | وَجِذْوَةٍۨ | ▲ above | ḍamma | ⚑ |
-| 953 | sadr | مَوَدَّةًۨ | ▼ below | kasra |  |
-| 960 | ajuz | وَرَحْمَةًۨ | ▼ below | kasra |  |
-| 962 | ajuz | حُسْنٍۨ | ▼ below | kasra | ⚑ |
-| 993 | sadr | ذِكْرًاۨ | ▲ above | fatḥa |  |
-| 996 | ajuz | مَعاًۨ | ▲ above | fatḥa |  |
-| 1026 | ajuz | ثَالِثاًۨ | ▲ above | ḍamma |  |
-| 1031 | ajuz | بِتَوْكِيدٍۨ | ▲ above | ḍamma |  |
-| 1033 | sadr | حُسْنًاۨ | ▼ below | kasra |  |
-| 1044 | sadr | بِيَاءٍۨ | ▼ below | kasra |  |
-| 1076 | ajuz | وَاواًۨ | ▲ above | fatḥa |  |
-| 1081 | ajuz | وَاوٍۨ | ▲ above | fatḥa |  |
-| 1081 | ajuz | يَاءٍۨ | ▲ above | fatḥa |  |
-| 1098 | sadr | ثَقِيلاًۨ | ▼ below | kasra |  |
-| 1101 | ajuz | حِرْمِيٌّۨ | ▲ above | fatḥa |  |
-| 1107 | sadr | وَمَحْفُوظٌۨ | ▼ below | kasra | ⚑ |
-| 1109 | ajuz | مُصَيْطِرٍۨ | ▲ above | fatḥa |  |
-| 1118 | sadr | وَصُحْبَةٌۨ | ▼ below | kasra |  |
-| 1148 | ajuz | كِلْمَةٌۨ | ▲ above | fatḥa |  |
-| 1151 | sadr | وَمِيمٍۨ | ▼ below | kasra |  |
-| 1172 | sadr | مُحَمَّدٍۨ | ▼ below | kasra |  |
+| Bayt | Half | Words | Position |
+|------|------|-------|----------|
+| 2 | ajuz | مُحَمَّدٍِۨ الْمُهْدَىٰ | ▼ below |
+| 35 | sadr | وَعَاصِمٌِۨ اسْمُهُ | ▼ below |
+| 59 | ajuz | وَتَحْرِيكٍُۨ اعْمِلَا | ▲ above |
+| 116 | ajuz | عَمْرٍوِِۨ الْبَصْرِيُّ | ▼ below |
+| 128 | sadr | هَاءٌََۨ اصْلُهَا | ▲ above |
+| 128 | ajuz | وَاوٍُُۨ ابْدِلَا | ▲ above |
+| 175 | sadr | وَعَادًاِۨ الُاولَىٰ | ▼ below |
+| 177 | ajuz | عِٓۨ الْوَجْهَانِ | ▼ below |
+| 179 | ajuz | بِكِلْمَةٍَۨ اوْ | ▲ above |
+| 189 | ajuz | ثَالِثاًُۨ ابْدِلَا | ▲ above |
+| 209 | ajuz | أُمَّةًُۨ انْزِلَا | ▲ above |
+| 216 | ajuz | مَجْزُومٍُۨ اهْمِلَا | ▲ above |
+| 226 | sadr | سَاكِنٍَۨ اخِرٍ | ▲ above |
+| 230 | sadr | عَادًاِۨ الْأُولَىٰ | ▼ below |
+| 251 | sadr | وَاوٌَۨ اصْلِيٌّ | ▲ above |
+| 310 | ajuz | صُحْبَةٍََۨ اوَّلَا | ▲ above |
+| 395 | sadr | وَأَرْبَعٌِۨ اذْ | ▼ below |
+| 458 | ajuz | نَافِعٍَۨ ابْدَلَا | ▲ above |
+| 496 | ajuz | وَمَحْظُوراًِۨ انظُرْ | ▼ below |
+| 508 | ajuz | نُقْطَةٌَۨ اسْفَلَا | ▲ above |
+| 689 | ajuz | نُقْطَةٌَۨ اسْفَلَا | ▲ above |
+| 705 | sadr | وَبَيْـَٔسٍَۨ اسْكِنْ | ▲ above |
+| 765 | ajuz | حَقٌِّۨ الَّا | ▼ below |
+| 772 | ajuz | ءَايَٰتٌِۨ الْوِلَا | ▼ below |
+| 773 | ajuz | وَتَأْمََُۨنَا لِلْكُلِّ | ▲ above |
+| 784 | sadr | نُْۨجِي احْذِفْ | • inline |
+| 787 | sadr | صِنْوَانٍَۨ اوَّلَا | ▲ above |
+| 799 | sadr | وَصْلٍَۨ اوْ | ▲ above |
+| 855 | ajuz | رَدْمًاِۨ اءْتُونِي | ▼ below |
+| 866 | ajuz | رِءْيًاَۨ ابْدِلْ | ▲ above |
+| 891 | ajuz | وَنُـْۨجِي احْذِفْ | • inline |
+| 900 | sadr | وَبَصْرِيٌَّۨ اهْلَكْنَـٰ | ▲ above |
+| 915 | sadr | وَدُرِّيٌِّۨ اكْسِرْ | ▼ below |
+| 960 | ajuz | وَرَحْمَةًِۨ ارْفَعْ | ▼ below |
+| 993 | sadr | ذِكْرًاَۨ ادْغَمَ | ▲ above |
+| 996 | ajuz | مَعاًَۨ اوْ | ▲ above |
+| 1026 | ajuz | ثَالِثاًُۨ ابْدِلَا | ▲ above |
+| 1031 | ajuz | بِتَوْكِيدٍُۨ اوَّلَا | ▲ above |
+| 1044 | sadr | بِيَاءٍِۨ اذْ | ▼ below |
+| 1076 | ajuz | وَاواًَۨ ابْدَلَا | ▲ above |
+| 1081 | ajuz | وَاوٍَۨ اوْ | ▲ above |
+| 1081 | ajuz | يَاءٍَۨ ابْدَلَا | ▲ above |
+| 1098 | sadr | ثَقِيلاًِۨ اذْ | ▼ below |
+| 1101 | ajuz | حِرْمِيٌَّۨ اثْقَلَا | ▲ above |
+| 1109 | ajuz | مُصَيْطِرٍَۨ اشْمِمْ | ▲ above |
+| 1118 | sadr | وَصُحْبَةٌِۨ الضَّمَّيْنِ | ▼ below |
+| 1148 | ajuz | كِلْمَةٌَۨ اوَّلَا | ▲ above |
+| 1151 | sadr | وَمِيمٍِۨ انْ | ▼ below |
