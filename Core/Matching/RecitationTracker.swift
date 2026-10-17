@@ -102,12 +102,25 @@ final class RecitationTracker {
     var shownOutcomes: [Int: WordOutcome] {
         applyingOverrides(committed.outcomes.merging(stable) { kept, _ in kept })
     }
+    /// What was heard for each word judged amber or red, raw, so the letters
+    /// that differ can be shown.
+    var heard: [Int: String] {
+        let shown = shownOutcomes
+        return current.heard.merging(tentativeHeard) { kept, _ in kept }.filter {
+            switch shown[$0.key] {
+            case .unsure?, .wrong?: return true
+            default: return false
+            }
+        }
+    }
 
     private struct State {
         var cursor: Int
         var anchor: Int
         var lock: LockState = .idle
         var outcomes: [Int: WordOutcome] = [:]
+        /// What was heard for an inexact match or a wrong word (raw).
+        var heard: [Int: String] = [:]
         /// Final tokens heard since the last match, as (raw, normalized).
         var pending: [(raw: String, norm: String)] = []
         var unmatchedRun = 0
@@ -123,6 +136,8 @@ final class RecitationTracker {
     /// update's, and those the last two updates agreed on.
     private var tentative: [Int: WordOutcome] = [:]
     private var stable: [Int: WordOutcome] = [:]
+    /// What was heard for the word being recited, judged before it is done.
+    private var tentativeHeard: [Int: String] = [:]
     /// The reciter's corrections ("Not a mistake"), kept over later judgments
     /// of the same word (a shown guess that is then finalized).
     private var overrides: [Int: WordOutcome] = [:]
@@ -148,6 +163,7 @@ final class RecitationTracker {
         let start = Self.firstNonEmpty(from: min(max(0, index), words.count), in: words)
         var s = State(cursor: start, anchor: start)
         s.outcomes = outcomes.filter { $0.key < start }
+        s.heard = committed.heard.filter { $0.key < start }
         overrides = overrides.filter { $0.key < start }
         committed = s
         current = s
@@ -168,6 +184,7 @@ final class RecitationTracker {
         guard i < words.count else { return }
         overrides[i] = nil
         committed.outcomes[i] = outcome
+        committed.heard[i] = nil
         committed.cursor = Self.firstNonEmpty(from: i + 1, in: words)
         committed.lock = .locked           // the place is known again
         committed.lostBySilence = false
@@ -223,26 +240,53 @@ final class RecitationTracker {
     }
 
     /// A judgment from the guess is shown once it is settled: the last two
-    /// updates agree on it, or two recited words already follow it in this
-    /// guess (the recognizer revises mostly its last word or two).
+    /// updates agree on it, or a word recited exactly already follows it in
+    /// this guess (the recognizer revises mostly its last word). The word
+    /// still being recited is judged too, letter by letter (`inProgress`), so
+    /// a wrong word shows without waiting for the next one.
     private func updateTentative() {
         // The guess only judges words from the committed cursor on.
-        let latest = current.outcomes.filter { $0.key >= committed.cursor && committed.outcomes[$0.key] == nil }
+        var latest = current.outcomes.filter { $0.key >= committed.cursor && committed.outcomes[$0.key] == nil }
+        tentativeHeard = [:]
+        if let (i, outcome, heard) = inProgress() {
+            latest[i] = outcome
+            tentativeHeard[i] = heard
+        }
         stable = latest.filter { judged in
             if tentative[judged.key] == judged.value { return true }
-            var after = 0
-            for i in (judged.key + 1)..<max(judged.key + 1, current.cursor) {
-                if current.outcomes[i] == .correct || current.outcomes[i] == .unsure { after += 1 }
-                if after == 2 { return true }
-            }
-            return false
+            let next = Self.firstNonEmpty(from: judged.key + 1, in: words)
+            return next < current.cursor && current.outcomes[next] == .correct
+                && words[next].count >= tuning.exactBelowLength
         }
         tentative = latest
+    }
+
+    /// The word at the cursor, judged from what the guess holds after the
+    /// last matched word. Its letters are compared with the word's own as far
+    /// as they go: while they agree (allowing a misheard letter) the word is
+    /// still being said; once they part, it is wrong. A lone letter, easily
+    /// dropped by the recognizer, isn't judged this way.
+    private func inProgress() -> (Int, WordOutcome, String)? {
+        let i = current.cursor
+        guard current.lock == .locked, i < words.count, let first = current.pending.first,
+              words[i].count > 1 else { return nil }
+        let raw = current.pending.map(\.raw).joined(separator: " ")
+        let said = current.pending.map(\.norm).joined()
+        let word = words[i]
+        if said.count < word.count {
+            // Still being said: the letters so far, against the word's start.
+            let closest = ((said.count - 1)...(said.count + 1)).filter { $0 > 0 && $0 <= word.count }
+                .map { levenshtein(said, String(word.prefix($0))) }.min() ?? said.count
+            if closest <= max(1, said.count / 4) { return nil }
+        }
+        let near = levenshtein(first.norm, word) <= tuning.nearMissThreshold(first.norm, word)
+        return (i, near ? .unsure : .wrong(heard: raw), raw)
     }
 
     private func clearTentative() {
         tentative = [:]
         stable = [:]
+        tentativeHeard = [:]
     }
 
     // MARK: - Alignment
@@ -253,37 +297,39 @@ final class RecitationTracker {
             let token = tokens[i]
             let near = s.cursor..<min(words.count, s.cursor + tuning.lockedLookahead)
             let wide = s.cursor..<min(words.count, s.cursor + tuning.lostWindow)
-            var found: (hit: Int, exact: Bool, uncertainGap: Bool)?
+            var found: (hit: Int, exact: Bool, uncertainGap: Bool, heard: String)?
             // Words the token covers before `hit` (a prefix written apart, e.g.
             // بِـ: بِسْمِ heard as ببسم): judged with it, not as a gap.
             var joinedFrom: Int?
             let placeKnown = s.lock != .lost || s.lostBySilence
             if placeKnown, let joined = matchJoined(token.norm, in: near),
                joined.exact || !(match(token.norm, in: near)?.1 ?? false) {
-                found = (joined.end, joined.exact, false)
+                found = (joined.end, joined.exact, false, token.raw)
                 joinedFrom = s.cursor
-            } else if placeKnown, let (hit, exact) = match(token.norm, in: near) {
+            } else if placeKnown, let (hit, exact) = match(token.norm, in: near, filling: s.pending.count) {
                 // Before the first match (idle) a gap is as uncertain as a lost one.
-                found = (hit, exact, s.lock == .idle)
+                found = (hit, exact, s.lock == .idle, token.raw)
             } else if placeKnown, s.lock != .idle, let last = s.pending.last,
                       let (hit, exact) = match(last.norm + token.norm, in: near) {
                 // One word heard as two (كالأترج heard as كل ترجح): the last
                 // unmatched token and this one together.
                 s.pending.removeLast()
-                found = (hit, exact, false)
+                found = (hit, exact, false, last.raw + token.raw)
             } else if s.lock == .lost, let (hit, exact) = match(token.norm, in: wide),
                       resyncAccepted(hit, tokens: tokens, at: i) {
-                found = (hit, exact, true)
+                found = (hit, exact, true, token.raw)
             }
             if let found {
                 if let from = joinedFrom {
                     for w in from..<found.hit where !words[w].isEmpty {
                         s.outcomes[w] = found.exact ? .correct : .unsure
+                        s.heard[w] = nil
                     }
                 } else {
                     judgeGap(upTo: found.hit, in: &s, lost: found.uncertainGap)
                 }
                 s.outcomes[found.hit] = found.exact ? .correct : .unsure
+                s.heard[found.hit] = found.exact || joinedFrom != nil ? nil : found.heard
                 s.cursor = Self.firstNonEmpty(from: found.hit + 1, in: words)
                 s.lock = .locked
                 s.lostBySilence = false
@@ -310,7 +356,7 @@ final class RecitationTracker {
         let gap = (s.cursor..<hit).filter { !words[$0].isEmpty }
         guard !gap.isEmpty else { return }   // tokens before an in-place match are extra words
         if lost {
-            for w in gap { s.outcomes[w] = .unheard }
+            for w in gap { s.outcomes[w] = .unheard; s.heard[w] = nil }
             return
         }
         for (k, w) in gap.enumerated() {
@@ -318,6 +364,7 @@ final class RecitationTracker {
                 // A lone letter (a prefix written apart) is hard to hear and
                 // easily dropped by the recognizer: check it, don't call it wrong.
                 s.outcomes[w] = words[w].count == 1 ? .unsure : .skipped
+                s.heard[w] = nil
                 continue
             }
             // Any extra heard tokens beyond the gap belong to its last slot.
@@ -327,6 +374,7 @@ final class RecitationTracker {
                 levenshtein($0.norm, words[w]) <= tuning.nearMissThreshold($0.norm, words[w])
             }
             s.outcomes[w] = near ? .unsure : .wrong(heard: rawHeard)
+            s.heard[w] = rawHeard
         }
     }
 
@@ -364,6 +412,20 @@ final class RecitationTracker {
             if let exact = isMatch(token, words[i]) { return (i, exact) }
         }
         return nil
+    }
+
+    /// As `match`, but an exact match further on wins over a near one when
+    /// the `unmatched` tokens heard before it can fill the words between
+    /// (من إذا heard for أمّا إذا: إذا is إذا, not a near أمّا).
+    private func match(_ token: String, in range: Range<Int>, filling unmatched: Int) -> (Int, Bool)? {
+        guard let first = match(token, in: range), !first.1 else { return match(token, in: range) }
+        var between = 0
+        for i in range where !words[i].isEmpty {
+            if i > first.0, token == words[i] { return (i, true) }
+            between += 1
+            if between > unmatched { break }
+        }
+        return first
     }
 
     /// nil if no match; true if exact, false if within the fuzzy threshold.

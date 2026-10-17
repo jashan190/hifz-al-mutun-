@@ -179,6 +179,7 @@ private struct MemorizeHalf: View {
     let half: Hemistich
     let revealed: Int
     var outcome: (Int) -> WordOutcome? = { _ in nil }
+    var heard: (Int) -> String? = { _ in nil }
     var flagged: (Int) -> Bool = { _ in false }
     var onDismiss: (Int) -> Void = { _ in }
     var onToggleFlag: (Int) -> Void = { _ in }
@@ -194,7 +195,7 @@ private struct MemorizeHalf: View {
             HStack(spacing: PageFont.width(" ", size: fontSize)) {
                 ForEach(0..<revealed, id: \.self) { k in
                     MemorizeWord(segments: HemistichReveal.span(half, words: k..<(k + 1)),
-                                 outcome: outcome(k), flagged: flagged(k), fontSize: fontSize,
+                                 outcome: outcome(k), heard: heard(k), flagged: flagged(k), fontSize: fontSize,
                                  onDismiss: { onDismiss(k) }, onToggleFlag: { onToggleFlag(k) })
                 }
             }
@@ -224,8 +225,9 @@ private struct MemorizeHalf: View {
 
 // One recited word, styled by how it was judged:
 //  - correct / not yet judged: the book's own colours
-//  - unsure (a near miss): amber
-//  - wrong: red on a soft red highlight, with what was heard in small type beneath
+//  - unsure (a near miss): amber on the letters that differ from what was heard
+//  - wrong: on a soft red highlight, the letters that differ (with their
+//    harakat) red, and what was heard in small type beneath
 //  - skipped: red on a soft red highlight, struck through
 // The highlight keeps a mistake distinct from words the book itself prints red.
 //  - unheard (jumped while re-finding the place): secondary ink
@@ -234,6 +236,9 @@ private struct MemorizeHalf: View {
 private struct MemorizeWord: View {
     let segments: [Segment]
     let outcome: WordOutcome?
+    /// What was heard, for an amber or red word: only its differing letters
+    /// are coloured. Without it the whole word is.
+    var heard: String? = nil
     var flagged = false
     let fontSize: CGFloat
     var onDismiss: () -> Void = {}
@@ -247,8 +252,9 @@ private struct MemorizeWord: View {
                 plain: plain,
                 size: fontSize,
                 justifyWidth: 0,   // "no kashida", the sentinel headings use
-                tint: tint,
-                underlined: flagged ? [0..<plain.unicodeScalars.count] : []
+                tint: letters(plain) == nil ? tint : inkColor,
+                underlined: flagged ? [0..<plain.unicodeScalars.count] : [],
+                emphasis: letters(plain).map { ($0, tint(.black)) }
             ),
             font: PageFont.font(size: fontSize),
             size: fontSize
@@ -291,6 +297,19 @@ private struct MemorizeWord: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(plain)
         .accessibilityValue(accessibilityNote)
+    }
+
+    /// The letters to colour as the mistake, when what was heard is known
+    /// and shares some letters with the word (else the whole word is coloured).
+    private func letters(_ plain: String) -> [Range<Int>]? {
+        guard let heard else { return nil }
+        switch outcome {
+        case .unsure?, .wrong?: break
+        default: return nil
+        }
+        let ranges = LetterEmphasis.ranges(written: plain, heard: heard)
+        let total = ArabicNormalize.letterRanges(plain).count
+        return ranges.isEmpty || ranges.count >= total ? nil : ranges
     }
 
     private func tint(_ color: SegmentColor) -> Color {
@@ -431,6 +450,7 @@ private struct BaytRow: View {
                 half: half,
                 revealed: reveal?.revealedWords(bayt: bayt.number, half: which) ?? 0,
                 outcome: { reveal?.outcome(bayt: bayt.number, half: which, wordIndex: $0) },
+                heard: { reveal?.heard(bayt: bayt.number, half: which, wordIndex: $0) },
                 flagged: { flagged(which, $0) },
                 onDismiss: { actions.dismissMistake(bayt.number, which, $0) },
                 onToggleFlag: { k in

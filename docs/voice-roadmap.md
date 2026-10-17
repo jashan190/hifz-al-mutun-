@@ -163,6 +163,19 @@ Still to do:
     a skip used to show ~25 s after the next word; now 11–13 s (2 passes). The
     phone's passes should be much shorter; the floor is "the next word is
     heard, plus a pass or two".
+  - Letter by letter: the word being recited is compared, as heard so far,
+    with the start of the expected word; once its letters part (beyond one
+    misheard letter) it is judged without waiting for the next word. A word
+    after a mistake, said exactly, shows the mistake at once (was: two words).
+    Live: the second planted skip went from 3 passes to 2; no word flashed red
+    and cleared on the correct clip (`aLiveRunNeverFlashesRed` replays a run).
+  - A mistake is drawn on its letters: the differing letters of an amber or
+    red word, with their harakat, are coloured; the rest stays in ink. The
+    session review colours them in "Should be" too.
+  - Harakat themselves can't be judged: Whisper writes none (0 marks on the
+    clip). Prompted with vowelled text it writes them, but wrongly on a
+    correct recitation (مَبَدُوْا, أَجَذَمُ, حِبْلَ) and drops whole bayts, so
+    every vowel slip it made would be a false red mark and beep.
 - Known limits: WhisperKit's streamer keeps the whole sitting's audio
   (~4 MB a minute) and re-reads it each pass; fine for a page or two, worth
   a rolling buffer if long sittings get slow. Whisper invents text on

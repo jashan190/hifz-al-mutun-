@@ -178,26 +178,32 @@ import CoreML
 
         let started = Date()
         let start = Task { try await source.start() }
-        let drain = Task { () -> (finals: Int, lostWhileReciting: Int) in
+        let drain = Task { () -> (finals: Int, lostWhileReciting: Int, flashed: Set<Int>) in
             var finals = 0, lost = 0
+            var everShown: Set<Int> = []
             for await fragment in source.fragments {
                 let t = Date().timeIntervalSince(started)
                 tracker.consume(fragment, at: t)
+                for (i, o) in tracker.shownOutcomes where o.isMistake { everShown.insert(i) }
                 if fragment.isFinal { finals += 1 }
                 if tracker.lockState == .lost { lost += 1 }
                 print("STREAM \(String(format: "%5.1f", t)) \(fragment.isFinal ? "FINAL   " : "volatile") \(fragment.text)")
             }
-            return (finals, lost)
+            // Shown red at some point, but not in the end: a mark and a beep
+            // that were taken back.
+            return (finals, lost, everShown.subtracting(tracker.outcomes.filter { $0.value.isMistake }.keys))
         }
         // Wait for the clip to play through, then stop as the mic button does.
         while !audio.finished { try await Task.sleep(for: .milliseconds(200)) }
         try await Task.sleep(for: .seconds(3))
         source.stop()
-        let (finals, lost) = await drain.value
+        let (finals, lost, flashed) = await drain.value
         _ = try? await start.value
 
         let end = try #require(index.firstWordIndex(ofBayt: 11))
         let mistakes = tracker.outcomes.filter { $0.key < end && $0.value.isMistake }
+        print("STREAM flashed red then cleared: \(flashed.sorted().map { index.normalizedWords[$0] })")
+        #expect(flashed.count <= 1)
         print("STREAM cursor \(tracker.cursor)/\(end), finals \(finals), lost \(lost), mistakes \(mistakes.sorted { $0.key < $1.key })")
         #expect(finals > 0)
         #expect(tracker.cursor >= end - 2)

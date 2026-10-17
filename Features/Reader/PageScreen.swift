@@ -347,6 +347,22 @@ private struct MistakeRow: View {
     let mistake: ReviewSummary.Mistake
     let action: () -> Void
 
+    /// The word as written, its differing letters (and their harakat) red.
+    private var expected: AttributedString {
+        var text = AttributedString(mistake.expected)
+        text.foregroundColor = Theme.ink
+        guard let heard = mistake.heard else { return text }
+        let scalars = mistake.expected.unicodeScalars
+        for r in LetterEmphasis.ranges(written: mistake.expected, heard: heard) {
+            let lo = scalars.index(scalars.startIndex, offsetBy: r.lowerBound)
+            let hi = scalars.index(scalars.startIndex, offsetBy: r.upperBound)
+            guard let a = AttributedString.Index(lo, within: text),
+                  let b = AttributedString.Index(hi, within: text) else { continue }
+            text[a..<b].foregroundColor = Theme.error
+        }
+        return text
+    }
+
     private var place: String {
         "Bayt \(mistake.bayt) · \(mistake.half == .sadr ? "first half" : "second half")"
     }
@@ -362,9 +378,8 @@ private struct MistakeRow: View {
                         Text("Should be")
                             .font(.caption)
                             .foregroundStyle(Theme.ink.opacity(0.7))
-                        Text(mistake.expected)
+                        Text(expected)
                             .font(PageFont.font(size: 20))
-                            .foregroundStyle(Theme.ink)
                         Text(mistake.heard == nil ? "· skipped" : "· you said")
                             .font(.caption)
                             .foregroundStyle(Theme.error)

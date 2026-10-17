@@ -34,4 +34,32 @@ enum ArabicNormalize {
         }
         return String(out)
     }
+
+    /// For each letter of `normalize(text)`, the scalar range in `text` that
+    /// draws it: the letter and the marks (harakat) on it. A mistake is shown
+    /// on these, so the right vowels of a wrong letter stand out.
+    static func letterRanges(_ text: String) -> [Range<Int>] {
+        var ranges: [Range<Int>] = []
+        var owner: [Int] = []          // ranges indices still taking marks
+        for (offset, scalar) in text.unicodeScalars.enumerated() {
+            var letters = 0
+            var mark = false
+            for s in String(scalar).decomposedStringWithCompatibilityMapping.unicodeScalars {
+                if isMark(s.value) || s.value == 0x0640 { mark = true; continue }
+                if isKeptLetter(fold(s).value) { letters += 1 }
+            }
+            if letters > 0 {
+                owner = []
+                for _ in 0..<letters {
+                    owner.append(ranges.count)
+                    ranges.append(offset..<(offset + 1))
+                }
+            } else if mark {
+                for k in owner { ranges[k] = ranges[k].lowerBound..<(offset + 1) }
+            } else {
+                owner = []             // a space or other letter ends the cluster
+            }
+        }
+        return ranges
+    }
 }
