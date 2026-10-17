@@ -210,6 +210,32 @@ import CoreML
         #expect(mistakes.count <= 12)
     }
 
+    /// Any recording streamed live from a matn's start, printing how each
+    /// word of its first four bayts came out: RECORDING=<audio path>
+    /// RECORDING_MATN=<matn id>.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["RECORDING"] != nil), .timeLimit(.minutes(30)))
+    @MainActor func aRecordingFromDisk() async throws {
+        let env = ProcessInfo.processInfo.environment
+        let store = ContentStore()
+        store.load()
+        let matn = try #require(store.matns.first { $0.id == env["RECORDING_MATN"] })
+        let index = RecitationIndex(matn: matn)
+        let audio = try FileFedAudio(path: env["RECORDING"]!)
+        let session = RecitationSession(index: index, source: WhisperSpeechSource(model: .turbo, audioInput: audio), startWordIndex: 0)
+        session.stuckRevealAfter = nil
+        session.start()
+        while !audio.finished { try await Task.sleep(for: .milliseconds(200)) }
+        try await Task.sleep(for: .seconds(3))
+        session.stop()
+        let end = index.firstWordIndex(ofBayt: 5) ?? index.displayWords.count
+        var lines: [String] = []
+        for i in 0..<end {
+            let o = session.outcomes[i].map { "\($0)" } ?? "—"
+            lines.append("RECORDING bayt \(index.refs[i].bayt) \(index.displayWords[i]): \(o)")
+        }
+        print(lines.joined(separator: "\n"))
+    }
+
     /// The vowel check on the live path: the correct clip streamed through
     /// Whisper into a session that checks the harakat of each settled
     /// passage, using the audio its final results carry. Most words must be
