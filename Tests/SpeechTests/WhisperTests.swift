@@ -220,7 +220,10 @@ import CoreML
     /// the Mac. Needs WHISPER_E2E=1.
     @Test(.enabled(if: ProcessInfo.processInfo.environment["WHISPER_E2E"] == "1"), .timeLimit(.minutes(30)))
     @MainActor func vowelCheckIsQuietOnTheCorrectClip() async throws {
-        let clip = try #require(Bundle(for: BundleToken.self).url(forResource: "shatibiyya_clip", withExtension: "m4a"))
+        // VOWEL_CLIP=shatibiyya_clip_skips: the clip with two words cut out,
+        // so passages are split into runs around them.
+        let name = ProcessInfo.processInfo.environment["VOWEL_CLIP"] ?? "shatibiyya_clip"
+        let clip = try #require(Bundle(for: BundleToken.self).url(forResource: name, withExtension: "m4a"))
         let audio = try FileFedAudio(path: clip.path)
         let source = WhisperSpeechSource(model: .turbo, audioInput: audio)
         source.keepsAudio = true
@@ -244,8 +247,9 @@ import CoreML
         let end = try #require(index.firstWordIndex(ofBayt: 11))
         let checks = await checker.checked
         let judged = Dictionary(grouping: session.outcomes.filter { $0.key < end }.values) { "\($0)".prefix(7) }.mapValues(\.count)
-        print("VOWELS \(checks.count) checks over \(checks.joined().count)/\(end) words; outcomes \(judged)")
-        #expect(checks.joined().count >= end / 2)
+        let words = checks.joined().joined().count
+        print("VOWELS \(checks.count) checks, \(checks.joined().count) runs, over \(words)/\(end) words; outcomes \(judged)")
+        #expect(words >= end / 2)
         if VowelTests.canRunModel {
             let slips = session.outcomes.filter {
                 guard case .wrong(let said) = $0.value else { return false }
@@ -260,11 +264,12 @@ import CoreML
             let clips = recorder.clips
             #expect(clips.count == checks.count)
             var entries: [[String: Any]] = []
-            for (k, (words, samples)) in zip(checks, clips).enumerated() {
+            for (k, (runs, samples)) in zip(checks, clips).enumerated() {
                 let name = "check\(k).f32"
                 try samples.withUnsafeBufferPointer { Data(buffer: $0) }.write(to: folder.appendingPathComponent(name))
-                entries.append(["audio": name, "words": words.map { index.displayWords[$0] },
-                                "phonemes": words.map { phonemes.words[$0] ?? "" }])
+                entries.append(["audio": name, "runs": runs.map { run in
+                    ["words": run.map { index.displayWords[$0] }, "phonemes": run.map { phonemes.words[$0] ?? "" }]
+                }])
             }
             try JSONSerialization.data(withJSONObject: ["checks": entries]).write(to: folder.appendingPathComponent("checks.json"))
             print("VOWELS wrote \(folder.path)")

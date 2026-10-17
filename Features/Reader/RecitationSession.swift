@@ -146,15 +146,25 @@ final class RecitationSession: ObservableObject {
     /// Checks the words a final result settled against its audio: those
     /// heard right, and near misses (said, though Whisper spelled them
     /// differently; only a word judged correct can become a slip). Skipped
-    /// words aren't in the audio and are left out. Not when a word was wrong
-    /// or unheard: its audio doesn't hold its phonemes, and would throw the
-    /// alignment off.
+    /// words aren't in the audio and are left out. A word wrong or unheard
+    /// splits them into runs: its audio doesn't hold its phonemes, so each
+    /// run is lined up on its own.
     private func checkVowels(settled: [Int: WordOutcome], audio: [Float], with vowels: VowelChecker) {
-        guard settled.values.allSatisfy({ $0 == .correct || $0 == .unsure || $0 == .skipped }) else { return }
-        let said = settled.filter { $0.value != .skipped }.keys.sorted()
-        guard !said.isEmpty else { return }
+        var runs: [[Int]] = [[]]
+        var last: Int?
+        for i in settled.keys.sorted() {
+            if let last, i != last + 1 { runs.append([]) }
+            last = i
+            switch settled[i]! {
+            case .correct, .unsure: runs[runs.count - 1].append(i)
+            case .skipped: break
+            default: runs.append([])
+            }
+        }
+        runs.removeAll { $0.isEmpty }
+        guard !runs.isEmpty else { return }
         Task {
-            let slips = await vowels.check(words: said, audio: audio)
+            let slips = await vowels.check(runs: runs, audio: audio)
             guard !slips.isEmpty else { return }
             for (i, word) in slips { tracker.markVowelSlip(i, said: word) }
             publish()

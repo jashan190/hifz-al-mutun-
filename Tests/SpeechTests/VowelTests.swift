@@ -22,6 +22,14 @@ import CoreML
         #expect(VowelJudge.slips(expected: ["بِسمِ", "للَااهِ"], heard: "بِسمِللَاااااه").isEmpty)
     }
 
+    @Test func runsAroundAWrongWordAreJudgedApart() {
+        // بسم الله | (a wrong word: قال) | الرحمن الرحيم, said الرحَيم;
+        // a lone word beside other runs isn't judged.
+        let runs = [["بِسمِ", "للَااهِ"], ["ررَحمَاانِ", "ررَحِۦۦمِ"], ["قُل"]]
+        let slips = VowelJudge.slips(runs: runs, heard: "بِسمِللَااهِقَالَررَحمَاانِررَحَۦۦمِقَل")
+        #expect(slips == [[], [.init(word: 1, vowel: 1, expected: Self.kasra, heard: Self.fatha)], []])
+    }
+
     @Test func theSlipIsWrittenOnItsLetter() {
         #expect(VowelJudge.written("الْحَمْدُ", phonemes: "لحَمدُ", vowel: 1, heard: Self.fatha) == "الْحَمْدَ")
         #expect(VowelJudge.written("كِتَابُهُ", phonemes: "كِتَاابُهُۥ", vowel: 0, heard: Self.fatha) == "كَتَابُهُ")

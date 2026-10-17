@@ -109,6 +109,7 @@ ffmpeg -i Tests/SpeechTests/Fixtures/shatibiyya_clip.m4a -ar 16000 -ac 1 clip.wa
 | Swift features → Core ML → decoding vs Python, 20 half-line windows | Mac's Core ML (`Tools/vowels/swift`) | variable length: 20/20 identical; fixed lengths: 0 vowels heard differently (16/20 identical; the rest differ in ghunna length and the like); median 24–30 ms per half-line |
 | Running the model | iOS Simulator | **crashes** (a segfault in Core ML's CPU shape kernel), with either export, so the app never loads it there |
 | Live path: the correct clip streamed through Whisper and the session; each check's words and audio recorded in the Simulator and judged on the Mac | Simulator + Mac (`vowelCheckIsQuietOnTheCorrectClip`, then `Tools/vowels/swift`) | 6 checks over 62 of 102 words, **0 slips**: each final's audio lines up with the words it settles. The other 40 words were in passages that also held a word Whisper judged wrong, or in the last guess, which carries no audio |
+| Runs: a passage holding a word Whisper judged wrong is split there into runs, each lined up alone (a run of one word or under 8 phonemes beside others isn't judged) | Simulator (`runsAroundAWrongWordAreJudgedApart`) | Unit test passes. **Live rerun pending**: it should raise coverage above 62/102 with 0 slips on `shatibiyya_clip`, and show no slip beside a cut word on `VOWEL_CLIP=shatibiyya_clip_skips`. Revert to whole-passage-only if it doesn't |
 | Running the model | iPhone | not yet |
 
 ## Plan

@@ -65,6 +65,23 @@ enum VowelJudge {
         return found.reversed()
     }
 
+    /// The shortest run of words judged beside others in one clip: a shorter
+    /// one can line up with the wrong stretch of a long clip.
+    static let minRunScalars = 8
+
+    /// Slips in each run of words (by run), all heard in one clip. Runs are
+    /// the stretches a passage keeps between words that weren't said as
+    /// written; each is lined up alone, so the free ends absorb the other
+    /// runs and those words. Beside others, a run of one word or under
+    /// `minRunScalars` phonemes isn't judged.
+    static func slips(runs: [[String]], heard: String) -> [[Slip]] {
+        runs.map { run in
+            guard runs.count == 1 || (run.count >= 2 && run.joined().unicodeScalars.count >= minRunScalars)
+            else { return [] }
+            return slips(expected: run, heard: heard)
+        }
+    }
+
     /// The written word as it was said: its `vowel`-th short vowel (a tanween
     /// counts, as the phonemes write it as a vowel and a nun) changed to
     /// `heard`. nil when the written word doesn't carry the same number of

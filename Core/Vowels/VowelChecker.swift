@@ -10,8 +10,8 @@ actor VowelChecker {
     private let model: any PhonemeHearing
     private let phonemes: [String?]
     private let written: [String]
-    /// The words of each check so far, in order (for tests and logs).
-    private(set) var checked: [[Int]] = []
+    /// The runs of words of each check so far, in order (for tests and logs).
+    private(set) var checked: [[[Int]]] = []
 
     init(model: any PhonemeHearing, phonemes: PhonemeIndex, written: [String]) {
         self.model = model
@@ -51,24 +51,24 @@ actor VowelChecker {
         }
     }
 
-    /// Slips among `words` (flat indices, in order, all said in `audio`), by
-    /// word: the word as it was said. Empty when any of them has unknown
-    /// phonemes, or the clip doesn't suit the model.
-    func check(words: [Int], audio: [Float]) -> [Int: String] {
-        guard !words.isEmpty else { return [:] }
-        var expected: [String] = []
-        for i in words {
-            guard phonemes.indices.contains(i), let p = phonemes[i] else { return [:] }
-            expected.append(p)
-        }
-        checked.append(words)
+    /// Slips among `runs` of words (flat indices, in order, each run said
+    /// without a break and all of them in `audio`), by word: the word as it
+    /// was said. A run with a word of unknown phonemes is left out; nothing
+    /// when the clip doesn't suit the model.
+    func check(runs: [[Int]], audio: [Float]) -> [Int: String] {
+        let runs = runs.filter { run in !run.isEmpty && run.allSatisfy { phonemes.indices.contains($0) && phonemes[$0] != nil } }
+        guard !runs.isEmpty else { return [:] }
+        checked.append(runs)
         guard let heard = try? model.phonemes(audio) else { return [:] }
+        let expected = runs.map { $0.map { phonemes[$0]! } }
         var out: [Int: String] = [:]
-        for slip in VowelJudge.slips(expected: expected, heard: heard) {
-            let i = words[slip.word]
-            let base = out[i] ?? written[i]
-            if let said = VowelJudge.written(base, phonemes: expected[slip.word], vowel: slip.vowel, heard: slip.heard) {
-                out[i] = said
+        for (r, slips) in VowelJudge.slips(runs: expected, heard: heard).enumerated() {
+            for slip in slips {
+                let i = runs[r][slip.word]
+                let base = out[i] ?? written[i]
+                if let said = VowelJudge.written(base, phonemes: expected[r][slip.word], vowel: slip.vowel, heard: slip.heard) {
+                    out[i] = said
+                }
             }
         }
         return out

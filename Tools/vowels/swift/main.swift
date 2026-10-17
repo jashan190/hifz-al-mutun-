@@ -21,7 +21,8 @@ let args = CommandLine.arguments
 let model = try PhonemeModel(contentsOf: URL(fileURLWithPath: args[1]))
 
 if args[2].hasSuffix(".json") {
-    struct Check: Decodable { let audio: String; let words: [String]; let phonemes: [String] }
+    struct Run: Decodable { let words: [String]; let phonemes: [String] }
+    struct Check: Decodable { let audio: String; let runs: [Run] }
     struct Checks: Decodable { let checks: [Check] }
     let url = URL(fileURLWithPath: args[2])
     let checks = try JSONDecoder().decode(Checks.self, from: Data(contentsOf: url)).checks
@@ -29,14 +30,17 @@ if args[2].hasSuffix(".json") {
     for check in checks {
         let data = try Data(contentsOf: url.deletingLastPathComponent().appendingPathComponent(check.audio))
         let samples = data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
-        words += check.words.count
+        let said = check.runs.map { $0.words.joined(separator: " ") }.joined(separator: " | ")
+        words += check.runs.map(\.words.count).reduce(0, +)
         guard let heard = try model.phonemes(samples) else {
-            print("\(check.words.joined(separator: " ")): clip of \(samples.count / 16000) s not checked"); continue
+            print("\(said): clip of \(samples.count / 16000) s not checked"); continue
         }
-        let found = VowelJudge.slips(expected: check.phonemes, heard: heard)
-        slips += found.count
-        let marks = found.map { "\(check.words[$0.word]) vowel \($0.vowel): \(String($0.expected))→\(String($0.heard))" }
-        print("\(String(format: "%5.1f", Double(samples.count) / 16000)) s  \(check.words.joined(separator: " "))\(marks.isEmpty ? "" : "\n      SLIPS " + marks.joined(separator: ", "))")
+        let found = VowelJudge.slips(runs: check.runs.map(\.phonemes), heard: heard)
+        let marks = zip(check.runs, found).flatMap { run, slips in
+            slips.map { "\(run.words[$0.word]) vowel \($0.vowel): \(String($0.expected))→\(String($0.heard))" }
+        }
+        slips += marks.count
+        print("\(String(format: "%5.1f", Double(samples.count) / 16000)) s  \(said)\(marks.isEmpty ? "" : "\n      SLIPS " + marks.joined(separator: ", "))")
     }
     print("\(checks.count) checks, \(words) words, \(slips) slips")
     exit(0)
