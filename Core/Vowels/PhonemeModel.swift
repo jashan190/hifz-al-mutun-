@@ -6,7 +6,13 @@ import CoreML
 /// `Tools/vowels/convert.py`. Audio in, the phonemes said out, written in the
 /// Quran Phonetic Script: letters, the three short vowels, and madd and ghunna
 /// as repeated letters.
-final class PhonemeModel: @unchecked Sendable {
+/// Something that hears phonemes in 16 kHz mono audio: the model, or a
+/// stand-in in tests.
+protocol PhonemeHearing: Sendable {
+    func phonemes(_ samples: [Float]) throws -> String?
+}
+
+final class PhonemeModel: PhonemeHearing, @unchecked Sendable {
     /// The longest clip the export accepts (1500 frames of 20 ms).
     static let maxSeconds: Double = 30
     /// The shortest: 50 frames.

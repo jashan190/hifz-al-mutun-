@@ -7,13 +7,13 @@ import Foundation
 ///
 /// Runs one clip at a time, off the main actor.
 actor VowelChecker {
-    private let model: PhonemeModel
+    private let model: any PhonemeHearing
     private let phonemes: [String?]
     private let written: [String]
-    /// Words checked so far (for tests and logs).
-    private(set) var wordsChecked = 0
+    /// The words of each check so far, in order (for tests and logs).
+    private(set) var checked: [[Int]] = []
 
-    init(model: PhonemeModel, phonemes: PhonemeIndex, written: [String]) {
+    init(model: any PhonemeHearing, phonemes: PhonemeIndex, written: [String]) {
         self.model = model
         self.phonemes = phonemes.words
         self.written = written
@@ -61,8 +61,8 @@ actor VowelChecker {
             guard phonemes.indices.contains(i), let p = phonemes[i] else { return [:] }
             expected.append(p)
         }
+        checked.append(words)
         guard let heard = try? model.phonemes(audio) else { return [:] }
-        wordsChecked += words.count
         var out: [Int: String] = [:]
         for slip in VowelJudge.slips(expected: expected, heard: heard) {
             let i = words[slip.word]

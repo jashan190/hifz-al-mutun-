@@ -96,7 +96,20 @@ ffmpeg -i Tests/SpeechTests/Fixtures/shatibiyya_clip.m4a -ar 16000 -ac 1 clip.wa
 - `fixtures.py` writes the Swift parity fixtures; `VowelTests` compares
   against them. With `TEST_RUNNER_VOWEL_MODEL=<path>` it also runs the model
   end to end.
-- The export takes up to 30 s (`convert.py OUT 1500`).
+- The export takes up to 30 s (`convert.py OUT 1500`), in fixed lengths of
+  1 s each. The app pads a clip's features with zeros (the clip's mean) up
+  to the next length and drops the padded frames' output. On the 20
+  windows, no padding choice changed a vowel heard.
+
+### Where it was verified
+
+| Check | Where | Result |
+| --- | --- | --- |
+| Swift features vs Python | Simulator (`VowelTests`) | largest difference 1.3e-5 |
+| Swift features → Core ML → decoding vs Python, 20 half-line windows | Mac's Core ML (`Tools/vowels/swift`) | variable length: 20/20 identical; fixed lengths: 0 vowels heard differently (16/20 identical; the rest differ in ghunna length and the like); median 24–30 ms per half-line |
+| Running the model | iOS Simulator | **crashes** (a segfault in Core ML's CPU shape kernel), with either export, so the app never loads it there |
+| Live path: the correct clip streamed through Whisper and the session; each check's words and audio recorded in the Simulator and judged on the Mac | Simulator + Mac (`vowelCheckIsQuietOnTheCorrectClip`, then `Tools/vowels/swift`) | 6 checks over 62 of 102 words, **0 slips**: each final's audio lines up with the words it settles. The other 40 words were in passages that also held a word Whisper judged wrong, or in the last guess, which carries no audio |
+| Running the model | iPhone | not yet |
 
 ## Plan
 

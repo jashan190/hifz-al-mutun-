@@ -5,6 +5,12 @@
 //
 //   swiftc -O -o /tmp/vowel-parity Core/Vowels/{PhonemeFeatures,PhonemeModel,VowelJudge}.swift Tools/vowels/swift/main.swift
 //   /tmp/vowel-parity Muaalem_int8.mlpackage Tests/SpeechTests/Fixtures
+//
+// Given a folder of checks recorded live in the Simulator (by
+// `vowelCheckIsQuietOnTheCorrectClip`), it instead judges each one as the app
+// would and lists the slips:
+//
+//   /tmp/vowel-parity Muaalem_int8.mlpackage <folder>/checks.json
 import Foundation
 import AVFoundation
 
@@ -12,8 +18,31 @@ struct Window: Decodable { let from: Int; let to: Int; let phonemes: String }
 struct Windows: Decodable { let windows: [Window] }
 
 let args = CommandLine.arguments
-let fixtures = URL(fileURLWithPath: args[2])
 let model = try PhonemeModel(contentsOf: URL(fileURLWithPath: args[1]))
+
+if args[2].hasSuffix(".json") {
+    struct Check: Decodable { let audio: String; let words: [String]; let phonemes: [String] }
+    struct Checks: Decodable { let checks: [Check] }
+    let url = URL(fileURLWithPath: args[2])
+    let checks = try JSONDecoder().decode(Checks.self, from: Data(contentsOf: url)).checks
+    var slips = 0, words = 0
+    for check in checks {
+        let data = try Data(contentsOf: url.deletingLastPathComponent().appendingPathComponent(check.audio))
+        let samples = data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+        words += check.words.count
+        guard let heard = try model.phonemes(samples) else {
+            print("\(check.words.joined(separator: " ")): clip of \(samples.count / 16000) s not checked"); continue
+        }
+        let found = VowelJudge.slips(expected: check.phonemes, heard: heard)
+        slips += found.count
+        let marks = found.map { "\(check.words[$0.word]) vowel \($0.vowel): \(String($0.expected))→\(String($0.heard))" }
+        print("\(String(format: "%5.1f", Double(samples.count) / 16000)) s  \(check.words.joined(separator: " "))\(marks.isEmpty ? "" : "\n      SLIPS " + marks.joined(separator: ", "))")
+    }
+    print("\(checks.count) checks, \(words) words, \(slips) slips")
+    exit(0)
+}
+
+let fixtures = URL(fileURLWithPath: args[2])
 let file = try AVAudioFile(forReading: fixtures.appendingPathComponent("shatibiyya_clip_16k.flac"))
 let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))!
 try file.read(into: buffer)

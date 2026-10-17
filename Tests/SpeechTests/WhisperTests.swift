@@ -212,21 +212,25 @@ import CoreML
 
     /// The vowel check on the live path: the correct clip streamed through
     /// Whisper into a session that checks the harakat of each settled
-    /// passage, using the audio its final results carry. A correct
-    /// recitation must come out (almost) without vowel slips, and most words
-    /// must have been checked. Needs WHISPER_E2E=1, VOWEL_MODEL=<path> and a
-    /// destination that can run the model (not the Simulator).
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["WHISPER_E2E"] == "1" && VowelTests.canRunModel),
-          .timeLimit(.minutes(30)))
+    /// passage, using the audio its final results carry. Most words must be
+    /// checked, and where the model can run (a Mac or phone, VOWEL_MODEL=<path>)
+    /// a correct recitation must come out (almost) without vowel slips. In
+    /// the Simulator, whose Core ML can't run the model, each check's words
+    /// and audio are written to a folder for `Tools/vowels/swift` to judge on
+    /// the Mac. Needs WHISPER_E2E=1.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WHISPER_E2E"] == "1"), .timeLimit(.minutes(30)))
     @MainActor func vowelCheckIsQuietOnTheCorrectClip() async throws {
         let clip = try #require(Bundle(for: BundleToken.self).url(forResource: "shatibiyya_clip", withExtension: "m4a"))
         let audio = try FileFedAudio(path: clip.path)
         let source = WhisperSpeechSource(model: .turbo, audioInput: audio)
         source.keepsAudio = true
         let index = try Self.shatibiyya()
-        let model = try PhonemeModel(contentsOf: URL(fileURLWithPath: ProcessInfo.processInfo.environment["VOWEL_MODEL"]!))
-        let checker = VowelChecker(model: model, phonemes: try #require(PhonemeIndex(matnID: "shatibiyya", index: index)),
-                                   written: index.displayWords)
+        let phonemes = try #require(PhonemeIndex(matnID: "shatibiyya", index: index))
+        let recorder = ClipRecorder()
+        let hearer: any PhonemeHearing = VowelTests.canRunModel
+            ? try PhonemeModel(contentsOf: URL(fileURLWithPath: ProcessInfo.processInfo.environment["VOWEL_MODEL"]!))
+            : recorder
+        let checker = VowelChecker(model: hearer, phonemes: phonemes, written: index.displayWords)
         let session = RecitationSession(index: index, source: source, startWordIndex: 0)
         session.stuckRevealAfter = nil
         session.vowels = checker
@@ -238,14 +242,33 @@ import CoreML
         try await Task.sleep(for: .seconds(20))      // the last checks
 
         let end = try #require(index.firstWordIndex(ofBayt: 11))
-        let slips = session.outcomes.filter {
-            guard case .wrong(let said) = $0.value else { return false }
-            return ArabicNormalize.normalize(said) == index.normalizedWords[$0.key]
+        let checks = await checker.checked
+        let judged = Dictionary(grouping: session.outcomes.filter { $0.key < end }.values) { "\($0)".prefix(7) }.mapValues(\.count)
+        print("VOWELS \(checks.count) checks over \(checks.joined().count)/\(end) words; outcomes \(judged)")
+        #expect(checks.joined().count >= end / 2)
+        if VowelTests.canRunModel {
+            let slips = session.outcomes.filter {
+                guard case .wrong(let said) = $0.value else { return false }
+                return ArabicNormalize.normalize(said) == index.normalizedWords[$0.key]
+            }
+            print("VOWELS slips \(slips.keys.sorted().map { "\(index.displayWords[$0]) → \(slips[$0]!)" })")
+            #expect(slips.count <= 2)
+        } else {
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("vowel-checks")
+            try? FileManager.default.removeItem(at: folder)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let clips = recorder.clips
+            #expect(clips.count == checks.count)
+            var entries: [[String: Any]] = []
+            for (k, (words, samples)) in zip(checks, clips).enumerated() {
+                let name = "check\(k).f32"
+                try samples.withUnsafeBufferPointer { Data(buffer: $0) }.write(to: folder.appendingPathComponent(name))
+                entries.append(["audio": name, "words": words.map { index.displayWords[$0] },
+                                "phonemes": words.map { phonemes.words[$0] ?? "" }])
+            }
+            try JSONSerialization.data(withJSONObject: ["checks": entries]).write(to: folder.appendingPathComponent("checks.json"))
+            print("VOWELS wrote \(folder.path)")
         }
-        let checked = await checker.wordsChecked
-        print("VOWELS checked \(checked)/\(end) words; slips \(slips.keys.sorted().map { "\(index.displayWords[$0]) → \(slips[$0]!)" })")
-        #expect(checked >= end / 2)
-        #expect(slips.count <= 2)
     }
 
     /// The clip with two words cut out of the audio (الناس at 14.1 s and
@@ -343,6 +366,17 @@ import CoreML
 }
 
 private final class BundleToken {}
+
+/// Keeps the audio of each vowel check, hearing nothing (the Simulator).
+private final class ClipRecorder: PhonemeHearing, @unchecked Sendable {
+    private let lock = NSLock()
+    private var kept: [[Float]] = []
+    var clips: [[Float]] { lock.withLock { kept } }
+    func phonemes(_ samples: [Float]) throws -> String? {
+        lock.withLock { kept.append(samples) }
+        return nil
+    }
+}
 
 /// Plays an audio file into WhisperKit as if from the microphone: 100 ms
 /// buffers at real-time pace, with the same energy bookkeeping VAD reads.

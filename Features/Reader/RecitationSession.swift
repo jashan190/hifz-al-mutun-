@@ -143,12 +143,15 @@ final class RecitationSession: ObservableObject {
         }
     }
 
-    /// Checks the words a final result settled against its audio. Only when
-    /// each was heard right or skipped: a wrong or doubtful word's audio
-    /// doesn't hold its phonemes, and would throw the alignment off.
+    /// Checks the words a final result settled against its audio: those
+    /// heard right, and near misses (said, though Whisper spelled them
+    /// differently; only a word judged correct can become a slip). Skipped
+    /// words aren't in the audio and are left out. Not when a word was wrong
+    /// or unheard: its audio doesn't hold its phonemes, and would throw the
+    /// alignment off.
     private func checkVowels(settled: [Int: WordOutcome], audio: [Float], with vowels: VowelChecker) {
-        guard settled.values.allSatisfy({ $0 == .correct || $0 == .skipped }) else { return }
-        let said = settled.filter { $0.value == .correct }.keys.sorted()
+        guard settled.values.allSatisfy({ $0 == .correct || $0 == .unsure || $0 == .skipped }) else { return }
+        let said = settled.filter { $0.value != .skipped }.keys.sorted()
         guard !said.isEmpty else { return }
         Task {
             let slips = await vowels.check(words: said, audio: audio)
