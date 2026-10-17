@@ -35,11 +35,16 @@ w = PhonemeHead(m).eval()
 T = 250   # 5 s of audio (50 feature frames a second after stride 2)
 x = torch.randn(1, T, 160); mask = torch.ones(1, T, dtype=torch.int32)
 traced = torch.jit.trace(w, (x,), strict=False)
-shapes = [150, 250, 400]   # 3, 5, 8 s
+# Up to 30 s: a slow half-line of the Shatibiyyah can run past 10 s. The
+# lengths are fixed, one per second (the app pads a clip with silence to the
+# next one): the Simulator's Core ML crashes on a free length, and the Neural
+# Engine only takes fixed shapes.
+MAX_FRAMES = int(sys.argv[2]) if len(sys.argv) > 2 else 1500
+LENGTHS = list(range(50, MAX_FRAMES + 1, 50))
 t0 = time.time()
 ml = ct.convert(
     traced,
-    inputs=[ct.TensorType(name="input_features", shape=(1, ct.RangeDim(50, 500, default=250), 160))],
+    inputs=[ct.TensorType(name="input_features", shape=ct.EnumeratedShapes(shapes=[(1, n, 160) for n in LENGTHS], default=(1, 250, 160)))],
     outputs=[ct.TensorType(name="log_probs")],
     compute_precision=ct.precision.FLOAT16,
     minimum_deployment_target=ct.target.iOS18,

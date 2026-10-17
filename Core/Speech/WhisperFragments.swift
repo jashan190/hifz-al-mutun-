@@ -16,6 +16,9 @@ struct WhisperFragments {
         var end: Float
     }
 
+    /// Seconds into the sitting covered by the last final fragment.
+    private(set) var finalSpan: ClosedRange<Float>?
+
     private var confirmedCount = 0
     private var confirmedEnd: Float = 0
     private var lastVolatile = ""
@@ -29,7 +32,10 @@ struct WhisperFragments {
             confirmedCount = confirmed.count
             confirmedEnd = max(confirmedEnd, new.map(\.end).max() ?? 0)
             let text = Self.join(new)
-            if !text.isEmpty { out.append(.init(text: text, isFinal: true)) }
+            if !text.isEmpty {
+                out.append(.init(text: text, isFinal: true))
+                finalSpan = (new.map(\.start).min() ?? 0)...confirmedEnd
+            }
             lastVolatile = ""   // a final supersedes the guess: resend it
         }
         // WhisperKit publishes the confirmed list a moment before the new

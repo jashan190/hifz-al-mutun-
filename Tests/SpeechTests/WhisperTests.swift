@@ -210,6 +210,44 @@ import CoreML
         #expect(mistakes.count <= 12)
     }
 
+    /// The vowel check on the live path: the correct clip streamed through
+    /// Whisper into a session that checks the harakat of each settled
+    /// passage, using the audio its final results carry. A correct
+    /// recitation must come out (almost) without vowel slips, and most words
+    /// must have been checked. Needs WHISPER_E2E=1, VOWEL_MODEL=<path> and a
+    /// destination that can run the model (not the Simulator).
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WHISPER_E2E"] == "1" && VowelTests.canRunModel),
+          .timeLimit(.minutes(30)))
+    @MainActor func vowelCheckIsQuietOnTheCorrectClip() async throws {
+        let clip = try #require(Bundle(for: BundleToken.self).url(forResource: "shatibiyya_clip", withExtension: "m4a"))
+        let audio = try FileFedAudio(path: clip.path)
+        let source = WhisperSpeechSource(model: .turbo, audioInput: audio)
+        source.keepsAudio = true
+        let index = try Self.shatibiyya()
+        let model = try PhonemeModel(contentsOf: URL(fileURLWithPath: ProcessInfo.processInfo.environment["VOWEL_MODEL"]!))
+        let checker = VowelChecker(model: model, phonemes: try #require(PhonemeIndex(matnID: "shatibiyya", index: index)),
+                                   written: index.displayWords)
+        let session = RecitationSession(index: index, source: source, startWordIndex: 0)
+        session.stuckRevealAfter = nil
+        session.vowels = checker
+
+        session.start()
+        while !audio.finished { try await Task.sleep(for: .milliseconds(200)) }
+        try await Task.sleep(for: .seconds(3))
+        session.stop()
+        try await Task.sleep(for: .seconds(20))      // the last checks
+
+        let end = try #require(index.firstWordIndex(ofBayt: 11))
+        let slips = session.outcomes.filter {
+            guard case .wrong(let said) = $0.value else { return false }
+            return ArabicNormalize.normalize(said) == index.normalizedWords[$0.key]
+        }
+        let checked = await checker.wordsChecked
+        print("VOWELS checked \(checked)/\(end) words; slips \(slips.keys.sorted().map { "\(index.displayWords[$0]) → \(slips[$0]!)" })")
+        #expect(checked >= end / 2)
+        #expect(slips.count <= 2)
+    }
+
     /// The clip with two words cut out of the audio (الناس at 14.1 s and
     /// كتابه at 35.0 s), streamed live: both are caught, and this prints how
     /// long after the next word was spoken each one shows, and is finalized.

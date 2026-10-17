@@ -31,6 +31,11 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
 
     /// Audio from somewhere other than the microphone (tests feed a file).
     private let audioInput: (any AudioProcessing)?
+    /// What records, once running: its samples back the final fragments' audio.
+    private var recorder: (any AudioProcessing)?
+    /// Attach each final fragment's audio (for the vowel check). Set before
+    /// `start()`.
+    var keepsAudio = false
 
     init(model: WhisperModel = .selected, audioInput: (any AudioProcessing)? = nil) {
         self.model = model
@@ -83,6 +88,7 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
             skipSpecialTokens: true,
             withoutTimestamps: false     // confirmation needs segment ends
         )
+        recorder = audioInput ?? whisper.audioProcessor
         let streamer = AudioStreamTranscriber(
             audioEncoder: whisper.audioEncoder,
             featureExtractor: whisper.featureExtractor,
@@ -128,7 +134,10 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
         }
         let confirmed = segments(state.confirmedSegments)
         let unconfirmed = segments(state.unconfirmedSegments)
-        let out = emitter.withLock { $0.update(confirmed: confirmed, unconfirmed: unconfirmed) }
+        var (out, span) = emitter.withLock { e in (e.update(confirmed: confirmed, unconfirmed: unconfirmed), e.finalSpan) }
+        if keepsAudio, let recorder, let span, let k = out.firstIndex(where: \.isFinal) {
+            out[k].audio = Self.clip(recorder.audioSamples, span)
+        }
         #if DEBUG
         if !out.isEmpty {
             // How far behind live speech words appear: the time since the last
@@ -144,6 +153,15 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
             log(fragment)
             continuation.yield(fragment)
         }
+    }
+
+    /// The samples of `span` (seconds), with a quarter second either side so
+    /// the first and last sounds aren't cut.
+    private static func clip(_ samples: ContiguousArray<Float>, _ span: ClosedRange<Float>) -> [Float] {
+        let rate = Float(WhisperKit.sampleRate)
+        let from = max(0, Int((span.lowerBound - 0.25) * rate))
+        let to = min(samples.count, Int((span.upperBound + 0.25) * rate))
+        return from < to ? Array(samples[from..<to]) : []
     }
 
     private func log(_ fragment: TranscriptFragment) {

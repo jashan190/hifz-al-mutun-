@@ -62,6 +62,9 @@ final class RecitationSession: ObservableObject {
     /// How a reveal is recorded: as help (flagged) when reciting by voice,
     /// or plainly shown in a tap-to-reveal sitting.
     var revealOutcome: WordOutcome = .revealed
+    /// Checks the harakat of words as they settle, when the phoneme model is
+    /// available; the source must then attach audio to its finals.
+    var vowels: VowelChecker?
 
     init(index: RecitationIndex, source: SpeechSource, startWordIndex: Int) {
         let layout = RevealLayout(index: index)
@@ -131,7 +134,26 @@ final class RecitationSession: ObservableObject {
     /// Drains the source stream into the tracker. Exposed for tests.
     func run() async {
         for await fragment in source.fragments {
+            let before = tracker.outcomes
             tracker.consume(fragment, at: now)
+            publish()
+            if let vowels, fragment.isFinal, let audio = fragment.audio {
+                checkVowels(settled: tracker.outcomes.filter { before[$0.key] == nil }, audio: audio, with: vowels)
+            }
+        }
+    }
+
+    /// Checks the words a final result settled against its audio. Only when
+    /// each was heard right or skipped: a wrong or doubtful word's audio
+    /// doesn't hold its phonemes, and would throw the alignment off.
+    private func checkVowels(settled: [Int: WordOutcome], audio: [Float], with vowels: VowelChecker) {
+        guard settled.values.allSatisfy({ $0 == .correct || $0 == .skipped }) else { return }
+        let said = settled.filter { $0.value == .correct }.keys.sorted()
+        guard !said.isEmpty else { return }
+        Task {
+            let slips = await vowels.check(words: said, audio: audio)
+            guard !slips.isEmpty else { return }
+            for (i, word) in slips { tracker.markVowelSlip(i, said: word) }
             publish()
         }
     }
