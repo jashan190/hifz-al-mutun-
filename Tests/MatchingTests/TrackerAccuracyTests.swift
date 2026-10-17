@@ -248,3 +248,33 @@ extension TrackerAccuracyTests {
         #expect(everShown.subtracting(kept).isEmpty, "flashed red: \(everShown.subtracting(kept).sorted().map { index.normalizedWords[$0] })")
     }
 }
+
+extension TrackerAccuracyTests {
+    /// The end of the skips clip fed at phone pace (a pass a second): Whisper
+    /// merged وأغنى غناء into وأغناء for one pass, which made غناء look skipped.
+    @Test func aMergedWordDoesNotFlashASkip() throws {
+        let index = try WhisperTests.shatibiyya()
+        let t = RecitationTracker(words: index.normalizedWords, startIndex: try #require(index.firstWordIndex(ofBayt: 9)))
+        let run: [(Double, Bool, String)] = [
+            (70.0, true, "هو الحر إن كان الحري حواليا"),
+            (70.1, false, "له بتحريه إلى أن تنبنا"),
+            (71.2, true, "له بتحريه إلى أن تنبلا"),
+            (71.2, false, "وإنك"),
+            (72.2, false, "وإن كتاب الله"),
+            (73.4, false, "وإن كتاب الله أوثق شاكرا"),
+            (74.5, false, "وإن كتاب الله يوثق شافعين وصفحين"),
+            (75.6, false, "وإن كتاب الله يوثق شافع وأغنى غنى"),
+            (76.8, true, "وإن كتاب الله أوثق شافع"),
+            (76.8, false, "وأغنى غناء واه"),
+            (77.8, false, "وأغناء واهبا متفضل"),
+            (78.8, false, "وأغنى غناء واهبا متفضلا"),
+            (78.8, true, "وأغنى غناء واهبا متفضلا"),
+        ]
+        var everShown: Set<Int> = []
+        for (time, isFinal, text) in run {
+            t.consume(.init(text: text, isFinal: isFinal), at: time)
+            for (i, o) in t.shownOutcomes where o.isMistake { everShown.insert(i) }
+        }
+        #expect(everShown.isEmpty, "shown red: \(everShown.sorted().map { index.normalizedWords[$0] })")
+    }
+}

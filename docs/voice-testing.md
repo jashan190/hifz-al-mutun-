@@ -35,6 +35,11 @@ Optional: the same check as the Mac ran on the bundled clip, on the phone —
 add `WHISPER_E2E` = `1`, then **⌘U**. `transcribesTheClip` prints `WHISPER clip:`
 and the transcript.
 
+On the Mac, `TEST_RUNNER_WHISPER_E2E_SLOW=1` runs `phonePacedPassesNeverFlashRed`
+(~30 min): both clips fed 10× slower so each Simulator pass sees about a second
+of new audio, as on a phone. It prints every fragment (`PACED`) and any word
+shown red that later cleared (a false beep).
+
 ## Step 2 — recite
 
 Try each of these and note what happens:

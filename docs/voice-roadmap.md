@@ -169,6 +169,10 @@ Still to do:
     after a mistake, said exactly, shows the mistake at once (was: two words).
     Live: the second planted skip went from 3 passes to 2; no word flashed red
     and cleared on the correct clip (`aLiveRunNeverFlashesRed` replays a run).
+    At phone pace (clip fed 10× slower, ~1 s of audio a pass): no flash on the
+    correct clip; the two cut words show ~3 s of audio after the next word
+    starts. One flash on the skips clip (وأغنى غناء merged into وأغناء for a
+    pass) led to: a skip after a word heard only nearly waits for agreement.
   - A mistake is drawn on its letters: the differing letters of an amber or
     red word, with their harakat, are coloured; the rest stays in ink. The
     session review colours them in "Should be" too.

@@ -225,7 +225,8 @@ private struct MemorizeHalf: View {
 
 // One recited word, styled by how it was judged:
 //  - correct / not yet judged: the book's own colours
-//  - unsure (a near miss): amber on the letters that differ from what was heard
+//  - unsure (a near miss): on a soft amber highlight, the letters that differ
+//    from what was heard amber
 //  - wrong: on a soft red highlight, the letters that differ (with their
 //    harakat) red, and what was heard in small type beneath
 //  - skipped: red on a soft red highlight, struck through
@@ -252,7 +253,9 @@ private struct MemorizeWord: View {
                 plain: plain,
                 size: fontSize,
                 justifyWidth: 0,   // "no kashida", the sentinel headings use
-                tint: letters(plain) == nil ? tint : inkColor,
+                // The rest of the word in plain ink, so the marked letters
+                // stand out even in a word the book prints red or blue.
+                tint: letters(plain) == nil ? tint : { _ in Theme.ink },
                 underlined: flagged ? [0..<plain.unicodeScalars.count] : [],
                 emphasis: letters(plain).map { ($0, tint(.black)) }
             ),
@@ -261,9 +264,10 @@ private struct MemorizeWord: View {
         )
         .fixedSize()
         .background {
-            if outcome?.isMistake == true {
+            if outcome?.isMistake == true || outcome == .unsure {
                 RoundedRectangle(cornerRadius: fontSize * 0.18, style: .continuous)
-                    .fill(Theme.error.opacity(0.10))   // keeps error text ≥4.5:1
+                    .fill(outcome == .unsure ? Theme.unsure.opacity(0.12)
+                          : Theme.error.opacity(0.10))   // keeps error text ≥4.5:1
                     .padding(.horizontal, -fontSize * 0.1)
                     .padding(.vertical, fontSize * 0.12)
             }

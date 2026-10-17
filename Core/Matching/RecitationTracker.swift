@@ -241,7 +241,8 @@ final class RecitationTracker {
 
     /// A judgment from the guess is shown once it is settled: the last two
     /// updates agree on it, or a word recited exactly already follows it in
-    /// this guess (the recognizer revises mostly its last word). The word
+    /// this guess (the recognizer revises mostly its last word) — for a
+    /// skip, only when the word before it was heard exactly too. The word
     /// still being recited is judged too, letter by letter (`inProgress`), so
     /// a wrong word shows without waiting for the next one.
     private func updateTentative() {
@@ -254,6 +255,11 @@ final class RecitationTracker {
         }
         stable = latest.filter { judged in
             if tentative[judged.key] == judged.value { return true }
+            // A word heard only nearly may have swallowed the next one
+            // (وأغنى غناء heard as وأغناء): a skip after it waits to agree.
+            if judged.value == .skipped,
+               let before = (committed.anchor..<judged.key).last(where: { !words[$0].isEmpty }),
+               current.outcomes[before] != .correct { return false }
             let next = Self.firstNonEmpty(from: judged.key + 1, in: words)
             return next < current.cursor && current.outcomes[next] == .correct
                 && words[next].count >= tuning.exactBelowLength
