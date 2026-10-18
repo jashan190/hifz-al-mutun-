@@ -33,7 +33,7 @@ enum WordOutcome: Equatable {
     /// Jumped over while re-finding the place after the tracker was lost. The
     /// recognizer may simply have missed these, so they aren't called mistakes.
     case unheard
-    /// Shown as help when the reciter was stuck (a tap, or a long pause).
+    /// Shown as help when the reciter was stuck (a tap).
     case revealed
     /// Shown by tap in a sitting without voice: nothing was recited to judge.
     case shown
@@ -363,6 +363,16 @@ final class RecitationTracker {
                 s.pending.append(token)
                 s.unmatchedRun += 1
                 if s.unmatchedRun >= tuning.lostAfterUnmatched {
+                    if s.lock == .locked || s.lostBySilence, s.cursor < words.count {
+                        // Words that fit nothing ahead (another bayt, or the
+                        // other poem's): the word due wasn't said. It shows
+                        // red at once with what was, and stays red if the
+                        // reciter then says it after all, as in Tarteel.
+                        let heard = s.pending.map(\.raw).joined(separator: " ")
+                        s.outcomes[s.cursor] = .wrong(heard: heard)
+                        s.heard[s.cursor] = heard
+                        s.cursor = Self.firstNonEmpty(from: s.cursor + 1, in: words)
+                    }
                     s.lock = .lost
                     s.lostBySilence = false
                     s.pending = []   // can't pair these with a slot once lost

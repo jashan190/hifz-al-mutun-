@@ -86,7 +86,6 @@ final class VoiceController: ObservableObject {
             }
         }
         if manual {
-            session.stuckRevealAfter = nil
             session.revealOutcome = .shown   // reviewing by tap: reveals aren't flagged
         }
         self.session = session

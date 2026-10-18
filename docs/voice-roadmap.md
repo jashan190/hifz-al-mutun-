@@ -111,7 +111,7 @@ Still to do:
 ## Phase E — Review mode UX ✅
 
 - Start at the top of the current page; tapping a bayt number starts from that bayt.
-- Stuck: tap the next outline to reveal one word, or after about 8 s it fades in (counts as `revealed`).
+- Stuck: tap the next outline to reveal one word (counts as `revealed`). No reveal on a pause.
 - Carry on across page turns automatically.
 - Stop card: bayts recited, mistakes flagged, then **Review again** / **Back to Memorize**.
 - No-voice fallback: the mic shows why it's unavailable (no permission → *Open Settings*;

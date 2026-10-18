@@ -1,0 +1,39 @@
+// Replays captured Whisper fragments (Tests/SpeechTests/Fixtures/replay_*.json,
+// written by `WhisperTests.aRecordingFromDisk`) into the tracker on the Mac,
+// in a second instead of an Xcode test run, and prints what showed red.
+//
+//   swiftc -O -o /tmp/replay Core/Models/{Matn,LegacyMatn}.swift Core/Matching/*.swift Tools/replay/main.swift
+//   /tmp/replay Tests/SpeechTests/Fixtures Resources/Content
+import Foundation
+
+struct Fragment: Decodable { let t: Double; let final: Bool; let text: String }
+struct File: Decodable { let matn: String; let fragments: [Fragment] }
+
+let fixtures = URL(fileURLWithPath: CommandLine.arguments[1])
+let content = URL(fileURLWithPath: CommandLine.arguments[2])
+for name in ["clip", "skips", "r95", "r96", "r97"] {
+    let file = try JSONDecoder().decode(File.self, from: Data(contentsOf: fixtures.appendingPathComponent("replay_\(name).json")))
+    let matn = try JSONDecoder().decode(Matn.self, from: Data(contentsOf: content.appendingPathComponent("\(file.matn).json")))
+    let index = RecitationIndex(matn: matn)
+    let tracker = RecitationTracker(words: index.normalizedWords, startIndex: 0)
+    var everRed: Set<Int> = []
+    for f in file.fragments {
+        tracker.consume(.init(text: f.text, isFinal: f.final), at: f.t)
+        let red = tracker.shownOutcomes.filter { $0.value.isMistake }.keys
+        let new = Set(red).subtracting(everRed)
+        if !new.isEmpty {
+            print(String(format: "  %@ %5.1f s %@  RED %@", name, f.t, f.final ? "FINAL" : "guess", f.text,
+                         new.sorted().map { "\(index.refs[$0].bayt):\(index.displayWords[$0])" }.joined(separator: " ")))
+        }
+        everRed.formUnion(red)
+    }
+    let red = Set(tracker.outcomes.filter { $0.value.isMistake }.keys)
+    func show(_ s: Set<Int>) -> String {
+        s.sorted().map { i -> String in
+            let heard: String
+            if case .wrong(let h)? = tracker.outcomes[i] { heard = "(\(h))" } else { heard = "" }
+            return "\(index.refs[i].bayt):\(index.displayWords[i])\(heard)"
+        }.joined(separator: " ")
+    }
+    print("\(name): red [\(show(red))] flashed [\(show(everRed.subtracting(red)))]")
+}

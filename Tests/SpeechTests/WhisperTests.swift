@@ -3,6 +3,7 @@ import Foundation
 import WhisperKit
 import AVFoundation
 import CoreML
+import os
 @testable import HifzAlMutun
 
 /// Whisper output → tracker fragments, and what the tracker makes of a real
@@ -210,9 +211,10 @@ import CoreML
         #expect(mistakes.count <= 12)
     }
 
-    /// Any recording streamed live from a matn's start, printing how each
-    /// word of its first four bayts came out: RECORDING=<audio path>
-    /// RECORDING_MATN=<matn id>.
+    /// Any recording streamed live from a matn's start: prints each fragment
+    /// and how each word of the first four bayts came out, and saves the
+    /// fragments (with their times) for `TrackerReplayTests` to replay.
+    /// RECORDING=<audio path> RECORDING_MATN=<matn id> [RECORDING_OUT=<json path>].
     @Test(.enabled(if: ProcessInfo.processInfo.environment["RECORDING"] != nil), .timeLimit(.minutes(30)))
     @MainActor func aRecordingFromDisk() async throws {
         let env = ProcessInfo.processInfo.environment
@@ -221,19 +223,39 @@ import CoreML
         let matn = try #require(store.matns.first { $0.id == env["RECORDING_MATN"] })
         let index = RecitationIndex(matn: matn)
         let audio = try FileFedAudio(path: env["RECORDING"]!)
-        let session = RecitationSession(index: index, source: WhisperSpeechSource(model: .turbo, audioInput: audio), startWordIndex: 0)
-        session.stuckRevealAfter = nil
-        session.start()
-        while !audio.finished { try await Task.sleep(for: .milliseconds(200)) }
-        try await Task.sleep(for: .seconds(3))
-        session.stop()
-        let end = index.firstWordIndex(ofBayt: 5) ?? index.displayWords.count
-        var lines: [String] = []
-        for i in 0..<end {
-            let o = session.outcomes[i].map { "\($0)" } ?? "—"
-            lines.append("RECORDING bayt \(index.refs[i].bayt) \(index.displayWords[i]): \(o)")
+        let source = WhisperSpeechSource(model: .turbo, audioInput: audio)
+        let tracker = RecitationTracker(words: index.normalizedWords, startIndex: 0)
+
+        let started = Date()
+        let lastFragment = OSAllocatedUnfairLock(initialState: Date())
+        let start = Task { try await source.start() }
+        let drain = Task { () -> [[String: Any]] in
+            var log: [[String: Any]] = []
+            for await fragment in source.fragments {
+                let t = Date().timeIntervalSince(started)
+                lastFragment.withLock { $0 = Date() }
+                tracker.consume(fragment, at: t)
+                log.append(["t": t, "final": fragment.isFinal, "text": fragment.text])
+                let shown = tracker.shownOutcomes.filter { $0.value.isMistake }.keys.sorted().map { index.normalizedWords[$0] }
+                print("STREAM \(String(format: "%5.1f", t)) \(fragment.isFinal ? "FINAL   " : "volatile") \(fragment.text)  RED \(shown)")
+            }
+            return log
         }
-        print(lines.joined(separator: "\n"))
+        // The Simulator's passes are seconds apart: wait for the last of the
+        // audio to be transcribed (no new fragment for 20 s), then stop.
+        while !audio.finished || lastFragment.withLock({ Date().timeIntervalSince($0) }) < 20 {
+            try await Task.sleep(for: .milliseconds(500))
+        }
+        source.stop()
+        let log = await drain.value
+        _ = try? await start.value
+        if let out = env["RECORDING_OUT"] {
+            try JSONSerialization.data(withJSONObject: ["matn": matn.id, "fragments": log]).write(to: URL(fileURLWithPath: out))
+        }
+        let end = index.firstWordIndex(ofBayt: 5) ?? index.displayWords.count
+        print((0..<end).map { i in
+            "RECORDING bayt \(index.refs[i].bayt) \(index.displayWords[i]): \(tracker.outcomes[i].map { "\($0)" } ?? "—")"
+        }.joined(separator: "\n"))
     }
 
     /// The vowel check on the live path: the correct clip streamed through

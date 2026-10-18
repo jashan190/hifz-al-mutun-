@@ -42,9 +42,9 @@ final class RecitationSession: ObservableObject {
     /// Every finalized judgment, by flat index (for flags and the summary).
     @Published private(set) var outcomes: [Int: WordOutcome] = [:]
 
-    /// Reveal the next word after this long without progress (UX.md: "about 8
-    /// seconds"). nil turns it off (tap-to-reveal only).
-    var stuckRevealAfter: TimeInterval? = 8
+    /// Reveal the next word after this long without progress. Off (nil):
+    /// nothing is revealed unasked, only by a tap (UX.md "Stuck").
+    var stuckRevealAfter: TimeInterval? = nil
 
     private let layout: RevealLayout
     private let tracker: RecitationTracker
@@ -124,7 +124,7 @@ final class RecitationSession: ObservableObject {
         publish()
     }
 
-    /// Show the next word as help (a tap on the blank, or a long pause).
+    /// Show the next word as help (a tap on the blank).
     func revealNext() {
         guard !stopped else { return }
         tracker.revealNext(at: now, as: revealOutcome)

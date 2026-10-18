@@ -41,7 +41,7 @@ The app does three things: it shows each matn exactly like the printed page, it 
   - A skipped word: appears in red, struck through.
   - Both are flagged on that word.
   - A low-confidence match: amber, not flagged.
-- Stuck: tap the next outline to reveal the next word, or wait about 8 seconds and it fades in. A revealed word shows in the secondary ink and is flagged.
+- Stuck: tap the next outline to reveal the next word. Nothing is revealed on its own, however long the pause (as in Tarteel, peeking is the reciter's choice). A revealed word shows in the secondary ink and is flagged.
 - Long-press a red word: "Not a mistake" removes the flag, because voice recognition can be wrong.
 - At the end of a page, turn to the next page automatically and carry on.
 - Stop shows a small card: bayts recited and mistakes flagged, with Review again and Back to Memorize (where the new flags now show).
