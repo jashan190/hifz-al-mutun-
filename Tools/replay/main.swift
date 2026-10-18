@@ -12,7 +12,9 @@ struct File: Decodable { let matn: String; let fragments: [Fragment] }
 let fixtures = URL(fileURLWithPath: CommandLine.arguments[1])
 let content = URL(fileURLWithPath: CommandLine.arguments[2])
 for name in ["clip", "skips", "r95", "r96", "r97"] {
-    let file = try JSONDecoder().decode(File.self, from: Data(contentsOf: fixtures.appendingPathComponent("replay_\(name).json")))
+    // The r… recordings are private (gitignored): replayed only where present.
+    guard let data = try? Data(contentsOf: fixtures.appendingPathComponent("replay_\(name).json")) else { continue }
+    let file = try JSONDecoder().decode(File.self, from: data)
     let matn = try JSONDecoder().decode(Matn.self, from: Data(contentsOf: content.appendingPathComponent("\(file.matn).json")))
     let index = RecitationIndex(matn: matn)
     let tracker = RecitationTracker(words: index.normalizedWords, startIndex: 0)

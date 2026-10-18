@@ -11,6 +11,9 @@ import Foundation
 /// - `r95`, `r96`: a poem's bayt 1, then the *other* poem's bayts 2–3 (the
 ///   Tuhfa and the Jazariyya both open with يقول راجي).
 /// - `r97`: Shatibiyya bayts 1–2, then bayt 4 said in place of bayt 3.
+///
+/// The `r…` recordings are private: their transcripts are gitignored and
+/// kept only where they were captured, so their tests run only there.
 @MainActor @Suite struct TrackerReplayTests {
     struct Replay {
         let index: RecitationIndex
@@ -62,7 +65,13 @@ import Foundation
         }
     }
 
-    @Test func theOtherPoemsBaytIsAMistake() throws {
+    /// Whether a replay's transcript is here (the private ones may not be).
+    nonisolated static func has(_ name: String) -> Bool {
+        Bundle(for: ReplayBundleToken.self).url(forResource: "replay_\(name)", withExtension: "json") != nil
+    }
+
+    @Test(.enabled(if: has("r95") && has("r96")))
+    func theOtherPoemsBaytIsAMistake() throws {
         for name in ["r95", "r96"] {
             let r = try Self.replay(name)
             #expect(r.red.isDisjoint(with: r.words(of: 1...1)), "\(name): bayt 1 was right")
@@ -75,7 +84,8 @@ import Foundation
         #expect(r.tracker.added.mapKeys { r.index.displayWords[$0] } == ["عَلَى": "نبيه ومصطفاه"])
     }
 
-    @Test func aBaytSaidOutOfOrderIsAMistake() throws {
+    @Test(.enabled(if: has("r97")))
+    func aBaytSaidOutOfOrderIsAMistake() throws {
         let r = try Self.replay("r97")
         #expect(r.red.isDisjoint(with: r.words(of: 2...2)), "bayt 2 was right")
         #expect(!r.red.isDisjoint(with: r.words(of: 3...3)), "bayt 3 was never said")
