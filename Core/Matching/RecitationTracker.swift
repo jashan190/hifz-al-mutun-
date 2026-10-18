@@ -271,13 +271,18 @@ final class RecitationTracker {
     /// last matched word. Its letters are compared with the word's own as far
     /// as they go: while they agree (allowing a misheard letter) the word is
     /// still being said; once they part, it is wrong. A lone letter, easily
-    /// dropped by the recognizer, isn't judged this way.
+    /// dropped by the recognizer, isn't judged this way. The previous word
+    /// said again (going back over it) isn't this word said wrong.
     private func inProgress() -> (Int, WordOutcome, String)? {
         let i = current.cursor
-        guard current.lock == .locked, i < words.count, let first = current.pending.first,
-              words[i].count > 1 else { return nil }
-        let raw = current.pending.map(\.raw).joined(separator: " ")
-        let said = current.pending.map(\.norm).joined()
+        guard current.lock == .locked, i < words.count, words[i].count > 1 else { return nil }
+        var pending = current.pending[...]
+        if let before = (current.anchor..<i).last(where: { !words[$0].isEmpty }) {
+            while let token = pending.first, isMatch(token.norm, words[before]) != nil { pending.removeFirst() }
+        }
+        guard let first = pending.first else { return nil }
+        let raw = pending.map(\.raw).joined(separator: " ")
+        let said = pending.map(\.norm).joined()
         let word = words[i]
         if said.count < word.count {
             // Still being said: the letters so far, against the word's start.
