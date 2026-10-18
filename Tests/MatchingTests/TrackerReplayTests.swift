@@ -54,10 +54,10 @@ import Foundation
         for name in ["clip", "skips"] {
             let r = try Self.replay(name)
             #expect(r.flashed.isEmpty, "\(name)")
-            // As before this suite. clip: رحيماً (Whisper writes الرحيم) and
-            // كالأترج (heard as كل ترجح). skips: رحيماً, its two cut words, and
-            // مرسلا (heard joined to الناس).
-            #expect(r.red.count <= (name == "clip" ? 2 : 4), "\(name)")
+            // clip: only كالأترج (heard as كل ترجح). skips: just its two cut
+            // words, الناس and كتابه.
+            if name == "clip" { #expect(r.red.count <= 1) }
+            else { #expect(r.describe(r.red) == "2:النَّاسِ 5:كِتَابُهُ") }
         }
     }
 

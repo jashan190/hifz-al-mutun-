@@ -462,10 +462,21 @@ final class RecitationTracker {
         return first
     }
 
-    /// nil if no match; true if exact, false if within the fuzzy threshold.
+    /// nil if no match; true if exact, false if within the fuzzy threshold
+    /// or the same at its core.
     private func isMatch(_ a: String, _ b: String) -> Bool? {
         if a == b { return true }
+        if Self.core(a) == Self.core(b) { return false }
         return levenshtein(a, b) <= tuning.matchThreshold(a, b) ? false : nil
+    }
+
+    /// A word without the ends Whisper adds or drops: a leading ال (it
+    /// writes رَحِيماً as الرحيم, as in the basmala) and a tanween's alif.
+    private static func core(_ word: String) -> Substring {
+        var w = Substring(word)
+        if w.count > 4, w.hasPrefix("ال") { w = w.dropFirst(2) }
+        if w.count > 3, w.hasSuffix("ا") { w = w.dropLast() }
+        return w
     }
 
     private static func firstNonEmpty(from i: Int, in words: [String]) -> Int {

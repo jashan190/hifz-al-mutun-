@@ -35,6 +35,14 @@ import Foundation
         #expect(t.outcomes == [0: .correct, 1: .correct, 2: .correct])
     }
 
+    @Test func whispersAddedArticleIsNotAMistake() {
+        // رَحْمَاناً رَحِيماً written by Whisper as in the basmala: رحمن الرحيم.
+        let t = tracker(["تبارك", "رحمانا", "رحيما", "ومويلا"])
+        t.consume(.init(text: "تبارك رحمن الرحيم وموئلا", isFinal: true), at: 0)
+        #expect(t.outcomes[2] == .unsure)
+        #expect(t.cursor == 4)
+    }
+
     @Test func aDroppedLoneLetterIsUnsureNotRed() {
         // The recognizer often drops a lone letter; check it, don't fail it.
         let t = tracker(["بدات", "ب", "بسم", "الله"])
