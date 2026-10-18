@@ -2,7 +2,7 @@ import Foundation
 
 /// The phonemes expected for each word of a matn, parallel to a
 /// `RecitationIndex`'s flat words. Built ahead of time from the vowelled text
-/// by `Tools/vowels/build_phonemes.py` into `<matn id>.phonemes.json`.
+/// by `Tools/vowels/build_phonemes.py` into `Resources/Phonemes/<matn id>.phonemes.json`.
 struct PhonemeIndex {
     /// By flat word index: the word's phonemes, "" for a word with nothing to
     /// say, or nil where they aren't known (that half-line is left to Whisper).

@@ -80,7 +80,7 @@ ffmpeg -i Tests/SpeechTests/Fixtures/shatibiyya_clip.m4a -ar 16000 -ac 1 clip.wa
 
 ## In the app (branch `vowel-checking-app`)
 
-- `build_phonemes.py` writes `Resources/Content/<id>.phonemes.json`: each
+- `build_phonemes.py` writes `Resources/Phonemes/<id>.phonemes.json`: each
   word's expected phonemes, as the app splits the words.
 - `Core/Vowels`:
   - `PhonemeFeatures`: the feature extractor ported to Swift.

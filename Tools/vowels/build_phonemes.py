@@ -1,4 +1,4 @@
-# Writes Resources/Content/<id>.phonemes.json: for every half-line, the
+# Writes Resources/Phonemes/<id>.phonemes.json: for every half-line, the
 # expected phonemes of each of its words (as the app splits them), so the app
 # can check what the phoneme model heard against them. A word with nothing
 # to say (punctuation) gets "", and every word of a half-line whose phonemes
@@ -37,6 +37,6 @@ for path in sys.argv[1:]:
             out = [next(it) if u else "" for u in spoken]
             split += 1
         halves[f"{n}.{h}"] = out
-    dest = os.path.join(os.path.dirname(path), f"{matn_id}.phonemes.json")
+    dest = os.path.join(os.path.dirname(path), "..", "Phonemes", f"{matn_id}.phonemes.json")
     json.dump({"version": 1, "halves": halves}, open(dest, "w"), ensure_ascii=False, separators=(",", ":"))
     print(f"{matn_id}: {split}/{whole} half-lines split into their words → {dest}")
