@@ -45,6 +45,10 @@ targets:
       # bundled content is unmistakable.
       - path: Resources/Content
         buildPhase: resources
+      # Each matn's expected phonemes, for the vowel check (not matn content:
+      # CI validates every JSON in Resources/Content as a matn).
+      - path: Resources/Phonemes
+        buildPhase: resources
       - path: Resources/Fonts
         buildPhase: resources
       - path: Resources/Sounds
