@@ -56,6 +56,20 @@ import Foundation
         #expect(t.outcomes.isEmpty)                      // but not kept until final
     }
 
+    @Test func goingBackOverAWordDoesntFlashTheNextRed() {
+        // يقول said again before راجي: not راجي said wrong (CodeRabbit, #13).
+        let t = tracker(["يقول", "راجي", "عفو", "رب"])
+        for (k, text) in ["يقول يقول", "يقول يقول", "يقول يقول راجي"].enumerated() {
+            t.consume(.init(text: text, isFinal: false), at: Double(k))
+            #expect(t.shownOutcomes[1]?.isMistake != true)
+        }
+        // A wrong word after the repeat is still caught at once.
+        let u = tracker(["يقول", "راجي", "عفو", "رب"])
+        u.consume(.init(text: "يقول يقول سعيد", isFinal: false), at: 0)
+        u.consume(.init(text: "يقول يقول سعيد", isFinal: false), at: 1)
+        #expect(u.shownOutcomes[1] == .wrong(heard: "سعيد"))
+    }
+
     @Test func aWordStillBeingSaidIsNotJudged() {
         let t = tracker(["يقول", "راجي", "عفو", "رب"])
         for text in ["يقول را", "يقول را", "يقول رجي", "يقول رجي"] {   // cut off; a letter misheard
