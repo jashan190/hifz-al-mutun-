@@ -56,6 +56,7 @@ import Foundation
             #expect(r.flashed.isEmpty, "\(name)")
             // clip: only كالأترج (heard as كل ترجح). skips: just its two cut
             // words, الناس and كتابه.
+            #expect(r.tracker.added.isEmpty, "\(name)")
             if name == "clip" { #expect(r.red.count <= 1) }
             else { #expect(r.describe(r.red) == "2:النَّاسِ 5:كِتَابُهُ") }
         }
@@ -68,6 +69,10 @@ import Foundation
             #expect(!r.red.isDisjoint(with: r.words(of: 2...2)), "\(name): bayt 2 was the other poem's")
             #expect(r.flashed.isEmpty, "\(name)")
         }
+        // In r95 the words only the other poem has (نبيه ومصطفاه, said between
+        // على and محمد) show as added after على.
+        let r = try Self.replay("r95")
+        #expect(r.tracker.added.mapKeys { r.index.displayWords[$0] } == ["عَلَى": "نبيه ومصطفاه"])
     }
 
     @Test func aBaytSaidOutOfOrderIsAMistake() throws {
@@ -78,3 +83,9 @@ import Foundation
     }
 }
 private final class ReplayBundleToken {}
+
+private extension Dictionary {
+    func mapKeys<K: Hashable>(_ f: (Key) -> K) -> [K: Value] {
+        Dictionary<K, Value>(uniqueKeysWithValues: map { (f($0.key), $0.value) })
+    }
+}

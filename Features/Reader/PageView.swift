@@ -180,8 +180,10 @@ private struct MemorizeHalf: View {
     let revealed: Int
     var outcome: (Int) -> WordOutcome? = { _ in nil }
     var heard: (Int) -> String? = { _ in nil }
+    var added: (Int) -> String? = { _ in nil }
     var flagged: (Int) -> Bool = { _ in false }
     var onDismiss: (Int) -> Void = { _ in }
+    var onDismissAdded: (Int) -> Void = { _ in }
     var onToggleFlag: (Int) -> Void = { _ in }
     var onTapBlank: (() -> Void)? = nil
     let fontSize: CGFloat
@@ -197,6 +199,9 @@ private struct MemorizeHalf: View {
                     MemorizeWord(segments: HemistichReveal.span(half, words: k..<(k + 1)),
                                  outcome: outcome(k), heard: heard(k), flagged: flagged(k), fontSize: fontSize,
                                  onDismiss: { onDismiss(k) }, onToggleFlag: { onToggleFlag(k) })
+                    if let words = added(k) {
+                        AddedMark(words: words, fontSize: fontSize) { onDismissAdded(k) }
+                    }
                 }
             }
             .fixedSize()
@@ -337,6 +342,43 @@ private struct MemorizeWord: View {
     }
 }
 
+// Words said that the text doesn't have, after the word they followed: a red
+// plus in the gap, with the words in small type beneath (as a wrong word's
+// heard text). Long-press to clear it.
+private struct AddedMark: View {
+    let words: String
+    let fontSize: CGFloat
+    var onDismiss: () -> Void = {}
+
+    var body: some View {
+        // As wide as the words beneath, so they don't run under the next word.
+        Text(words)
+            .font(PageFont.font(size: fontSize * 0.42))
+            .fixedSize()
+            .hidden()
+            .overlay {
+                Image(systemName: "plus")
+                    .font(.system(size: fontSize * 0.42, weight: .bold))
+                    .foregroundStyle(Theme.error)
+                    .padding(fontSize * 0.1)
+                    .background(Circle().fill(Theme.error.opacity(0.10)))
+                    .fixedSize()
+            }
+            .overlay(alignment: .bottom) {
+                Text(words)
+                    .font(PageFont.font(size: fontSize * 0.42))
+                    .foregroundStyle(Theme.error)
+                    .fixedSize()
+                    .offset(y: fontSize * HemistichText.heardDrop)
+            }
+            .contextMenu {
+                Button("Not a mistake", systemImage: "checkmark.circle", action: onDismiss)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("mistake, added \(words)")
+    }
+}
+
 // A centred heading (bab/surah title, basmala, closing line). Rendered from its
 // own segments, so the occasional blue/red part keeps its colour.
 private struct HeadingRow: View {
@@ -455,8 +497,10 @@ private struct BaytRow: View {
                 revealed: reveal?.revealedWords(bayt: bayt.number, half: which) ?? 0,
                 outcome: { reveal?.outcome(bayt: bayt.number, half: which, wordIndex: $0) },
                 heard: { reveal?.heard(bayt: bayt.number, half: which, wordIndex: $0) },
+                added: { reveal?.added(bayt: bayt.number, half: which, wordIndex: $0) },
                 flagged: { flagged(which, $0) },
                 onDismiss: { actions.dismissMistake(bayt.number, which, $0) },
+                onDismissAdded: { actions.dismissAdded(bayt.number, which, $0) },
                 onToggleFlag: { k in
                     flagStore.setFlag(!flagged(which, k), matnID: matnID,
                                       FlagKey(bayt: bayt.number, half: which, wordIndex: k))

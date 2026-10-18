@@ -129,6 +129,9 @@ struct PageScreen: View {
             revealNext: { _ in voice.revealNext() },
             dismissMistake: { bayt, half, word in
                 voice.dismissMistake(bayt: bayt, half: half, wordIndex: word)
+            },
+            dismissAdded: { bayt, half, word in
+                voice.dismissAdded(bayt: bayt, half: half, wordIndex: word)
             }
         )
     }
@@ -351,7 +354,7 @@ private struct MistakeRow: View {
     private var expected: AttributedString {
         var text = AttributedString(mistake.expected)
         text.foregroundColor = Theme.ink
-        guard let heard = mistake.heard else { return text }
+        guard let heard = mistake.heard, !mistake.added else { return text }
         let scalars = mistake.expected.unicodeScalars
         for r in LetterEmphasis.ranges(written: mistake.expected, heard: heard) {
             let lo = scalars.index(scalars.startIndex, offsetBy: r.lowerBound)
@@ -375,12 +378,12 @@ private struct MistakeRow: View {
                         .font(.caption)
                         .foregroundStyle(Theme.ink.opacity(0.7))
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text("Should be")
+                        Text(mistake.added ? "After" : "Should be")
                             .font(.caption)
                             .foregroundStyle(Theme.ink.opacity(0.7))
                         Text(expected)
                             .font(PageFont.font(size: 20))
-                        Text(mistake.heard == nil ? "· skipped" : "· you said")
+                        Text(mistake.added ? "· you added" : mistake.heard == nil ? "· skipped" : "· you said")
                             .font(.caption)
                             .foregroundStyle(Theme.error)
                         if let heard = mistake.heard {
@@ -402,8 +405,10 @@ private struct MistakeRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(place). Should be \(mistake.expected). "
-                            + (mistake.heard.map { "You said \($0)." } ?? "You skipped it."))
+        .accessibilityLabel(mistake.added
+                            ? "\(place). After \(mistake.expected), you added \(mistake.heard ?? "")."
+                            : "\(place). Should be \(mistake.expected). "
+                              + (mistake.heard.map { "You said \($0)." } ?? "You skipped it."))
         .accessibilityHint("Shows this bayt's page")
     }
 }

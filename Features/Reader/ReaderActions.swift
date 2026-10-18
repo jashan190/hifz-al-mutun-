@@ -9,6 +9,8 @@ struct ReaderActions {
     var revealNext: (Int) -> Void = { _ in }
     /// "Not a mistake" on a red word.
     var dismissMistake: (Int, Half, Int) -> Void = { _, _, _ in }
+    /// "Not a mistake" on the words shown added after a word.
+    var dismissAdded: (Int, Half, Int) -> Void = { _, _, _ in }
 }
 
 private struct ReaderActionsKey: EnvironmentKey {

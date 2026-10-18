@@ -26,20 +26,22 @@ struct RevealState {
     private let cursor: Int
     private let outcomes: [Int: WordOutcome]
     private let heard: [Int: String]
+    private let added: [Int: String]
 
     init(layout: RevealLayout, anchor: Int = 0, cursor: Int, outcomes: [Int: WordOutcome] = [:],
-         heard: [Int: String] = [:]) {
+         heard: [Int: String] = [:], added: [Int: String] = [:]) {
         self.layout = layout
         self.anchor = anchor
         self.cursor = cursor
         self.outcomes = outcomes
         self.heard = heard
+        self.added = added
     }
 
     init(index: RecitationIndex, anchor: Int = 0, cursor: Int, outcomes: [Int: WordOutcome] = [:],
-         heard: [Int: String] = [:]) {
+         heard: [Int: String] = [:], added: [Int: String] = [:]) {
         self.init(layout: RevealLayout(index: index), anchor: anchor, cursor: cursor,
-                  outcomes: outcomes, heard: heard)
+                  outcomes: outcomes, heard: heard, added: added)
     }
 
     private func isRevealed(_ i: Int) -> Bool {
@@ -79,5 +81,10 @@ struct RevealState {
     /// What was heard for a word judged amber or red, if known.
     func heard(bayt: Int, half: Half, wordIndex: Int) -> String? {
         layout.startByHalf[RevealLayout.HalfKey(bayt: bayt, half: half)].flatMap { heard[$0 + wordIndex] }
+    }
+
+    /// Words said after this word that the text doesn't have.
+    func added(bayt: Int, half: Half, wordIndex: Int) -> String? {
+        layout.startByHalf[RevealLayout.HalfKey(bayt: bayt, half: half)].flatMap { added[$0 + wordIndex] }
     }
 }

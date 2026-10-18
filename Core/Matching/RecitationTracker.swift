@@ -118,6 +118,16 @@ final class RecitationTracker {
         }
     }
 
+    /// Words said that the text doesn't have, by the word they followed:
+    /// shown red after it (Tarteel's "extra word"). From finalized results,
+    /// and from the guess once two updates agree on them.
+    var added: [Int: String] {
+        committed.added.merging(stableAdded) { kept, _ in kept }.filter { !dismissedAdded.contains($0.key) }
+    }
+
+    /// "Not a mistake" on added words.
+    func dismissAdded(after index: Int) { dismissedAdded.insert(index) }
+
     private struct State {
         var cursor: Int
         var anchor: Int
@@ -125,6 +135,8 @@ final class RecitationTracker {
         var outcomes: [Int: WordOutcome] = [:]
         /// What was heard for an inexact match or a wrong word (raw).
         var heard: [Int: String] = [:]
+        /// Words said that the text doesn't have, by the word they followed (raw).
+        var added: [Int: String] = [:]
         /// Final tokens heard since the last match, as (raw, normalized).
         var pending: [(raw: String, norm: String)] = []
         var unmatchedRun = 0
@@ -145,6 +157,11 @@ final class RecitationTracker {
     /// The reciter's corrections ("Not a mistake"), kept over later judgments
     /// of the same word (a shown guess that is then finalized).
     private var overrides: [Int: WordOutcome] = [:]
+
+    /// The guess's added words the last update had too, and the last update's.
+    private var stableAdded: [Int: String] = [:]
+    private var lastAdded: [Int: String] = [:]
+    private var dismissedAdded: Set<Int> = []
 
     /// Words heard right but with a vowel slip (the vowel check), as said.
     private var vowelSlips: [Int: String] = [:]
@@ -172,6 +189,8 @@ final class RecitationTracker {
         var s = State(cursor: start, anchor: start)
         s.outcomes = outcomes.filter { $0.key < start }
         s.heard = committed.heard.filter { $0.key < start }
+        s.added = committed.added.filter { $0.key < start }
+        dismissedAdded = dismissedAdded.filter { $0 < start }
         overrides = overrides.filter { $0.key < start }
         vowelSlips = vowelSlips.filter { $0.key < start }
         committed = s
@@ -283,6 +302,9 @@ final class RecitationTracker {
                 && words[next].count >= tuning.exactBelowLength
         }
         tentative = latest
+        let guessed = current.added.filter { committed.added[$0.key] == nil }
+        stableAdded = guessed.filter { lastAdded[$0.key] == $0.value }
+        lastAdded = guessed
     }
 
     /// The word at the cursor, judged from what the guess holds after the
@@ -308,6 +330,8 @@ final class RecitationTracker {
     }
 
     private func clearTentative() {
+        stableAdded = [:]
+        lastAdded = [:]
         tentative = [:]
         stable = [:]
         tentativeHeard = [:]
@@ -350,6 +374,7 @@ final class RecitationTracker {
                         s.heard[w] = nil
                     }
                 } else {
+                    if !found.uncertainGap { noteAdded(before: found.hit, in: &s) }
                     judgeGap(upTo: found.hit, in: &s, lost: found.uncertainGap)
                 }
                 s.outcomes[found.hit] = found.exact ? .correct : .unsure
@@ -380,6 +405,18 @@ final class RecitationTracker {
             }
             i += 1
         }
+    }
+
+    /// Tokens heard just before a match with no words passed over were said
+    /// on top of the text: added after the word before. A repeat of the last
+    /// few words (the reciter going back over them) isn't, nor a stray letter.
+    private func noteAdded(before hit: Int, in s: inout State) {
+        guard !s.pending.isEmpty, (s.cursor..<hit).allSatisfy({ words[$0].isEmpty }),
+              let before = (s.anchor..<hit).last(where: { !words[$0].isEmpty }) else { return }
+        let recent = Set((max(s.anchor, before - 2)...hit).map { words[$0] })
+        let extra = s.pending.filter { !recent.contains($0.norm) && isMatch($0.norm, words[hit]) == nil }
+        guard extra.map(\.norm.count).reduce(0, +) >= 3 else { return }
+        s.added[before] = extra.map(\.raw).joined(separator: " ")
     }
 
     /// Judge the expected words passed over between the cursor and a match at

@@ -35,6 +35,33 @@ import Foundation
         #expect(t.outcomes == [0: .correct, 1: .correct, 2: .correct])
     }
 
+    // MARK: - Added words
+
+    @Test func wordsTheTextDoesntHaveAreAdded() {
+        // The Jazariyya's نبيه ومصطفاه said inside the Tuhfa's bayt.
+        let t = tracker(["علي", "محمد", "واله"])
+        t.consume(.init(text: "على نبيه ومصطفاه محمد وآله", isFinal: true), at: 0)
+        #expect(t.added == [0: "نبيه ومصطفاه"])
+        #expect(t.outcomes == [0: .correct, 1: .correct, 2: .correct])
+        t.dismissAdded(after: 0)                         // "Not a mistake"
+        #expect(t.added.isEmpty)
+    }
+
+    @Test func goingBackOverAWordIsNotAdding() {
+        // The reciter repeats the last words before going on.
+        let t = tracker(["يقول", "راجي", "رحمة", "الغفور"])
+        t.consume(.init(text: "يقول راجي يقول راجي رحمة الغفور", isFinal: true), at: 0)
+        #expect(t.added.isEmpty)
+    }
+
+    @Test func addedWordsInAGuessShowOnceTwoUpdatesAgree() {
+        let t = tracker(["علي", "محمد", "واله"])
+        t.consume(.init(text: "على نبيه ومصطفاه محمد", isFinal: false), at: 0)
+        #expect(t.added.isEmpty)
+        t.consume(.init(text: "على نبيه ومصطفاه محمد وآله", isFinal: false), at: 1)
+        #expect(t.added == [0: "نبيه ومصطفاه"])
+    }
+
     @Test func whispersAddedArticleIsNotAMistake() {
         // رَحْمَاناً رَحِيماً written by Whisper as in the basmala: رحمن الرحيم.
         let t = tracker(["تبارك", "رحمانا", "رحيما", "ومويلا"])
