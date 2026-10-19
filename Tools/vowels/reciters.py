@@ -37,5 +37,8 @@ for who in RECITERS:
             ayat += 1; vowels += sum(c in H for c in ref[:last]); swapped += len(subs)
             for i, a, b in subs: print(f"  {who} {sura}:{aya} {ref[max(0,i-5):i]}[{a}→{b}]{ref[i+1:i+4]}")
     print(f"-- after {who}: {ayat} ayat, {swapped} vowel swaps in {vowels} short vowels")
-print(f"\nFalse alarms: {swapped} of {vowels} short vowels ({swapped/vowels:.2%}) over {ayat} ayat; "
-      f"{too_long} ayat skipped as longer than the model's window")
+if vowels == 0:
+    print(f"\nNo short vowels analysed: {too_long} ayat skipped as longer than the model's window")
+else:
+    print(f"\nFalse alarms: {swapped} of {vowels} short vowels ({swapped/vowels:.2%}) over {ayat} ayat; "
+          f"{too_long} ayat skipped as longer than the model's window")
