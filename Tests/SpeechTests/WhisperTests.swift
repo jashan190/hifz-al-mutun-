@@ -60,6 +60,7 @@ import os
         var f = WhisperFragments()
         _ = f.update(confirmed: [], unconfirmed: [seg("هو الحر", 0)])
         #expect(f.flush() == .init(text: "هو الحر", isFinal: true))
+        #expect(f.finalSpan == 0...1)                    // its audio, for the vowel check
         #expect(f.flush() == nil)
     }
 

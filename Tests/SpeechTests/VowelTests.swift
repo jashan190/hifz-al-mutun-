@@ -49,13 +49,23 @@ import CoreML
     @Test func aVowelSlipMakesACorrectWordWrong() {
         let tracker = RecitationTracker(words: ["بدات", "بسم", "الله"])
         tracker.consume(.init(text: "بدات بسم الله", isFinal: true), at: 0)
-        tracker.markVowelSlip(1, said: "بِسْمَ")
+        tracker.markVowelSlip(1, said: "بِسْمَ", generation: tracker.generation)
         #expect(tracker.outcomes[1] == .wrong(heard: "بِسْمَ"))
         #expect(tracker.heard[1] == "بِسْمَ")
         tracker.override(1, with: .correct)              // "Not a mistake"
         #expect(tracker.outcomes[1] == .correct)
-        tracker.markVowelSlip(5, said: "x")              // never judged: ignored
+        tracker.markVowelSlip(5, said: "x", generation: tracker.generation)   // never judged: ignored
         #expect(tracker.outcomes[5] == nil)
+    }
+
+    @Test func aVowelCheckFromBeforeAJumpIsIgnored() {
+        let tracker = RecitationTracker(words: ["بدات", "بسم", "الله"])
+        tracker.consume(.init(text: "بدات بسم الله", isFinal: true), at: 0)
+        let before = tracker.generation                  // a check starts on this recitation…
+        tracker.jump(to: 0, at: 1)                       // …the reciter starts again…
+        tracker.consume(.init(text: "بدات بسم الله", isFinal: true), at: 2)
+        tracker.markVowelSlip(1, said: "بِسْمَ", generation: before)   // …and its result lands late
+        #expect(tracker.outcomes[1] == .correct)
     }
 
     @MainActor @Test func everyMatnHasItsPhonemes() throws {

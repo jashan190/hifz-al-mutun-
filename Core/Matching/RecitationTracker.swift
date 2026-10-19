@@ -193,6 +193,7 @@ final class RecitationTracker {
         dismissedAdded = dismissedAdded.filter { $0 < start }
         overrides = overrides.filter { $0.key < start }
         vowelSlips = vowelSlips.filter { $0.key < start }
+        generation += 1
         committed = s
         current = s
         clearTentative()
@@ -205,11 +206,16 @@ final class RecitationTracker {
         overrides[index] = outcome
     }
 
+    /// Bumped by each `jump(to:)`, so a vowel check begun before it (on the
+    /// earlier recitation of a word) is ignored.
+    private(set) var generation = 0
+
     /// The vowel check heard a word Whisper placed as correct with a short
     /// vowel changed: it becomes a mistake, shown as `said` (the written word
-    /// with that vowel). Ignored unless the word is still judged correct.
-    func markVowelSlip(_ index: Int, said: String) {
-        guard committed.outcomes[index] == .correct else { return }
+    /// with that vowel). Ignored unless the word is still judged correct, and
+    /// the check began after the last jump (`generation`).
+    func markVowelSlip(_ index: Int, said: String, generation: Int) {
+        guard generation == self.generation, committed.outcomes[index] == .correct else { return }
         vowelSlips[index] = said
     }
 

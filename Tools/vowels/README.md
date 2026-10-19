@@ -24,7 +24,7 @@ Not yet measured: speed on an iPhone, and slips in a real person's voice.
 
 | Suite | Result |
 | --- | --- |
-| `suite.py`: 60 random half-lines (20 per matn), each read correctly and with one planted short-vowel slip by a speech-synthesis voice that reads the vowels as written | **49 of 57 slips caught (86%)**: endings and tanween 21/22, vowels inside a word 28/35. **No false alarm on the 57 correct readings.** 3 lines skipped because the voice itself misread them |
+| `suite.py`: 60 random half-lines (20 per matn), each read correctly and with one planted short-vowel slip by a speech-synthesis voice that reads the vowels as written | **49 of 57 slips caught (86%)**: endings and tanween 21/22, vowels inside a word 28/35. **No false alarm on the 57 correct readings.** 3 lines skipped because the voice itself misread them. A slip counts as caught only when the planted vowel itself is heard as planted (rechecked so after review: same result, and no other vowel flagged on any slipped reading) |
 | `reciters.py`: 128 ayat of short suras by Husary, Minshawi and Alafasy | 0 vowel swaps in 1,099 short vowels. A sanity check only: these reciters are likely in the model's training data |
 | `phonetize_all.py`: every half-line of the three matns | All 2,686 phonetize without an error (that is no crash, not a checked reference) |
 | `build_phonemes.py`: phonemes split back into the app's words | Tuhfa 122/122, Jazariyya 216/218, Shatibiyya 2,288/2,346 half-lines; the rest are left to Whisper |

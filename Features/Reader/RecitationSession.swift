@@ -65,8 +65,19 @@ final class RecitationSession: ObservableObject {
     /// or plainly shown in a tap-to-reveal sitting.
     var revealOutcome: WordOutcome = .revealed
     /// Checks the harakat of words as they settle, when the phoneme model is
-    /// available; the source must then attach audio to its finals.
-    var vowels: VowelChecker?
+    /// available; the source must then attach audio to its finals. Finals
+    /// that arrive while it loads wait for it.
+    var vowels: VowelChecker? {
+        didSet {
+            guard let vowels else { return }
+            for w in waiting { checkVowels(settled: w.settled, audio: w.audio, generation: w.generation, with: vowels) }
+            waiting = []
+        }
+    }
+    /// Finals with audio heard before `vowels` was set (the model loading),
+    /// oldest first; only the last `maxWaiting` are kept.
+    private var waiting: [(settled: [Int: WordOutcome], audio: [Float], generation: Int)] = []
+    private let maxWaiting = 20
 
     init(index: RecitationIndex, source: SpeechSource, startWordIndex: Int) {
         let layout = RevealLayout(index: index)
@@ -145,8 +156,14 @@ final class RecitationSession: ObservableObject {
             let before = tracker.outcomes
             tracker.consume(fragment, at: now)
             publish()
-            if let vowels, fragment.isFinal, let audio = fragment.audio {
-                checkVowels(settled: tracker.outcomes.filter { before[$0.key] == nil }, audio: audio, with: vowels)
+            if fragment.isFinal, let audio = fragment.audio {
+                let settled = tracker.outcomes.filter { before[$0.key] == nil }
+                if let vowels {
+                    checkVowels(settled: settled, audio: audio, generation: tracker.generation, with: vowels)
+                } else {
+                    waiting.append((settled, audio, tracker.generation))
+                    if waiting.count > maxWaiting { waiting.removeFirst() }
+                }
             }
         }
     }
@@ -157,7 +174,7 @@ final class RecitationSession: ObservableObject {
     /// words aren't in the audio and are left out. A word wrong or unheard
     /// splits them into runs: its audio doesn't hold its phonemes, so each
     /// run is lined up on its own.
-    private func checkVowels(settled: [Int: WordOutcome], audio: [Float], with vowels: VowelChecker) {
+    private func checkVowels(settled: [Int: WordOutcome], audio: [Float], generation: Int, with vowels: VowelChecker) {
         var runs: [[Int]] = [[]]
         var last: Int?
         for i in settled.keys.sorted() {
@@ -174,7 +191,7 @@ final class RecitationSession: ObservableObject {
         Task {
             let slips = await vowels.check(runs: runs, audio: audio)
             guard !slips.isEmpty else { return }
-            for (i, word) in slips { tracker.markVowelSlip(i, said: word) }
+            for (i, word) in slips { tracker.markVowelSlip(i, said: word, generation: generation) }
             publish()
         }
     }

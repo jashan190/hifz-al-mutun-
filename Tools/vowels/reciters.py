@@ -15,7 +15,7 @@ vocab = mu.multi_level_tokenizer.id_to_vocab["phonemes"]
 ml = ct.models.MLModel(sys.argv[1])
 os.makedirs(sys.argv[2], exist_ok=True)
 
-vowels = swapped = ayat = 0
+vowels = swapped = ayat = too_long = 0
 for who in RECITERS:
     for sura, n in SURAS.items():
         for aya in range(1, n + 1):
@@ -27,7 +27,9 @@ for who in RECITERS:
             wave, _ = librosa.effects.trim(wave, top_db=35)
             wave = np.concatenate([np.zeros(3200, np.float32), wave, np.zeros(3200, np.float32)])
             x = mu.processor([wave], sampling_rate=16000, return_tensors="np")["input_features"].astype(np.float32)
-            if x.shape[1] > 500: continue          # over the model's 10 s window
+            if x.shape[1] > 500:                   # over the model's 10 s window
+                too_long += 1
+                continue
             hyp = phonemes_level_greedy_decode(torch.tensor(ml.predict({"input_features": x})["log_probs"]).exp(), vocab)[0].text
             ref = phonemes(Aya(sura, aya).get().uthmani).replace(alph.uthmani.space, "")
             last = len(ref) - 3                    # the pause changes the final vowel
@@ -35,4 +37,5 @@ for who in RECITERS:
             ayat += 1; vowels += sum(c in H for c in ref[:last]); swapped += len(subs)
             for i, a, b in subs: print(f"  {who} {sura}:{aya} {ref[max(0,i-5):i]}[{a}→{b}]{ref[i+1:i+4]}")
     print(f"-- after {who}: {ayat} ayat, {swapped} vowel swaps in {vowels} short vowels")
-print(f"\nFalse alarms: {swapped} of {vowels} short vowels ({swapped/vowels:.2%}) over {ayat} ayat")
+print(f"\nFalse alarms: {swapped} of {vowels} short vowels ({swapped/vowels:.2%}) over {ayat} ayat; "
+      f"{too_long} ayat skipped as longer than the model's window")

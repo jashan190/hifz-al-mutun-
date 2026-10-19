@@ -82,8 +82,12 @@ final class VoiceController: ObservableObject {
         if let whisper = source as? WhisperSpeechSource, VowelChecker.modelURL != nil,
            let phonemes = PhonemeIndex(matnID: matn.id, index: index) {
             whisper.keepsAudio = true
-            Task { [weak session] in
-                guard let model = await VowelChecker.sharedModel() else { return }
+            // The session starts now; finals heard while the model loads wait for it.
+            Task { [weak session, weak whisper] in
+                guard let model = await VowelChecker.sharedModel() else {
+                    whisper?.keepsAudio = false   // no model: stop keeping audio for it
+                    return
+                }
                 session?.vowels = VowelChecker(model: model, phonemes: phonemes, written: index.displayWords)
             }
         }
