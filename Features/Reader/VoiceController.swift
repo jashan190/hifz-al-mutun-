@@ -127,7 +127,8 @@ final class VoiceController: ObservableObject {
     }
 
     private func makeSummary(_ judged: [Int: WordOutcome], added: [Int: String]) -> ReviewSummary? {
-        guard !judged.isEmpty, let index else { return nil }
+        // A sitting can end with only added words (from the guess) to show.
+        guard let index, !judged.isEmpty || !added.isEmpty else { return nil }
         var mistakes = judged.filter(\.value.isMistake).keys.map { i -> ReviewSummary.Mistake in
             let ref = index.refs[i]
             var heard: String?

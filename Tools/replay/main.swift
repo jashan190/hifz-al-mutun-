@@ -29,8 +29,8 @@ for name in ["clip", "skips", "r95", "r96", "r97"] {
         let red = tracker.shownOutcomes.filter { $0.value.isMistake }.keys
         let new = Set(red).subtracting(everRed)
         if !new.isEmpty {
-            print(String(format: "  %@ %5.1f s %@  RED %@", name, f.t, f.final ? "FINAL" : "guess", f.text,
-                         new.sorted().map { "\(index.refs[$0].bayt):\(index.displayWords[$0])" }.joined(separator: " ")))
+            let words = new.sorted().map { "\(index.refs[$0].bayt):\(index.displayWords[$0])" }.joined(separator: " ")
+            print("  \(name) \(String(format: "%5.1f", f.t)) s \(f.final ? "FINAL" : "guess")  RED \(words)  «\(f.text)»")
         }
         everRed.formUnion(red)
     }

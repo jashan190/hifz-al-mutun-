@@ -124,7 +124,7 @@ Still to do:
   `FlagStore`. Wrong, skipped and revealed words gain a flag; a correct recitation or
   **Not a mistake** removes it. Read mode underlines flagged words; long-press a
   half-line to flag or unflag a word. Last page per matn lives in `ReadingPosition`.
-- Review: tap a bayt number to recite from it; tap a blank (or wait 8 s) to reveal the
+- Review: tap a bayt number to recite from it; tap a blank to reveal the
   next word; swiping restarts tracking from that page; the page turns after its last
   word; stopping shows a summary card. Without voice, tapping a blank starts a
   tap-to-reveal sitting, and the footer says why voice is off (with Open Settings).

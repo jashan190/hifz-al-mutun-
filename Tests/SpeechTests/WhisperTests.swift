@@ -229,7 +229,11 @@ import os
 
         let started = Date()
         let lastFragment = OSAllocatedUnfairLock(initialState: Date())
-        let start = Task { try await source.start() }
+        let startEnded = OSAllocatedUnfairLock(initialState: false)
+        let start = Task {
+            defer { startEnded.withLock { $0 = true } }   // also if it fails to start
+            try await source.start()
+        }
         let drain = Task { () -> [[String: Any]] in
             var log: [[String: Any]] = []
             for await fragment in source.fragments {
@@ -244,7 +248,8 @@ import os
         }
         // The Simulator's passes are seconds apart: wait for the last of the
         // audio to be transcribed (no new fragment for 20 s), then stop.
-        while !audio.finished || lastFragment.withLock({ Date().timeIntervalSince($0) }) < 20 {
+        while !startEnded.withLock({ $0 }),
+              !audio.finished || lastFragment.withLock({ Date().timeIntervalSince($0) }) < 20 {
             try await Task.sleep(for: .milliseconds(500))
         }
         source.stop()
