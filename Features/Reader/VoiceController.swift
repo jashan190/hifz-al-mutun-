@@ -35,6 +35,8 @@ final class VoiceController: ObservableObject {
     @Published private(set) var status: VoiceStatus = .idle
     /// Set when a sitting ends, until the next one starts or it's dismissed.
     @Published var summary: ReviewSummary?
+    /// The sitting has stopped: results landing after it update the summary.
+    private var stopped = false
     /// True for a tap-to-reveal sitting without the microphone.
     @Published private(set) var isManual = false
     /// Why voice last failed to start, kept while a tap-to-reveal sitting
@@ -106,10 +108,10 @@ final class VoiceController: ObservableObject {
         session.$outcomes.sink { [weak self] outcomes in
             self?.syncFlags(outcomes)
             // The recognizer's last result can land after the stop.
-            if self?.summary != nil { self?.summary = self?.makeSummary(outcomes, added: session.added) }
+            if self?.stopped == true { self?.summary = self?.makeSummary(outcomes, added: session.added) }
         }.store(in: &cancellables)
         session.$added.sink { [weak self] added in
-            if self?.summary != nil { self?.summary = self?.makeSummary(session.outcomes, added: added) }
+            if self?.stopped == true { self?.summary = self?.makeSummary(session.outcomes, added: added) }
         }.store(in: &cancellables)
         session.$status.sink { [weak self] status in
             if case .failed(let why) = status { self?.voiceFailure = why }
@@ -123,6 +125,7 @@ final class VoiceController: ObservableObject {
     func stop() {
         guard let session else { return }
         session.stop()
+        stopped = true
         summary = makeSummary(session.outcomes, added: session.added)
     }
 
@@ -171,6 +174,7 @@ final class VoiceController: ObservableObject {
         mistakeCount = 0
         status = .idle
         summary = nil
+        stopped = false
         isManual = false
         voiceFailure = nil
     }

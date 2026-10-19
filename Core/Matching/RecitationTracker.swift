@@ -424,8 +424,8 @@ final class RecitationTracker {
     private func noteAdded(before hit: Int, in s: inout State) {
         guard !s.pending.isEmpty, (s.cursor..<hit).allSatisfy({ words[$0].isEmpty }),
               let before = (s.anchor..<hit).last(where: { !words[$0].isEmpty }) else { return }
-        let recent = Set((max(s.anchor, before - 2)...hit).map { words[$0] })
-        let extra = s.pending.filter { !recent.contains($0.norm) && isMatch($0.norm, words[hit]) == nil }
+        let recent = (max(s.anchor, before - 2)...hit).map { words[$0] }.filter { !$0.isEmpty }
+        let extra = s.pending.filter { token in recent.allSatisfy { isMatch(token.norm, $0) == nil } }
         guard extra.map(\.norm.count).reduce(0, +) >= 3 else { return }
         s.added[before] = extra.map(\.raw).joined(separator: " ")
     }

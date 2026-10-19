@@ -54,6 +54,13 @@ import Foundation
         #expect(t.added.isEmpty)
     }
 
+    @Test func goingBackOverAWordWrittenSlightlyOffIsNotAdding() {
+        // Whisper writes the repeated راجي as راجيه.
+        let t = tracker(["يقول", "راجي", "رحمة", "الغفور"])
+        t.consume(.init(text: "يقول راجي راجيه رحمة الغفور", isFinal: true), at: 0)
+        #expect(t.added.isEmpty)
+    }
+
     @Test func addedWordsInAGuessShowOnceTwoUpdatesAgree() {
         let t = tracker(["علي", "محمد", "واله"])
         t.consume(.init(text: "على نبيه ومصطفاه محمد", isFinal: false), at: 0)
