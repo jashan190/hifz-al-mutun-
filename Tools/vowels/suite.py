@@ -92,8 +92,10 @@ for path in sys.argv[3:]:
             totals["badvoice"] += 1; print("  voice misread:", r, "/", heard); continue
         base = swaps(r, heard)
         got = swaps(r, hear(slipped))
-        hit = any(abs(i - at) <= 2 for i in got)
-        extra = [i for i in got if abs(i - at) > 2 and i not in base]
+        # Caught only if the planted vowel itself is heard as planted (a swap
+        # of a neighbouring vowel isn't a catch, and counts as an extra flag).
+        hit = got.get(at) == vowel
+        extra = [i for i in got if i != at and i not in base]
         totals["lines"] += 1; totals["false"] += len(base) > 0
         totals["planted"] += 1; totals["caught"] += hit; totals[kind] += 1; totals[kind + "_caught"] += hit; totals["extra"] += len(extra) > 0
         print(f"{'✓' if hit else '✗'} {kind:6} {'FA ' if base else '   '}{slipped}   (was: {text.split()[[i for i,(a,b) in enumerate(zip(text.split(), slipped.split())) if a!=b][0]]})")
