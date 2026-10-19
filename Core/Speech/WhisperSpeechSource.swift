@@ -121,7 +121,8 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
         try await streamer.startStreamTranscription()
         streamEnded.withLock { $0 = true }
         phase.withLock { $0 = .stopped }
-        if let last = emitter.withLock({ $0.flush() }) {
+        if var (last, span) = emitter.withLock({ e in e.flush().map { ($0, e.finalSpan) } }) {
+            if keepsAudio, let recorder, let span { last.audio = Self.clip(recorder.audioSamples, span) }
             log(last)
             continuation.yield(last)
         }
