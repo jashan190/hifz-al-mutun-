@@ -9,5 +9,6 @@ for path in sys.argv[1:]:
         try: phonemes(verse(text)); ok += 1
         except Exception as e: bad[type(e).__name__] += 1; fails.append((n, h, text))
     total = ok + sum(bad.values())
-    print(f"{path.split('/')[-1]}: {ok}/{total} half-lines phonetize ({ok/total:.1%}); failures {dict(bad)}")
+    share = f"{ok/total:.1%}" if total else "no half-lines"
+    print(f"{path.split('/')[-1]}: {ok}/{total} half-lines phonetize ({share}); failures {dict(bad)}")
     for f in fails[:6]: print("   ", *f)
