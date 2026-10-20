@@ -173,8 +173,11 @@ import Testing
         final(t, "يقول", at: 0)
         final(t, "شيء غريب جدا هنا", at: 1)   // what's heard doesn't fit: lost
         #expect(t.lockState == .lost)
+        // The word due wasn't said: red with what was, and passed.
+        #expect(t.outcomes[1] == .wrong(heard: "شيء غريب جدا هنا"))
+        #expect(t.cursor == 2)
         final(t, "رب", at: 2)        // a short word alone isn't enough
-        #expect(t.cursor == 1)
+        #expect(t.cursor == 2)
         final(t, "رب قادر", at: 3)   // …but followed by the next word, it is
         #expect(t.cursor == 5)
     }

@@ -27,3 +27,6 @@ Config/Local.xcconfig
 
 # Claude Code agent worktrees
 .claude/worktrees/
+
+# Transcripts of private test recordings: kept on this Mac only
+Tests/SpeechTests/Fixtures/replay_r*.json

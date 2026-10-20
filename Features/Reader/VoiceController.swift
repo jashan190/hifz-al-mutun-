@@ -17,6 +17,8 @@ struct ReviewSummary: Equatable {
         let expected: String     // the word as written
         /// What the recognizer heard in its place; nil when it was skipped.
         let heard: String?
+        /// `heard` was said after `expected`, which the text doesn't have.
+        var added = false
     }
 }
 
@@ -33,6 +35,8 @@ final class VoiceController: ObservableObject {
     @Published private(set) var status: VoiceStatus = .idle
     /// Set when a sitting ends, until the next one starts or it's dismissed.
     @Published var summary: ReviewSummary?
+    /// The sitting has stopped: results landing after it update the summary.
+    private var stopped = false
     /// True for a tap-to-reveal sitting without the microphone.
     @Published private(set) var isManual = false
     /// Why voice last failed to start, kept while a tap-to-reveal sitting
@@ -90,7 +94,6 @@ final class VoiceController: ObservableObject {
             }
         }
         if manual {
-            session.stuckRevealAfter = nil
             session.revealOutcome = .shown   // reviewing by tap: reveals aren't flagged
         }
         self.session = session
@@ -105,7 +108,10 @@ final class VoiceController: ObservableObject {
         session.$outcomes.sink { [weak self] outcomes in
             self?.syncFlags(outcomes)
             // The recognizer's last result can land after the stop.
-            if self?.summary != nil { self?.summary = self?.makeSummary(outcomes) }
+            if self?.stopped == true { self?.summary = self?.makeSummary(outcomes, added: session.added) }
+        }.store(in: &cancellables)
+        session.$added.sink { [weak self] added in
+            if self?.stopped == true { self?.summary = self?.makeSummary(session.outcomes, added: added) }
         }.store(in: &cancellables)
         session.$status.sink { [weak self] status in
             if case .failed(let why) = status { self?.voiceFailure = why }
@@ -119,18 +125,28 @@ final class VoiceController: ObservableObject {
     func stop() {
         guard let session else { return }
         session.stop()
-        summary = makeSummary(session.outcomes)
+        stopped = true
+        summary = makeSummary(session.outcomes, added: session.added)
     }
 
-    private func makeSummary(_ judged: [Int: WordOutcome]) -> ReviewSummary? {
-        guard !judged.isEmpty, let index else { return nil }
-        let mistakes = judged.filter(\.value.isMistake).keys.sorted().map { i -> ReviewSummary.Mistake in
+    private func makeSummary(_ judged: [Int: WordOutcome], added: [Int: String]) -> ReviewSummary? {
+        // A sitting can end with only added words (from the guess) to show.
+        guard let index, !judged.isEmpty || !added.isEmpty else { return nil }
+        var mistakes = judged.filter(\.value.isMistake).keys.map { i -> ReviewSummary.Mistake in
             let ref = index.refs[i]
             var heard: String?
             if case .wrong(let said) = judged[i] { heard = said }
             return .init(id: i, page: ref.page, bayt: ref.bayt, half: ref.half,
                          expected: index.displayWords[i], heard: heard)
         }
+        // Added words follow the word they came after (ids past every word's).
+        mistakes += added.map { i, words in
+            let ref = index.refs[i]
+            return .init(id: index.refs.count + i, page: ref.page, bayt: ref.bayt, half: ref.half,
+                         expected: index.displayWords[i], heard: words, added: true)
+        }
+        let n = index.refs.count
+        mistakes.sort { ($0.id % n, $0.added ? 1 : 0) < ($1.id % n, $1.added ? 1 : 0) }
         return ReviewSummary(
             baytsRecited: Set(judged.keys.map { index.refs[$0].bayt }).count,
             revealed: judged.values.filter { $0 == .revealed }.count,
@@ -158,6 +174,7 @@ final class VoiceController: ObservableObject {
         mistakeCount = 0
         status = .idle
         summary = nil
+        stopped = false
         isManual = false
         voiceFailure = nil
     }
@@ -186,6 +203,12 @@ final class VoiceController: ObservableObject {
     func dismissMistake(bayt: Int, half: Half, wordIndex: Int) {
         guard let session, let i = reveal?.flatIndex(bayt: bayt, half: half, wordIndex: wordIndex) else { return }
         session.dismissMistake(at: i)
+    }
+
+    /// The same for words shown added after a word.
+    func dismissAdded(bayt: Int, half: Half, wordIndex: Int) {
+        guard let session, let i = reveal?.flatIndex(bayt: bayt, half: half, wordIndex: wordIndex) else { return }
+        session.dismissAdded(after: i)
     }
 
     /// The page to show for the cursor (auto page-turn): the page of the next
