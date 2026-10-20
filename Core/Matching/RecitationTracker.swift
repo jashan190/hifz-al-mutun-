@@ -12,6 +12,9 @@ import Foundation
 struct TranscriptFragment: Equatable {
     let text: String
     let isFinal: Bool
+    /// A final result's audio (16 kHz mono), when the source keeps it, for
+    /// checking the harakat of the words it settles.
+    var audio: [Float]? = nil
 }
 
 enum LockState { case idle, locked, lost }
@@ -106,7 +109,8 @@ final class RecitationTracker {
     /// that differ can be shown.
     var heard: [Int: String] {
         let shown = shownOutcomes
-        return current.heard.merging(tentativeHeard) { kept, _ in kept }.filter {
+        return current.heard.merging(tentativeHeard) { kept, _ in kept }
+            .merging(vowelSlips) { _, slip in slip }.filter {
             switch shown[$0.key] {
             case .unsure?, .wrong?: return true
             default: return false
@@ -142,8 +146,12 @@ final class RecitationTracker {
     /// of the same word (a shown guess that is then finalized).
     private var overrides: [Int: WordOutcome] = [:]
 
+    /// Words heard right but with a vowel slip (the vowel check), as said.
+    private var vowelSlips: [Int: String] = [:]
+
     private func applyingOverrides(_ judged: [Int: WordOutcome]) -> [Int: WordOutcome] {
         var judged = judged
+        for (i, said) in vowelSlips where judged[i] == .correct { judged[i] = .wrong(heard: said) }
         for (i, o) in overrides where judged[i] != nil { judged[i] = o }
         return judged
     }
@@ -165,6 +173,8 @@ final class RecitationTracker {
         s.outcomes = outcomes.filter { $0.key < start }
         s.heard = committed.heard.filter { $0.key < start }
         overrides = overrides.filter { $0.key < start }
+        vowelSlips = vowelSlips.filter { $0.key < start }
+        generation += 1
         committed = s
         current = s
         clearTentative()
@@ -177,12 +187,26 @@ final class RecitationTracker {
         overrides[index] = outcome
     }
 
+    /// Bumped by each `jump(to:)`, so a vowel check begun before it (on the
+    /// earlier recitation of a word) is ignored.
+    private(set) var generation = 0
+
+    /// The vowel check heard a word Whisper placed as correct with a short
+    /// vowel changed: it becomes a mistake, shown as `said` (the written word
+    /// with that vowel). Ignored unless the word is still judged correct, and
+    /// the check began after the last jump (`generation`).
+    func markVowelSlip(_ index: Int, said: String, generation: Int) {
+        guard generation == self.generation, committed.outcomes[index] == .correct else { return }
+        vowelSlips[index] = said
+    }
+
     /// Show the next expected word, and move past it: as help (`.revealed`,
     /// flagged) while reciting, or plainly (`.shown`) when reviewing by tap.
     func revealNext(at time: TimeInterval, as outcome: WordOutcome = .revealed) {
         let i = committed.cursor
         guard i < words.count else { return }
         overrides[i] = nil
+        vowelSlips[i] = nil
         committed.outcomes[i] = outcome
         committed.heard[i] = nil
         committed.cursor = Self.firstNonEmpty(from: i + 1, in: words)

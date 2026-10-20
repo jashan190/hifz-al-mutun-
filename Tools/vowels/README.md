@@ -20,6 +20,33 @@ was said as phonemes, short vowels included, in the Quran Phonetic Script.
 
 Not yet measured: speed on an iPhone, and slips in a real person's voice.
 
+## Test suites (2026-10-16, int8 Core ML model)
+
+| Suite | Result |
+| --- | --- |
+| `suite.py`: 60 random half-lines (20 per matn), each read correctly and with one planted short-vowel slip by a speech-synthesis voice that reads the vowels as written | **49 of 57 slips caught (86%)**: endings and tanween 21/22, vowels inside a word 28/35. **No false alarm on the 57 correct readings.** 3 lines skipped because the voice itself misread them. A slip counts as caught only when the planted vowel itself is heard as planted (rechecked so after review: same result, and no other vowel flagged on any slipped reading) |
+| `reciters.py`: 128 ayat of short suras by Husary, Minshawi and Alafasy | 0 vowel swaps in 1,099 short vowels. A sanity check only: these reciters are likely in the model's training data |
+| `phonetize_all.py`: every half-line of the three matns | All 2,686 phonetize without an error (that is no crash, not a checked reference) |
+| `build_phonemes.py`: phonemes split back into the app's words | Tuhfa 122/122, Jazariyya 216/218, Shatibiyya 2,288/2,346 half-lines; the rest are left to Whisper |
+
+- Most misses are a word's first letter (وُ for وَ, عُنْ for عَنْ). The voice
+  may not have said them; only a person's recording can tell.
+- The Mac's own Arabic voice ("Majed") misreads too many lines to test with,
+  so the suite uses [tts_arabic](https://github.com/nipponjo/tts_arabic)
+  (FastPitch). It is installed from git into its own venv, and `suite.py`
+  runs `say.py` with it through `TTS_PY`:
+
+  ```sh
+  uv venv --python 3.12 tts/.venv
+  uv pip install --python tts/.venv/bin/python "git+https://github.com/nipponjo/tts_arabic" soundfile
+  TTS_PY=tts/.venv/bin/python .venv/bin/python Tools/vowels/suite.py Muaalem_int8.mlpackage 20 Resources/Content/{tuhfa,jazariyya,shatibiyya}.json
+  ```
+
+- A known false-alarm source the suites can't see: the speech voice reads the
+  same spelling the reference is built from. A half-line that starts on a
+  hamzat wasl other than the article is phonetized as written; only one does
+  (ابْنٍ, al-Jazariyyah).
+
 ## How the pieces fit
 
 - `uthconv.py` rewrites a line of the matn in the Quran's spelling, which the
@@ -51,7 +78,41 @@ ffmpeg -i Tests/SpeechTests/Fixtures/shatibiyya_clip.m4a -ar 16000 -ac 1 clip.wa
 .venv/bin/python Tools/vowels/probe.py clip.wav Resources/Content/shatibiyya.json 1 10
 ```
 
-## Plan in the app
+## In the app (branch `vowel-checking-app`)
+
+- `build_phonemes.py` writes `Resources/Phonemes/<id>.phonemes.json`: each
+  word's expected phonemes, as the app splits the words.
+- `Core/Vowels`:
+  - `PhonemeFeatures`: the feature extractor ported to Swift.
+  - `PhonemeModel`: Core ML and greedy CTC decoding.
+  - `VowelJudge`: aligns the expected phonemes inside what was heard, with
+    the ends of the heard text free, and reports only fatha/damma/kasra swaps.
+  - `VowelChecker`: puts these together for words the tracker has placed.
+- Each final Whisper result carries its audio. The session checks the words
+  it settled when each was heard right (or skipped). A slip turns the word
+  into a mistake, shown as said (الْحَمْدَ for الْحَمْدُ), with the changed
+  letter marked.
+- The model is not bundled. DEBUG builds load it from `-vowelModel <path>`.
+- `fixtures.py` writes the Swift parity fixtures; `VowelTests` compares
+  against them. With `TEST_RUNNER_VOWEL_MODEL=<path>` it also runs the model
+  end to end.
+- The export takes up to 30 s (`convert.py OUT 1500`), in fixed lengths of
+  1 s each. The app pads a clip's features with zeros (the clip's mean) up
+  to the next length and drops the padded frames' output. On the 20
+  windows, no padding choice changed a vowel heard.
+
+### Where it was verified
+
+| Check | Where | Result |
+| --- | --- | --- |
+| Swift features vs Python | Simulator (`VowelTests`) | largest difference 1.3e-5 |
+| Swift features → Core ML → decoding vs Python, 20 half-line windows | Mac's Core ML (`Tools/vowels/swift`) | variable length: 20/20 identical; fixed lengths: 0 vowels heard differently (16/20 identical; the rest differ in ghunna length and the like); median 24–30 ms per half-line |
+| Running the model | iOS Simulator | **crashes** (a segfault in Core ML's CPU shape kernel), with either export, so the app never loads it there |
+| Live path: the correct clip streamed through Whisper and the session; each check's words and audio recorded in the Simulator and judged on the Mac | Simulator + Mac (`vowelCheckIsQuietOnTheCorrectClip`, then `Tools/vowels/swift`) | 6 checks over 62 of 102 words, **0 slips**: each final's audio lines up with the words it settles. The other 40 words were in passages that also held a word Whisper judged wrong, or in the last guess, which carries no audio |
+| Runs: a passage holding a word Whisper judged wrong is split there into runs, each lined up alone (a run of one word or under 8 phonemes beside others isn't judged) | Simulator (`runsAroundAWrongWordAreJudgedApart`) | `shatibiyya_clip`: 7 checks, 9 runs, **80/102 words** (was 62), **0 slips**. `VOWEL_CLIP=shatibiyya_clip_skips`: 8 checks, 78 words, **0 slips** |
+| Running the model | iPhone | not yet |
+
+## Plan
 
 1. **Build time.** `Tools/` phonetizes every hemistich and stores its phonemes,
    plus a mapping back to letters, in the content JSON. Lines it can't phonetize

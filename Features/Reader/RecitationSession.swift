@@ -62,6 +62,20 @@ final class RecitationSession: ObservableObject {
     /// How a reveal is recorded: as help (flagged) when reciting by voice,
     /// or plainly shown in a tap-to-reveal sitting.
     var revealOutcome: WordOutcome = .revealed
+    /// Checks the harakat of words as they settle, when the phoneme model is
+    /// available; the source must then attach audio to its finals. Finals
+    /// that arrive while it loads wait for it.
+    var vowels: VowelChecker? {
+        didSet {
+            guard let vowels else { return }
+            for w in waiting { checkVowels(settled: w.settled, audio: w.audio, generation: w.generation, with: vowels) }
+            waiting = []
+        }
+    }
+    /// Finals with audio heard before `vowels` was set (the model loading),
+    /// oldest first; only the last `maxWaiting` are kept.
+    private var waiting: [(settled: [Int: WordOutcome], audio: [Float], generation: Int)] = []
+    private let maxWaiting = 20
 
     init(index: RecitationIndex, source: SpeechSource, startWordIndex: Int) {
         let layout = RevealLayout(index: index)
@@ -131,7 +145,45 @@ final class RecitationSession: ObservableObject {
     /// Drains the source stream into the tracker. Exposed for tests.
     func run() async {
         for await fragment in source.fragments {
+            let before = tracker.outcomes
             tracker.consume(fragment, at: now)
+            publish()
+            if fragment.isFinal, let audio = fragment.audio {
+                let settled = tracker.outcomes.filter { before[$0.key] == nil }
+                if let vowels {
+                    checkVowels(settled: settled, audio: audio, generation: tracker.generation, with: vowels)
+                } else {
+                    waiting.append((settled, audio, tracker.generation))
+                    if waiting.count > maxWaiting { waiting.removeFirst() }
+                }
+            }
+        }
+    }
+
+    /// Checks the words a final result settled against its audio: those
+    /// heard right, and near misses (said, though Whisper spelled them
+    /// differently; only a word judged correct can become a slip). Skipped
+    /// words aren't in the audio and are left out. A word wrong or unheard
+    /// splits them into runs: its audio doesn't hold its phonemes, so each
+    /// run is lined up on its own.
+    private func checkVowels(settled: [Int: WordOutcome], audio: [Float], generation: Int, with vowels: VowelChecker) {
+        var runs: [[Int]] = [[]]
+        var last: Int?
+        for i in settled.keys.sorted() {
+            if let last, i != last + 1 { runs.append([]) }
+            last = i
+            switch settled[i]! {
+            case .correct, .unsure: runs[runs.count - 1].append(i)
+            case .skipped: break
+            default: runs.append([])
+            }
+        }
+        runs.removeAll { $0.isEmpty }
+        guard !runs.isEmpty else { return }
+        Task {
+            let slips = await vowels.check(runs: runs, audio: audio)
+            guard !slips.isEmpty else { return }
+            for (i, word) in slips { tracker.markVowelSlip(i, said: word, generation: generation) }
             publish()
         }
     }

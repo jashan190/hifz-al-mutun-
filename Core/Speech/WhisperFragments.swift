@@ -16,9 +16,14 @@ struct WhisperFragments {
         var end: Float
     }
 
+    /// Seconds into the sitting covered by the last final fragment.
+    private(set) var finalSpan: ClosedRange<Float>?
+
     private var confirmedCount = 0
     private var confirmedEnd: Float = 0
     private var lastVolatile = ""
+    /// Seconds covered by the current guess (its audio, if it is flushed).
+    private var guessSpan: ClosedRange<Float>?
 
     /// Fragments for a new streaming state, given every confirmed segment so
     /// far and the unconfirmed ones.
@@ -29,13 +34,18 @@ struct WhisperFragments {
             confirmedCount = confirmed.count
             confirmedEnd = max(confirmedEnd, new.map(\.end).max() ?? 0)
             let text = Self.join(new)
-            if !text.isEmpty { out.append(.init(text: text, isFinal: true)) }
+            if !text.isEmpty {
+                out.append(.init(text: text, isFinal: true))
+                finalSpan = (new.map(\.start).min() ?? 0)...confirmedEnd
+            }
             lastVolatile = ""   // a final supersedes the guess: resend it
         }
         // WhisperKit publishes the confirmed list a moment before the new
         // guess, so for one update the guess still holds the words just
         // confirmed. Only segments after the confirmed audio are a guess.
         let guess = Self.join(unconfirmed.filter { $0.start >= confirmedEnd - 0.1 }[...])
+        let guessed = unconfirmed.filter { $0.start >= confirmedEnd - 0.1 }
+        guessSpan = guessed.isEmpty ? nil : (guessed.map(\.start).min() ?? 0)...(guessed.map(\.end).max() ?? 0)
         if guess != lastVolatile {
             lastVolatile = guess
             if !guess.isEmpty { out.append(.init(text: guess, isFinal: false)) }
@@ -44,10 +54,12 @@ struct WhisperFragments {
     }
 
     /// On stop: the last guess becomes final, so the sitting's last words
-    /// are judged rather than left unheard.
+    /// are judged rather than left unheard. `finalSpan` becomes its audio.
     mutating func flush() -> TranscriptFragment? {
-        defer { lastVolatile = "" }
-        return lastVolatile.isEmpty ? nil : .init(text: lastVolatile, isFinal: true)
+        defer { lastVolatile = ""; guessSpan = nil }
+        guard !lastVolatile.isEmpty else { return nil }
+        finalSpan = guessSpan
+        return .init(text: lastVolatile, isFinal: true)
     }
 
     private static func join(_ segments: ArraySlice<Segment>) -> String {
