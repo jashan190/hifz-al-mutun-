@@ -178,26 +178,32 @@ import CoreML
 
         let started = Date()
         let start = Task { try await source.start() }
-        let drain = Task { () -> (finals: Int, lostWhileReciting: Int) in
+        let drain = Task { () -> (finals: Int, lostWhileReciting: Int, flashed: Set<Int>) in
             var finals = 0, lost = 0
+            var everShown: Set<Int> = []
             for await fragment in source.fragments {
                 let t = Date().timeIntervalSince(started)
                 tracker.consume(fragment, at: t)
+                for (i, o) in tracker.shownOutcomes where o.isMistake { everShown.insert(i) }
                 if fragment.isFinal { finals += 1 }
                 if tracker.lockState == .lost { lost += 1 }
                 print("STREAM \(String(format: "%5.1f", t)) \(fragment.isFinal ? "FINAL   " : "volatile") \(fragment.text)")
             }
-            return (finals, lost)
+            // Shown red at some point, but not in the end: a mark and a beep
+            // that were taken back.
+            return (finals, lost, everShown.subtracting(tracker.outcomes.filter { $0.value.isMistake }.keys))
         }
         // Wait for the clip to play through, then stop as the mic button does.
         while !audio.finished { try await Task.sleep(for: .milliseconds(200)) }
         try await Task.sleep(for: .seconds(3))
         source.stop()
-        let (finals, lost) = await drain.value
+        let (finals, lost, flashed) = await drain.value
         _ = try? await start.value
 
         let end = try #require(index.firstWordIndex(ofBayt: 11))
         let mistakes = tracker.outcomes.filter { $0.key < end && $0.value.isMistake }
+        print("STREAM flashed red then cleared: \(flashed.sorted().map { index.normalizedWords[$0] })")
+        #expect(flashed.count <= 1)
         print("STREAM cursor \(tracker.cursor)/\(end), finals \(finals), lost \(lost), mistakes \(mistakes.sorted { $0.key < $1.key })")
         #expect(finals > 0)
         #expect(tracker.cursor >= end - 2)
@@ -207,6 +213,42 @@ import CoreML
     /// The clip with two words cut out of the audio (الناس at 14.1 s and
     /// كتابه at 35.0 s), streamed live: both are caught, and this prints how
     /// long after the next word was spoken each one shows, and is finalized.
+    /// Both clips fed ~10× slower than real time, so each Whisper pass sees
+    /// about a second of new audio as on a phone, with the audio's own clock.
+    /// Logs every fragment; on the correct clip nothing may show red and then
+    /// clear (a false beep), and each cut word is shown. Takes ~40 min.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WHISPER_E2E_SLOW"] == "1"),
+          .timeLimit(.minutes(60)))
+    func phonePacedPassesNeverFlashRed() async throws {
+        let index = try Self.shatibiyya()
+        for name in ["shatibiyya_clip", "shatibiyya_clip_skips"] {
+            let clip = try #require(Bundle(for: BundleToken.self).url(forResource: name, withExtension: "m4a"))
+            let audio = try FileFedAudio(path: clip.path, slowdown: 10)
+            let source = WhisperSpeechSource(model: .turbo, audioInput: audio)
+            let tracker = RecitationTracker(words: index.normalizedWords, startIndex: 0)
+            let start = Task { try await source.start() }
+            let drain = Task { () -> [Int: Double] in
+                var shownAt: [Int: Double] = [:]
+                for await fragment in source.fragments {
+                    let now = audio.elapsed
+                    tracker.consume(fragment, at: now)
+                    print("PACED \(name) \(String(format: "%5.1f", now)) \(fragment.isFinal ? "FINAL   " : "volatile") \(fragment.text)")
+                    for (i, o) in tracker.shownOutcomes where o.isMistake && shownAt[i] == nil { shownAt[i] = now }
+                }
+                return shownAt
+            }
+            while !audio.finished { try await Task.sleep(for: .milliseconds(500)) }
+            try await Task.sleep(for: .seconds(30))
+            source.stop()
+            let shownAt = await drain.value
+            _ = try? await start.value
+            let kept = Set(tracker.outcomes.filter { $0.value.isMistake }.keys)
+            let flashed = Set(shownAt.keys).subtracting(kept)
+            print("PACED \(name) shown \(shownAt.sorted { $0.key < $1.key }.map { "\(index.normalizedWords[$0.key])@\($0.value)" }) flashed \(flashed.sorted().map { index.normalizedWords[$0] })")
+            if name == "shatibiyya_clip" { #expect(flashed.isEmpty) }
+        }
+    }
+
     @Test(.enabled(if: ProcessInfo.processInfo.environment["WHISPER_E2E"] == "1"),
           .timeLimit(.minutes(20)))
     func catchesRealSkipsLive() async throws {
@@ -275,9 +317,14 @@ private final class FileFedAudio: AudioProcessing, @unchecked Sendable {
     private var feeder: Task<Void, Never>?
     private var done = false
     var relativeEnergyWindow = 20
+    /// How many times slower than real time to feed the audio. The Simulator
+    /// takes ~10 s a pass, so feeding ~10× slower gives each pass about a
+    /// second of new audio, as on a phone.
+    private let slowdown: Int
 
-    init(path: String) throws {
+    init(path: String, slowdown: Int = 1) throws {
         samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: path)
+        self.slowdown = slowdown
     }
 
     var finished: Bool { lock.withLock { done } }
@@ -301,7 +348,7 @@ private final class FileFedAudio: AudioProcessing, @unchecked Sendable {
                     self.buffer.append(contentsOf: chunk)
                 }
                 callback?(chunk)
-                try? await Task.sleep(for: .milliseconds(100))
+                try? await Task.sleep(for: .milliseconds(100 * self.slowdown))
             }
             self?.lock.withLock { self?.done = true }
         }

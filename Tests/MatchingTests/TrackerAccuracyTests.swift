@@ -45,27 +45,68 @@ import Foundation
 
     // MARK: - Showing mistakes from the guess
 
-    @Test func aMistakeShowsOnceTwoGuessesAgree() {
+    @Test func aWrongWordShowsBeforeTheNextWord() {
+        // "سعيد" said for "راجي": its letters part from the word's own, so it
+        // is judged while still the last word heard, once two guesses agree.
         let t = tracker(["يقول", "راجي", "عفو", "رب"])
-        t.consume(.init(text: "يقول عفو", isFinal: false), at: 0)
+        t.consume(.init(text: "يقول سعيد", isFinal: false), at: 0)
         #expect(t.shownOutcomes[1] == nil)               // one guess: could still change
-        t.consume(.init(text: "يقول عفو رب", isFinal: false), at: 1)
-        #expect(t.shownOutcomes[1] == .skipped)          // two agree: shown
+        t.consume(.init(text: "يقول سعيد", isFinal: false), at: 1)
+        #expect(t.shownOutcomes[1] == .wrong(heard: "سعيد"))
         #expect(t.outcomes.isEmpty)                      // but not kept until final
-        t.consume(.init(text: "يقول عفو رب", isFinal: true), at: 2)
+    }
+
+    @Test func goingBackOverAWordDoesntFlashTheNextRed() {
+        // يقول said again before راجي: not راجي said wrong (CodeRabbit, #13).
+        let t = tracker(["يقول", "راجي", "عفو", "رب"])
+        for (k, text) in ["يقول يقول", "يقول يقول", "يقول يقول راجي"].enumerated() {
+            t.consume(.init(text: text, isFinal: false), at: Double(k))
+            #expect(t.shownOutcomes[1]?.isMistake != true)
+        }
+        // A wrong word after the repeat is still caught at once.
+        let u = tracker(["يقول", "راجي", "عفو", "رب"])
+        u.consume(.init(text: "يقول يقول سعيد", isFinal: false), at: 0)
+        u.consume(.init(text: "يقول يقول سعيد", isFinal: false), at: 1)
+        #expect(u.shownOutcomes[1] == .wrong(heard: "سعيد"))
+    }
+
+    @Test func aWordStillBeingSaidIsNotJudged() {
+        let t = tracker(["يقول", "راجي", "عفو", "رب"])
+        for text in ["يقول را", "يقول را", "يقول رجي", "يقول رجي"] {   // cut off; a letter misheard
+            t.consume(.init(text: text, isFinal: false), at: 0)
+            #expect(t.shownOutcomes[1]?.isMistake != true, "\(text)")
+        }
+    }
+
+    @Test func aMistakeShowsOnceTwoGuessesAgree() {
+        // A skip followed by a short word: only agreement shows it.
+        let t = tracker(["يقول", "راجي", "في", "رب"])
+        t.consume(.init(text: "يقول في", isFinal: false), at: 0)
+        #expect(t.shownOutcomes[1] == nil)
+        t.consume(.init(text: "يقول في", isFinal: false), at: 1)
+        #expect(t.shownOutcomes[1] == .skipped)
+        t.consume(.init(text: "يقول في رب", isFinal: true), at: 2)
         #expect(t.outcomes[1] == .skipped)
     }
 
-    @Test func aMistakeFollowedByTwoWordsShowsAtOnce() {
+    @Test func aMistakeFollowedByAWordShowsAtOnce() {
         let t = tracker(["يقول", "راجي", "عفو", "رب", "قادر"])
-        t.consume(.init(text: "يقول عفو رب", isFinal: false), at: 0)
-        #expect(t.shownOutcomes[1] == .skipped)          // عفو رب both follow it
+        t.consume(.init(text: "يقول عفو", isFinal: false), at: 0)
+        #expect(t.shownOutcomes[1] == .skipped)          // عفو follows it, said exactly
         #expect(t.outcomes.isEmpty)
+    }
+
+    @Test func whatWasHeardIsKeptForANearMiss() {
+        let t = tracker(["وثلثت", "ان", "الحمد"])
+        t.consume(.init(text: "وثلست أن الحمد", isFinal: true), at: 0)
+        #expect(t.outcomes[0] == .unsure)
+        #expect(t.heard == [0: "وثلست"])
+        #expect(mismatchedLetters(expected: "وثلثت", heard: "وثلست") == [3])
     }
 
     @Test func aGuessCorrectedBeforeItSettlesNeverShows() {
         let t = tracker(["يقول", "راجي", "عفو", "رب"])
-        t.consume(.init(text: "يقول عفو", isFinal: false), at: 0)
+        t.consume(.init(text: "يقول سعيد", isFinal: false), at: 0)
         t.consume(.init(text: "يقول راجي عفو", isFinal: false), at: 1)   // the recognizer fixed it
         #expect(t.shownOutcomes[1] == .correct || t.shownOutcomes[1] == nil)
         #expect(!t.shownOutcomes.values.contains { $0.isMistake })
@@ -125,7 +166,7 @@ import Foundation
     /// way the streamer delivers it. Counts the updates from the one that first
     /// holds the word after the mistake (the earliest it can be judged) until
     /// the mistake shows.
-    @Test func mistakesShowWithinOneUpdateOfTheNextWord() throws {
+    @Test func mistakesShowWithTheNextWord() throws {
         let index = try WhisperTests.shatibiyya()
         var heard = WhisperTests.turboTranscript.split(separator: " ").map(String.init)
         // Skip "الناس" (index 24 of the transcript) and say "قلبه" for "كتابه".
@@ -156,8 +197,98 @@ import Foundation
             let shown = try #require(shownAt[target.word], "word \(target.word) never shown")
             let kept = try #require(keptAt[target.word])
             print("LATENCY word \(target.word): shown \(shown - heardAt) updates after the next word, finalized \(kept - heardAt)")
-            #expect(shown - heardAt <= 1)
+            #expect(shown - heardAt == 0)
             #expect(shown <= kept)
         }
+    }
+}
+
+extension TrackerAccuracyTests {
+    /// A red mark that shows and is then taken back still beeps: on a correct
+    /// recitation streamed update by update, nothing shows red that the final
+    /// judgment doesn't also call a mistake.
+    @Test func aCorrectRecitationNeverFlashesRed() throws {
+        let index = try WhisperTests.shatibiyya()
+        let t = RecitationTracker(words: index.normalizedWords, startIndex: 0)
+        var everShown: Set<Int> = []
+        WhisperTests.stream(WhisperTests.turboTranscript, into: t) { _ in
+            for (i, o) in t.shownOutcomes where o.isMistake { everShown.insert(i) }
+        }
+        let kept = Set(t.outcomes.filter { $0.value.isMistake }.keys)
+        print("FLASH shown \(everShown.sorted()) kept \(kept.sorted())")
+        #expect(everShown.subtracting(kept).isEmpty, "flashed red: \(everShown.subtracting(kept).sorted().map { index.normalizedWords[$0] })")
+    }
+}
+
+extension TrackerAccuracyTests {
+    /// Every fragment WhisperKit delivered for the clip in one live run on the
+    /// Simulator (passes about 10 s apart there): (seconds, final, text).
+    static let liveRun: [(Double, Bool, String)] = [
+        (37.1, false, "بجد"),
+        (44.8, false, "بدأت ببسم الله في النظم أولا تبارك رحمن الرحيم ومعنى"),
+        (54.8, true, "بدأت ببسم الله في النظم أولا تبارك رحمن الرحيم وموئلا وثنيت صلى الله ربي على الرضا"),
+        (54.8, false, "محمد المهدى إلى الناس"),
+        (65.1, true, "محمد المهدى إلى الناس مرسلا وعطرته ثم الصحابة ثم من تلاهم على الإحسان بالخير وبلاء"),
+        (65.1, false, "وثجره"),
+        (74.2, true, "وثلست أن الحمد لله دائما وما ليس مبدوءا به أجذم العلا"),
+        (74.2, false, "وبعد فحبل الله فإنه"),
+        (83.3, true, "وبعد فحبل الله فينا كتابه فجاهد به حبل العدى متحبلا"),
+        (83.3, false, "وأخلق به إذ ليس يخلق"),
+        (92.6, true, "وأخلق به إذ ليس يخلق جدة جديدا مواليه على الجد مقبلا"),
+        (92.6, false, "وقارئه المرضي قر مثاله"),
+        (102.5, true, "وقارئه المرضي قر مثاله كالترجح عليه مريحا وموكلا"),
+        (102.5, false, "هو المرتباء من إذا كان أمة ويممه ظهرا"),
+        (112.3, true, "هو المرتضى أمن إذا كان أمة ويممه ظل الرزانة قنقلا"),
+        (112.3, false, "هو الحر إن كان الحري حواليا له بتحريه إلى أن تنبلا"),
+        (122.3, true, "هو الحر إن كان الحري حواليا له بتحريه إلى أن تنبلا"),
+        (122.3, false, "وإن كتاب الله أوثق شافع وأغنى غناء واهبا متفضلا"),
+        (122.3, true, "وإن كتاب الله أوثق شافع وأغنى غناء واهبا متفضلا"),
+    ]
+
+    /// Replayed, the correct recitation never shows a word red that is then
+    /// taken back.
+    @Test func aLiveRunNeverFlashesRed() throws {
+        let index = try WhisperTests.shatibiyya()
+        let t = RecitationTracker(words: index.normalizedWords, startIndex: 0)
+        var everShown: Set<Int> = []
+        for (time, isFinal, text) in Self.liveRun {
+            t.consume(.init(text: text, isFinal: isFinal), at: time)
+            for (i, o) in t.shownOutcomes where o.isMistake {
+                if !everShown.contains(i) { print("LIVE \(time) \(isFinal) shows \(i) \(index.normalizedWords[i]) \(o)") }
+                everShown.insert(i)
+            }
+        }
+        let kept = Set(t.outcomes.filter { $0.value.isMistake }.keys)
+        #expect(everShown.subtracting(kept).isEmpty, "flashed red: \(everShown.subtracting(kept).sorted().map { index.normalizedWords[$0] })")
+    }
+}
+
+extension TrackerAccuracyTests {
+    /// The end of the skips clip fed at phone pace (a pass a second): Whisper
+    /// merged وأغنى غناء into وأغناء for one pass, which made غناء look skipped.
+    @Test func aMergedWordDoesNotFlashASkip() throws {
+        let index = try WhisperTests.shatibiyya()
+        let t = RecitationTracker(words: index.normalizedWords, startIndex: try #require(index.firstWordIndex(ofBayt: 9)))
+        let run: [(Double, Bool, String)] = [
+            (70.0, true, "هو الحر إن كان الحري حواليا"),
+            (70.1, false, "له بتحريه إلى أن تنبنا"),
+            (71.2, true, "له بتحريه إلى أن تنبلا"),
+            (71.2, false, "وإنك"),
+            (72.2, false, "وإن كتاب الله"),
+            (73.4, false, "وإن كتاب الله أوثق شاكرا"),
+            (74.5, false, "وإن كتاب الله يوثق شافعين وصفحين"),
+            (75.6, false, "وإن كتاب الله يوثق شافع وأغنى غنى"),
+            (76.8, true, "وإن كتاب الله أوثق شافع"),
+            (76.8, false, "وأغنى غناء واه"),
+            (77.8, false, "وأغناء واهبا متفضل"),
+            (78.8, false, "وأغنى غناء واهبا متفضلا"),
+            (78.8, true, "وأغنى غناء واهبا متفضلا"),
+        ]
+        var everShown: Set<Int> = []
+        for (time, isFinal, text) in run {
+            t.consume(.init(text: text, isFinal: isFinal), at: time)
+            for (i, o) in t.shownOutcomes where o.isMistake { everShown.insert(i) }
+        }
+        #expect(everShown.isEmpty, "shown red: \(everShown.sorted().map { index.normalizedWords[$0] })")
     }
 }

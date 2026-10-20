@@ -155,13 +155,16 @@ enum HemistichText {
     /// Build the base text plus optional above/below nun layers and footnote
     /// layers for a half-line. `plain` is the half-line's `text`. Scalars of
     /// `plain` inside `underlined` get the flag mark: a warm red-brown underline.
+    /// Scalars inside `emphasis.ranges` (a mistaken letter and its harakat)
+    /// take `emphasis.color` instead of their tint.
     static func render(
         segments: [Segment],
         plain: String,
         size: CGFloat,
         justifyWidth: CGFloat,
         tint: (SegmentColor) -> Color,
-        underlined: [Range<Int>] = []
+        underlined: [Range<Int>] = [],
+        emphasis: (ranges: [Range<Int>], color: Color)? = nil
     ) -> Rendered {
         let insertions = kashida(plain: plain, targetWidth: justifyWidth, size: size)
         let placements = noonPlacements(plain)
@@ -202,12 +205,14 @@ enum HemistichText {
                 continue
             }
             guard let runText = seg.text else { continue }
-            let color = tint(seg.color ?? .black)
+            let segColor = tint(seg.color ?? .black)
             let run = Array(runText.unicodeScalars)
             var i = 0
             while i < run.count {
                 let s = run[i]
                 let pidx = global
+                var color = segColor
+                if let emphasis, emphasis.ranges.contains(where: { $0.contains(pidx) }) { color = emphasis.color }
                 global += 1
                 var piece = String(s)
                 if let place = placements[pidx], s.value == smallNoon, place != .natural {

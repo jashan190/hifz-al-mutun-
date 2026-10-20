@@ -55,6 +55,7 @@ final class RecitationSession: ObservableObject {
     private var startTime = Date()
     private var anchor: Int
     private var shown: [Int: WordOutcome] = [:]
+    private var heard: [Int: String] = [:]
     /// Set by stop(): late events from the source (a download still finishing,
     /// a "listening" that crossed paths with the stop) must not revive it.
     private var stopped = false
@@ -183,13 +184,16 @@ final class RecitationSession: ObservableObject {
         if lockState != tracker.lockState { lockState = tracker.lockState }
         let latest = tracker.outcomes
         let nowShown = tracker.shownOutcomes
-        guard tracker.cursor != cursor || tracker.anchor != anchor || latest != outcomes || nowShown != shown
+        let nowHeard = tracker.heard
+        guard tracker.cursor != cursor || tracker.anchor != anchor || latest != outcomes
+                || nowShown != shown || nowHeard != heard
         else { return }
         cursor = tracker.cursor
         anchor = tracker.anchor
         if latest != outcomes { outcomes = latest }
         shown = nowShown
-        reveal = RevealState(layout: layout, anchor: anchor, cursor: cursor, outcomes: nowShown)
+        heard = nowHeard
+        reveal = RevealState(layout: layout, anchor: anchor, cursor: cursor, outcomes: nowShown, heard: nowHeard)
         let mistakes = nowShown.values.filter(\.isMistake).count
         if mistakes != mistakeCount { mistakeCount = mistakes }
     }

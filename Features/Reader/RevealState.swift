@@ -25,16 +25,21 @@ struct RevealState {
     private let anchor: Int
     private let cursor: Int
     private let outcomes: [Int: WordOutcome]
+    private let heard: [Int: String]
 
-    init(layout: RevealLayout, anchor: Int = 0, cursor: Int, outcomes: [Int: WordOutcome] = [:]) {
+    init(layout: RevealLayout, anchor: Int = 0, cursor: Int, outcomes: [Int: WordOutcome] = [:],
+         heard: [Int: String] = [:]) {
         self.layout = layout
         self.anchor = anchor
         self.cursor = cursor
         self.outcomes = outcomes
+        self.heard = heard
     }
 
-    init(index: RecitationIndex, anchor: Int = 0, cursor: Int, outcomes: [Int: WordOutcome] = [:]) {
-        self.init(layout: RevealLayout(index: index), anchor: anchor, cursor: cursor, outcomes: outcomes)
+    init(index: RecitationIndex, anchor: Int = 0, cursor: Int, outcomes: [Int: WordOutcome] = [:],
+         heard: [Int: String] = [:]) {
+        self.init(layout: RevealLayout(index: index), anchor: anchor, cursor: cursor,
+                  outcomes: outcomes, heard: heard)
     }
 
     private func isRevealed(_ i: Int) -> Bool {
@@ -69,5 +74,10 @@ struct RevealState {
         let key = RevealLayout.HalfKey(bayt: bayt, half: half)
         guard let start = layout.startByHalf[key] else { return nil }
         return outcomes[start + wordIndex]
+    }
+
+    /// What was heard for a word judged amber or red, if known.
+    func heard(bayt: Int, half: Half, wordIndex: Int) -> String? {
+        layout.startByHalf[RevealLayout.HalfKey(bayt: bayt, half: half)].flatMap { heard[$0 + wordIndex] }
     }
 }
