@@ -380,6 +380,7 @@ final class RecitationTracker {
             }
             if let found {
                 if let from = joinedFrom {
+                    noteAdded(before: from, in: &s)
                     for w in from..<found.hit where !words[w].isEmpty {
                         s.outcomes[w] = found.exact ? .correct : .unsure
                         s.heard[w] = nil
@@ -420,13 +421,15 @@ final class RecitationTracker {
 
     /// Tokens heard just before a match with no words passed over were said
     /// on top of the text: added after the word before. A repeat of the last
-    /// few words (the reciter going back over them) isn't, nor a stray letter.
+    /// few words (the reciter going back over them) isn't, nor a stray letter
+    /// or fragment: under three letters, only a whole short word (في) counts.
     private func noteAdded(before hit: Int, in s: inout State) {
         guard !s.pending.isEmpty, (s.cursor..<hit).allSatisfy({ words[$0].isEmpty }),
               let before = (s.anchor..<hit).last(where: { !words[$0].isEmpty }) else { return }
         let recent = (max(s.anchor, before - 2)...hit).map { words[$0] }.filter { !$0.isEmpty }
         let extra = s.pending.filter { token in recent.allSatisfy { isMatch(token.norm, $0) == nil } }
-        guard extra.map(\.norm.count).reduce(0, +) >= 3 else { return }
+        guard extra.map(\.norm.count).reduce(0, +) >= 3
+                || (!extra.isEmpty && extra.allSatisfy { Self.shortWords.contains($0.norm) }) else { return }
         s.added[before] = extra.map(\.raw).joined(separator: " ")
     }
 
@@ -526,6 +529,11 @@ final class RecitationTracker {
         if w.count > 3, w.hasSuffix("ا") { w = w.dropLast() }
         return w
     }
+
+    /// Common two-letter words, told apart from Whisper's stray fragments.
+    private static let shortWords: Set<String> = Set([
+        "في", "من", "عن", "ما", "لا", "لم", "لن", "إن", "أن", "أو", "هو", "هي", "يا", "قد", "بل",
+    ].map(ArabicNormalize.normalize))
 
     private static func firstNonEmpty(from i: Int, in words: [String]) -> Int {
         var i = i

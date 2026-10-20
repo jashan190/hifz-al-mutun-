@@ -61,6 +61,26 @@ import Foundation
         #expect(t.added.isEmpty)
     }
 
+    @Test func aShortAddedWordIsAdded() {
+        let t = tracker(["علي", "محمد", "واله"])
+        t.consume(.init(text: "على في محمد وآله", isFinal: true), at: 0)
+        #expect(t.added == [0: "في"])
+    }
+
+    @Test func aStrayFragmentIsNotAdded() {
+        let t = tracker(["علي", "محمد", "واله"])
+        t.consume(.init(text: "على قر محمد وآله", isFinal: true), at: 0)
+        #expect(t.added.isEmpty)
+    }
+
+    @Test func wordsAddedBeforeAJoinedPrefixAreAdded() {
+        // بِـ: بِسْمِ heard as ببسم, with a word said before it.
+        let t = tracker(["يقول", "ب", "بسم", "الله"])
+        t.consume(.init(text: "يقول زيادة ببسم الله", isFinal: true), at: 0)
+        #expect(t.added == [0: "زيادة"])
+        #expect(t.outcomes == [0: .correct, 1: .correct, 2: .correct, 3: .correct])
+    }
+
     @Test func addedWordsInAGuessShowOnceTwoUpdatesAgree() {
         let t = tracker(["علي", "محمد", "واله"])
         t.consume(.init(text: "على نبيه ومصطفاه محمد", isFinal: false), at: 0)
