@@ -1,6 +1,6 @@
 {
   "images" : [
-    { "filename" : "floral-corner.svg", "idiom" : "universal" }
+    { "filename" : "corner.pdf", "idiom" : "universal" }
   ],
   "info" : { "author" : "xcode", "version" : 1 },
   "properties" : {

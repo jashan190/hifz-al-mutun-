@@ -1,9 +1,10 @@
 // Features/Library/CornerOrnament.swift
 import SwiftUI
 
-/// The four floral corner ornaments of a cover, tinted to the subject colour.
-/// One CC0 corner motif (top-left) is mirrored into the other three corners.
-/// Edges-only: it hugs each corner and trails lightly along the edges.
+/// The four arabesque corner ornaments of a cover, tinted to the subject colour.
+/// One corner motif (top-left) is mirrored into the other three corners. The
+/// motif's own border lines run along the edges and lead into a scroll at each
+/// corner; a continuous double rule (in MatnCover) completes the edges.
 struct CornerOrnament: View {
     let color: Color
     var inset: CGFloat = 6
@@ -11,10 +12,12 @@ struct CornerOrnament: View {
 
     var body: some View {
         ZStack {
-            corner(.topLeading,     flipX: false, flipY: false)
-            corner(.topTrailing,    flipX: true,  flipY: false)
-            corner(.bottomLeading,  flipX: false, flipY: true)
-            corner(.bottomTrailing, flipX: true,  flipY: true)
+            // The PDF asset imports horizontally mirrored, so the top-left
+            // motif needs flipX to land its cluster in the actual corner.
+            corner(.topLeading,     flipX: true,  flipY: false)
+            corner(.topTrailing,    flipX: false, flipY: false)
+            corner(.bottomLeading,  flipX: true,  flipY: true)
+            corner(.bottomTrailing, flipX: false, flipY: true)
         }
         .allowsHitTesting(false)
     }

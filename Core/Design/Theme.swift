@@ -28,6 +28,8 @@ extension Color {
 enum Theme {
     // Surfaces and ink
     static let page = Color.dynamic(light: 0xFBF8F1, dark: 0x141413)
+    // Warmer manuscript cream used by the matn covers and the reader pages.
+    static let cover = Color.dynamic(light: 0xF4EBD3, dark: 0x262320)
     static let ink = Color.dynamic(light: 0x1D1B18, dark: 0xE9E5DD)
     // UX.md asks for ≥4.5:1 on the page; its 45% gave 2.8:1 (light), so 62%.
     static let inkSecondary = ink.opacity(0.62)   // revealed hints, dimmed text
