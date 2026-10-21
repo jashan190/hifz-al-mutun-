@@ -28,6 +28,8 @@ extension Color {
 enum Theme {
     // Surfaces and ink
     static let page = Color.dynamic(light: 0xFBF8F1, dark: 0x141413)
+    // Warmer manuscript cream used by the matn covers and the reader pages.
+    static let cover = Color.dynamic(light: 0xF4EBD3, dark: 0x262320)
     static let ink = Color.dynamic(light: 0x1D1B18, dark: 0xE9E5DD)
     // UX.md asks for ≥4.5:1 on the page; its 45% gave 2.8:1 (light), so 62%.
     static let inkSecondary = ink.opacity(0.62)   // revealed hints, dimmed text
@@ -62,6 +64,20 @@ enum Theme {
     //    error red so the two don't look like the same colour.
     static let quran = Color.dynamic(light: 0x1A5A86, dark: 0x74B6DE)
     static let rumuz = Color.dynamic(light: 0xB02430, dark: 0xEE7E82)
+
+    // Per-subject accent colours for the library shelves and covers. Saturated
+    // on purpose so a subject is recognizable at a glance, even at cover size.
+    // Dark values are lightened so titles read on the dark page.
+    static func subjectAccent(_ subject: Subject) -> Color {
+        switch subject {
+        case .quran:   return accent                                   // Madinah green
+        case .hadith:  return .dynamic(light: 0xC0362C, dark: 0xE87E76)
+        case .seerah:  return .dynamic(light: 0x2A4FC4, dark: 0x8098EE)
+        case .aqeedah: return .dynamic(light: 0x5A2E6B, dark: 0xB487C6)
+        case .arabic:  return .dynamic(light: 0x6B4A2A, dark: 0xC59C6E)
+        case .fiqh:    return .dynamic(light: 0x0E8E86, dark: 0x53C6BE)
+        }
+    }
 
     // 16-point screen margins.
     static let margin: CGFloat = 16

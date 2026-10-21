@@ -6,6 +6,13 @@ import Foundation
 // As we add al-Jazariyyah and ash-Shatibiyyah, dropping their JSON into
 // Resources/Content is all that's needed — no code change here.
 
+/// One subject's row on the home page: the subject and its mutun (shortest first).
+struct Shelf: Identifiable, Hashable {
+    let subject: Subject
+    let matns: [Matn]
+    var id: Subject { subject }
+}
+
 @MainActor
 final class ContentStore: ObservableObject {
     @Published private(set) var matns: [Matn] = []
@@ -42,6 +49,16 @@ final class ContentStore: ObservableObject {
     /// Find a loaded matn by its id (e.g. "tuhfa").
     func matn(id: String) -> Matn? {
         matns.first { $0.id == id }
+    }
+
+    /// Mutun grouped into shelves, one per subject that has content, in
+    /// `Subject.allCases` order. Within a shelf, shortest matn first.
+    var shelves: [Shelf] {
+        Subject.allCases.compactMap { subject in
+            let group = matns.filter { $0.subject == subject }
+                             .sorted { $0.baytCount < $1.baytCount }
+            return group.isEmpty ? nil : Shelf(subject: subject, matns: group)
+        }
     }
 
     // MARK: - Loading

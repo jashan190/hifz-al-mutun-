@@ -14,7 +14,7 @@ import Testing
         let bayt = Bayt(number: 1, sadr: hemi(["يقول", "راجي"]), ajuz: hemi(["عفو", "رب"]))
         let page = MatnPage(page: 1, items: [.bayt(bayt)])
         return Matn(id: "t", title: "t", fullTitle: nil, titleLatin: "t", author: "a",
-                    meter: "m", baytsPerPage: 1, pageCount: 1, baytCount: 1,
+                    meter: "m", subject: .quran, baytsPerPage: 1, pageCount: 1, baytCount: 1,
                     pages: [page], babs: [], reviewNotes: [])
     }
 

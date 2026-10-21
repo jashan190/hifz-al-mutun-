@@ -119,7 +119,7 @@ extension LegacyMatn {
 
         return Matn(
             id: id, title: title, fullTitle: fullTitle, titleLatin: titleLatin,
-            author: author, meter: meter,
+            author: author, meter: meter, subject: .quran,
             baytsPerPage: baytsPerPage, pageCount: pageCount, baytCount: baytCount,
             pages: pages, babs: canonicalBabs, reviewNotes: []
         )
