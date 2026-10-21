@@ -441,8 +441,32 @@ final class RecitationTracker {
             for w in gap { s.outcomes[w] = .unheard; s.heard[w] = nil }
             return
         }
+        // One token short, the last ending in the last word whole (عفو رب
+        // heard as فرب or قرب): Whisper glued the end of the word before onto
+        // it. Split it there: the last word was said, and the remnant, however
+        // garbled, is the word before running into it.
+        var pending = s.pending
+        var glued: Int?
+        if gap.count >= 2, pending.count == gap.count - 1, let token = pending.last,
+           case let lastWord = words[gap[gap.count - 1]],
+           token.norm.count > lastWord.count, token.norm.hasSuffix(lastWord) {
+            let remnant = String(token.norm.dropLast(lastWord.count))
+            pending[pending.count - 1] = (raw: remnant, norm: remnant)
+            pending.append((raw: lastWord, norm: lastWord))
+            glued = gap.count - 2
+        }
         for (k, w) in gap.enumerated() {
-            guard k < s.pending.count else {
+            if let glued, k > glued {
+                s.outcomes[w] = .correct; s.heard[w] = nil
+                continue
+            }
+            if k == glued {
+                let remnant = pending[k].norm
+                s.outcomes[w] = remnant == words[w] ? .correct : .unsure
+                s.heard[w] = remnant == words[w] ? nil : remnant
+                continue
+            }
+            guard k < pending.count else {
                 // A lone letter (a prefix written apart) is hard to hear and
                 // easily dropped by the recognizer: check it, don't call it wrong.
                 s.outcomes[w] = words[w].count == 1 ? .unsure : .skipped
@@ -450,7 +474,7 @@ final class RecitationTracker {
                 continue
             }
             // Any extra heard tokens beyond the gap belong to its last slot.
-            let heard = k == gap.count - 1 ? s.pending[k...] : s.pending[k...k]
+            let heard = k == gap.count - 1 ? pending[k...] : pending[k...k]
             let rawHeard = heard.map(\.raw).joined(separator: " ")
             let near = heard.contains {
                 levenshtein($0.norm, words[w]) <= tuning.nearMissThreshold($0.norm, words[w])

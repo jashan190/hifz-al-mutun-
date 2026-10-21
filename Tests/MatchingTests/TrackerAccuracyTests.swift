@@ -28,6 +28,21 @@ import Foundation
         #expect(t.outcomes[2] == .correct)
     }
 
+    @Test func aWordsEndGluedToTheNextIsNotAMistake() {
+        // عَفْوِ رَبٍّ: Whisper writes the end of عفو onto رب, as فرب or قرب.
+        for heard in ["فرب", "قرب"] {
+            let t = tracker(["راجي", "عفو", "رب", "سامع"])
+            t.consume(.init(text: "راجي \(heard) سامع", isFinal: true), at: 0)
+            #expect(t.outcomes == [0: .correct, 1: .unsure, 2: .correct, 3: .correct])
+        }
+    }
+
+    @Test func aWordSkippedBeforeItsNeighbourIsStillSkipped() {
+        let t = tracker(["راجي", "عفو", "رب", "سامع"])
+        t.consume(.init(text: "راجي رب سامع", isFinal: true), at: 0)
+        #expect(t.outcomes[1] == .skipped)
+    }
+
     @Test func aWordHeardAsTwoTokensMatches() {
         let t = tracker(["قال", "مرتضاه", "هو"])
         t.consume(.init(text: "قال مر تضاه هو", isFinal: true), at: 0)
