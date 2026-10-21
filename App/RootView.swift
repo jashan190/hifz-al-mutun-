@@ -113,6 +113,7 @@ private struct ShelfRow: View {
                 .padding(.vertical, 2)
             }
             .environment(\.layoutDirection, .rightToLeft)
+            .scrollClipDisabled()
         }
     }
 }

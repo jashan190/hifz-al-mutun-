@@ -15,7 +15,6 @@ struct ReaderSidecar: View {
 
     enum JumpMode: String, CaseIterable { case page = "صفحة", bayt = "بيت" }
 
-    private func page(ofBayt bayt: Int) -> Int { (bayt - 1) / matn.baytsPerPage + 1 }
     private var currentBab: Bab? { matn.currentBab(onPage: currentPage) }
 
     var body: some View {
@@ -64,7 +63,7 @@ struct ReaderSidecar: View {
                     GoButton { currentPage = goToPage; onClose() }
                 } else {
                     NumberStepperField(value: $goToBayt, range: 1...max(1, matn.baytCount))
-                    GoButton { currentPage = page(ofBayt: goToBayt); onClose() }
+                    GoButton { currentPage = matn.page(ofBayt: goToBayt); onClose() }
                 }
             }
         }

@@ -36,7 +36,7 @@ struct ContinueCard: View {
                     .foregroundStyle(.white.opacity(0.9))
                 ProgressView(value: progress)
                     .tint(.white)
-                    .background(.white.opacity(0.25))
+                    .background(Capsule().fill(.white.opacity(0.25)))
                     .padding(.top, 4)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)

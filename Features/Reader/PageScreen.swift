@@ -66,10 +66,10 @@ struct PageScreen: View {
                     // Scrim: dims the page, tap to dismiss.
                     Color.black.opacity(0.38)
                         .ignoresSafeArea()
-                        .onTapGesture { withAnimation(.easeOut(duration: 0.2)) { showIndex = false } }
+                        .onTapGesture { showIndex = false }
 
                     ReaderSidecar(matn: matn, currentPage: $currentPage) {
-                        withAnimation(.easeOut(duration: 0.2)) { showIndex = false }
+                        showIndex = false
                     }
                     .frame(width: UIScreen.main.bounds.width * 0.8)
                     .frame(maxHeight: .infinity)
@@ -185,7 +185,7 @@ struct PageScreen: View {
             }
             .frame(maxWidth: .infinity)
             ChromeIconButton(system: "list.bullet", label: "Index") {
-                withAnimation(.easeOut(duration: 0.22)) { showIndex = true }
+                showIndex = true
             }
         }
         .padding(.horizontal, Theme.margin)
