@@ -357,7 +357,7 @@ private struct MemorizeWord: View {
 
     private func tint(_ color: SegmentColor) -> Color {
         switch outcome {
-        case .none, .correct?, .shown?: return inkColor(color)
+        case .none, .correct?, .shown?, .fixed?: return inkColor(color)
         case .unsure?: return Theme.unsure
         case .wrong?, .skipped?: return Theme.error
         case .unheard?, .revealed?: return Theme.inkSecondary
@@ -372,6 +372,7 @@ private struct MemorizeWord: View {
         case .skipped?: return "skipped"
         case .unheard?: return "not heard"
         case .revealed?: return "revealed"
+        case .fixed?: return "fixed"
         }
     }
 }

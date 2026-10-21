@@ -81,7 +81,8 @@ final class RecitationSession: ObservableObject {
 
     init(index: RecitationIndex, source: SpeechSource, startWordIndex: Int) {
         let layout = RevealLayout(index: index)
-        let tracker = RecitationTracker(words: index.normalizedWords, startIndex: startWordIndex)
+        let tracker = RecitationTracker(words: index.normalizedWords, startIndex: startWordIndex,
+                                        bayts: index.refs.map(\.bayt))
         self.layout = layout
         self.source = source
         self.tracker = tracker
