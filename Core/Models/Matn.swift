@@ -119,6 +119,7 @@ struct Matn: Hashable, Identifiable {
     let titleLatin: String
     let author: String
     let meter: String
+    let subject: Subject
     let baytsPerPage: Int
     let pageCount: Int
     let baytCount: Int
@@ -131,7 +132,7 @@ struct Matn: Hashable, Identifiable {
 
 extension Matn: Decodable {
     private enum Keys: String, CodingKey {
-        case schemaVersion, id, title, fullTitle, titleLatin, author, meter
+        case schemaVersion, id, title, fullTitle, titleLatin, author, meter, subject
         case baytsPerPage, pageCount, baytCount, pages, babs, reviewNotes
     }
 
@@ -148,6 +149,7 @@ extension Matn: Decodable {
         titleLatin = try c.decode(String.self, forKey: .titleLatin)
         author = try c.decode(String.self, forKey: .author)
         meter = try c.decode(String.self, forKey: .meter)
+        subject = Subject.from(id: try c.decodeIfPresent(String.self, forKey: .subject))
         baytsPerPage = try c.decode(Int.self, forKey: .baytsPerPage)
         pageCount = try c.decode(Int.self, forKey: .pageCount)
         baytCount = try c.decode(Int.self, forKey: .baytCount)

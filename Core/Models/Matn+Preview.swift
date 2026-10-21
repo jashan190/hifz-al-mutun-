@@ -43,7 +43,7 @@ extension Matn {
         return Matn(
             id: "sample", title: "تحفة الأطفال",
             fullTitle: "تحفة الأطفال والغلمان",
-            titleLatin: "Tuhfat al-Atfal", author: "", meter: "",
+            titleLatin: "Tuhfat al-Atfal", author: "", meter: "", subject: .quran,
             baytsPerPage: 10, pageCount: 1, baytCount: 1,
             pages: [page],
             babs: [Bab(id: "b", title: "المقدمة", startPage: 1)],

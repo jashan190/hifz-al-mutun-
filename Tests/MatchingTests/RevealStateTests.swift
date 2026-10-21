@@ -11,7 +11,7 @@ import Testing
         let b = Bayt(number: 1, sadr: hemi(["a", "b"]), ajuz: hemi(["c", "d"]))
         let page = MatnPage(page: 1, items: [.bayt(b)])
         return RecitationIndex(matn: Matn(id: "t", title: "t", fullTitle: nil, titleLatin: "t",
-            author: "a", meter: "m", baytsPerPage: 1, pageCount: 1, baytCount: 1,
+            author: "a", meter: "m", subject: .quran, baytsPerPage: 1, pageCount: 1, baytCount: 1,
             pages: [page], babs: [], reviewNotes: []))
     }
 
@@ -37,7 +37,7 @@ import Testing
         let b2 = Bayt(number: 2, sadr: hemi(["e", "f"]), ajuz: hemi(["g", "h"]))   // indices 4-7
         let page = MatnPage(page: 1, items: [.bayt(b1), .bayt(b2)])
         return RecitationIndex(matn: Matn(id: "t", title: "t", fullTitle: nil, titleLatin: "t",
-            author: "a", meter: "m", baytsPerPage: 2, pageCount: 1, baytCount: 2,
+            author: "a", meter: "m", subject: .quran, baytsPerPage: 2, pageCount: 1, baytCount: 2,
             pages: [page], babs: [], reviewNotes: []))
     }
 
