@@ -14,7 +14,7 @@ import Foundation
         let b1 = Bayt(number: 1, sadr: hemi(["يقول", "راجي"]), ajuz: hemi(["عفو", "رب"]))
         let b2 = Bayt(number: 2, sadr: hemi(["قادر", "محمد"]), ajuz: hemi(["الحمد", "لله"]))
         return Matn(id: "t", title: "t", fullTitle: nil, titleLatin: "t", author: "a", meter: "m",
-                    baytsPerPage: 1, pageCount: 2, baytCount: 2,
+                    subject: .quran, baytsPerPage: 1, pageCount: 2, baytCount: 2,
                     pages: [MatnPage(page: 1, items: [.bayt(b1)]), MatnPage(page: 2, items: [.bayt(b2)])],
                     babs: [], reviewNotes: [])
     }
