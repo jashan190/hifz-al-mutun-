@@ -18,16 +18,22 @@ struct PageScreen: View {
     /// reciter swiping by hand (which restarts tracking from that page).
     @State private var autoTurnTarget: Int?
 
-    init(matn: Matn) {
+    init(matn: Matn, startOnCover: Bool = false) {
         self.matn = matn
-        // A debug launch arg wins; otherwise reopen at the last page read.
+        // Opening from a shelf cover lands on the title page (page 0). Resuming
+        // (Continue) or a debug arg goes straight to the text page.
         let debugPage = UserDefaults.standard.integer(forKey: "openReaderPage")
         let page = debugPage > 0 ? debugPage : ReadingPosition.lastPage(of: matn.id) ?? 1
-        _currentPage = State(initialValue: min(max(1, page), matn.pageCount))
+        _currentPage = State(initialValue: startOnCover ? 0 : min(max(1, page), matn.pageCount))
     }
 
     var body: some View {
         TabView(selection: $currentPage) {
+            // Page 0: the matn's title page — the same cover, filling the page.
+            MatnCover(matn: matn, style: .page)
+                .tag(0)
+                .contentShape(Rectangle())
+                .onTapGesture { toggleBars() }
             ForEach(1...matn.pageCount, id: \.self) { page in
                 PageView(matn: matn, page: page, mode: mode,
                          reveal: mode == .memorize ? voice.reveal : nil)
@@ -37,8 +43,9 @@ struct PageScreen: View {
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        .onAppear { ReadingPosition.recordOpened(matn.id) }
         .environment(\.readerActions, actions)
-        .background(Theme.page.ignoresSafeArea())
+        .background(Theme.cover.ignoresSafeArea())
         .safeAreaInset(edge: .top, spacing: 0) { if barsVisible { topBar } }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
@@ -59,15 +66,32 @@ struct PageScreen: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
-        .sheet(isPresented: $showIndex) {
-            IndexSheet(matn: matn, currentPage: $currentPage)
+        .overlay {
+            if showIndex {
+                ZStack(alignment: .trailing) {
+                    // Scrim: dims the page, tap to dismiss.
+                    Color.black.opacity(0.38)
+                        .ignoresSafeArea()
+                        .onTapGesture { showIndex = false }
+
+                    ReaderSidecar(matn: matn, currentPage: $currentPage) {
+                        showIndex = false
+                    }
+                    .frame(width: UIScreen.main.bounds.width * 0.8)
+                    .frame(maxHeight: .infinity)
+                    .background(Theme.page)
+                    .transition(.opacity)
+                }
+            }
         }
+        .animation(.easeInOut(duration: 0.18), value: showIndex)
         .onChange(of: currentPage) { _, page in
-            ReadingPosition.save(page: page, of: matn.id)
+            // Page 0 is the cover — don't record it as a reading position.
+            if page >= 1 { ReadingPosition.save(page: page, of: matn.id) }
             // Swiped (or jumped) by hand while reciting: carry on from this page.
             // (Only while a sitting runs: after a stop, swiping back to look at
             // the results must not reset them.)
-            if voice.isActive, mode == .memorize, page != autoTurnTarget {
+            if voice.isActive, mode == .memorize, page >= 1, page != autoTurnTarget {
                 voice.jump(toPage: page)
             }
             autoTurnTarget = nil
@@ -167,7 +191,9 @@ struct PageScreen: View {
                     .truncationMode(.middle)
             }
             .frame(maxWidth: .infinity)
-            ChromeIconButton(system: "list.bullet", label: "Index") { showIndex = true }
+            ChromeIconButton(system: "list.bullet", label: "Index") {
+                showIndex = true
+            }
         }
         .padding(.horizontal, Theme.margin)
         .padding(.vertical, 5)
@@ -197,7 +223,9 @@ struct PageScreen: View {
                     .transition(.scale.combined(with: .opacity))
                 }
                 Spacer(minLength: 0)
-                Text("\(Numerals.eastern(currentPage)) / \(Numerals.eastern(matn.pageCount))")
+                Text(currentPage >= 1
+                     ? "\(Numerals.eastern(currentPage)) / \(Numerals.eastern(matn.pageCount))"
+                     : "الغلاف")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.onChromeDim)
                     .fixedSize()
@@ -413,126 +441,6 @@ private struct MistakeRow: View {
     }
 }
 
-// A custom index — our own layout, not a stock List: a Jump card (type or step
-// to a page / bayt) above a hand-styled list of abwab with their pages.
-private struct IndexSheet: View {
-    let matn: Matn
-    @Binding var currentPage: Int
-    @Environment(\.dismiss) private var dismiss
-    @State private var goToPage = 1
-    @State private var goToBayt = 1
-
-    private func page(ofBayt bayt: Int) -> Int { (bayt - 1) / matn.baytsPerPage + 1 }
-    private func startPage(of bab: Bab) -> Int { bab.startPage }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            ScrollView {
-                VStack(spacing: 18) {
-                    jumpCard
-                    babList
-                }
-                .padding(Theme.margin)
-            }
-        }
-        .background(Theme.page.ignoresSafeArea())
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .onAppear { goToPage = currentPage; goToBayt = (currentPage - 1) * matn.baytsPerPage + 1 }
-    }
-
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("الفهرس").font(.subheadline).foregroundStyle(Theme.accent)
-                Text("Index").serifDisplay(.title2).foregroundStyle(Theme.ink)
-            }
-            Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Theme.ink.opacity(0.7))
-                    .frame(width: 34, height: 34)
-                    .background(Circle().fill(Theme.ink.opacity(0.06)))
-            }
-            .buttonStyle(PressableStyle())
-        }
-        .padding(.horizontal, Theme.margin)
-        .padding(.top, Theme.margin)
-        .padding(.bottom, 10)
-    }
-
-    private var jumpCard: some View {
-        VStack(spacing: 12) {
-            jumpRow(label: "Page", total: matn.pageCount, value: $goToPage) {
-                currentPage = goToPage; dismiss()
-            }
-            Rectangle().fill(Theme.ink.opacity(0.07)).frame(height: 1)
-            jumpRow(label: "Bayt", total: matn.baytCount, value: $goToBayt) {
-                currentPage = page(ofBayt: goToBayt); dismiss()
-            }
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.ink.opacity(0.06)))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 3)
-    }
-
-    private func jumpRow(label: String, total: Int, value: Binding<Int>, go: @escaping () -> Void) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(label).font(.system(.headline, design: .serif)).foregroundStyle(Theme.ink)
-                Text("of \(total)").font(.footnote).foregroundStyle(.secondary)
-            }
-            Spacer()
-            NumberStepperField(value: value, range: 1...max(1, total))
-            GoButton(action: go)
-        }
-    }
-
-    private var babList: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("الأبواب")
-                .font(.system(.headline, design: .serif))
-                .foregroundStyle(Theme.ink)
-                .padding(.horizontal, 4)
-                .padding(.bottom, 8)
-
-            VStack(spacing: 0) {
-                ForEach(Array(matn.babs.enumerated()), id: \.element.id) { i, bab in
-                    Button {
-                        currentPage = startPage(of: bab); dismiss()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Text(bab.title)
-                                .font(.body)
-                                .foregroundStyle(Theme.ink)
-                                .multilineTextAlignment(.leading)
-                            Spacer(minLength: 8)
-                            Text(Numerals.eastern(startPage(of: bab)))
-                                .font(.system(.subheadline, design: .serif).weight(.semibold))
-                                .foregroundStyle(Theme.accent)
-                                .frame(minWidth: 30, minHeight: 30)
-                                .background(Capsule().fill(Theme.accent.opacity(0.1)))
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 14)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PressableStyle())
-
-                    if i < matn.babs.count - 1 {
-                        Rectangle().fill(Theme.ink.opacity(0.06)).frame(height: 1)
-                            .padding(.leading, 14)
-                    }
-                }
-            }
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.ink.opacity(0.06)))
-        }
-    }
-}
 
 #Preview("Reader") {
     NavigationStack { PageScreen(matn: .preview) }
