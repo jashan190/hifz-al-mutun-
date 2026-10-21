@@ -2,7 +2,7 @@
 // written by `WhisperTests.aRecordingFromDisk`) into the tracker on the Mac,
 // in a second instead of an Xcode test run, and prints what showed red.
 //
-//   swiftc -O -o /tmp/replay Core/Models/{Matn,LegacyMatn}.swift Core/Matching/*.swift Tools/replay/main.swift
+//   swiftc -O -o /tmp/replay Core/Models/{Matn,LegacyMatn,Subject}.swift Core/Matching/*.swift Tools/replay/{main,Shims}.swift
 //   /tmp/replay Tests/SpeechTests/Fixtures Resources/Content
 import Foundation
 
