@@ -43,6 +43,13 @@ import Foundation
         #expect(t.outcomes[1] == .skipped)
     }
 
+    @Test func aWrongWordEndingInALoneLetterIsStillWrong() {
+        // كتاب ends in ب, the prefix written apart; it isn't عفو glued to it.
+        let t = tracker(["راجي", "عفو", "ب", "بسم"])
+        t.consume(.init(text: "راجي كتاب بسم", isFinal: true), at: 0)
+        #expect(t.outcomes[1] == .wrong(heard: "كتاب"))
+    }
+
     @Test func aWordHeardAsTwoTokensMatches() {
         let t = tracker(["قال", "مرتضاه", "هو"])
         t.consume(.init(text: "قال مر تضاه هو", isFinal: true), at: 0)

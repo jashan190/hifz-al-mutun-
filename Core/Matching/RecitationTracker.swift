@@ -449,6 +449,7 @@ final class RecitationTracker {
         var glued: Int?
         if gap.count >= 2, pending.count == gap.count - 1, let token = pending.last,
            case let lastWord = words[gap[gap.count - 1]],
+           lastWord.count >= 2,   // a lone letter (ب) ends too many words by chance
            token.norm.count > lastWord.count, token.norm.hasSuffix(lastWord) {
             let remnant = String(token.norm.dropLast(lastWord.count))
             pending[pending.count - 1] = (raw: remnant, norm: remnant)
