@@ -28,6 +28,42 @@ import Foundation
         #expect(t.outcomes[2] == .correct)
     }
 
+    @Test func aWordsEndGluedToTheNextIsNotAMistake() {
+        // عَفْوِ رَبٍّ: Whisper writes the end of عفو onto رب, as فرب or قرب.
+        for heard in ["فرب", "قرب"] {
+            let t = tracker(["راجي", "عفو", "رب", "سامع"])
+            t.consume(.init(text: "راجي \(heard) سامع", isFinal: true), at: 0)
+            #expect(t.outcomes == [0: .correct, 1: .unsure, 2: .correct, 3: .correct])
+        }
+    }
+
+    @Test func aWordsEndGluedToALongerWordIsNotAMistake() {
+        // فرحمة is near enough to رحمة to match it: still split it.
+        let t = tracker(["راجي", "عفو", "رحمه", "سامع"])
+        t.consume(.init(text: "راجي فرحمة سامع", isFinal: true), at: 0)
+        #expect(t.outcomes == [0: .correct, 1: .unsure, 2: .correct, 3: .correct])
+    }
+
+    @Test func anAddedArticleIsNotAGluedWordEnd() {
+        // الناس skipped; Whisper writes مرسلا as المرسلا.
+        let t = tracker(["الي", "الناس", "مرسلا", "و"])
+        t.consume(.init(text: "إلى المرسلا و", isFinal: true), at: 0)
+        #expect(t.outcomes[1] == .skipped)
+    }
+
+    @Test func aWordSkippedBeforeItsNeighbourIsStillSkipped() {
+        let t = tracker(["راجي", "عفو", "رب", "سامع"])
+        t.consume(.init(text: "راجي رب سامع", isFinal: true), at: 0)
+        #expect(t.outcomes[1] == .skipped)
+    }
+
+    @Test func aWrongWordEndingInALoneLetterIsStillWrong() {
+        // كتاب ends in ب, the prefix written apart; it isn't عفو glued to it.
+        let t = tracker(["راجي", "عفو", "ب", "بسم"])
+        t.consume(.init(text: "راجي كتاب بسم", isFinal: true), at: 0)
+        #expect(t.outcomes[1] == .wrong(heard: "كتاب"))
+    }
+
     @Test func aWordHeardAsTwoTokensMatches() {
         let t = tracker(["قال", "مرتضاه", "هو"])
         t.consume(.init(text: "قال مر تضاه هو", isFinal: true), at: 0)

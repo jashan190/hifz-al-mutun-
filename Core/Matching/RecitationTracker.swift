@@ -360,6 +360,7 @@ final class RecitationTracker {
             // Words the token covers before `hit` (a prefix written apart, e.g.
             // بِـ: بِسْمِ heard as ببسم): judged with it, not as a gap.
             var joinedFrom: Int?
+            var remnant: String?   // the end of the word before, glued onto `hit`
             let placeKnown = s.lock != .lost || s.lostBySilence
             if placeKnown, let joined = matchJoined(token.norm, in: near),
                joined.exact || !(match(token.norm, in: near)?.1 ?? false) {
@@ -368,6 +369,16 @@ final class RecitationTracker {
             } else if placeKnown, let (hit, exact) = match(token.norm, in: near, filling: s.pending.count) {
                 // Before the first match (idle) a gap is as uncertain as a lost one.
                 found = (hit, exact, s.lock == .idle, token.raw)
+                // A near match that is the word whole with the end of the one
+                // before glued on (عفو رحمة heard as فرحمة): split it.
+                let gap = (s.cursor..<hit).filter { !words[$0].isEmpty }
+                if !exact, s.lock != .idle, !gap.isEmpty, s.pending.count == gap.count - 1,
+                   words[hit].count >= 2, token.norm.count > words[hit].count,
+                   token.norm.hasSuffix(words[hit]),
+                   Self.core(token.norm) != Self.core(words[hit]) {   // not just an added ال
+                    remnant = String(token.norm.dropLast(words[hit].count))
+                    found?.exact = true
+                }
             } else if placeKnown, s.lock != .idle, let last = s.pending.last,
                       let (hit, exact) = match(last.norm + token.norm, in: near) {
                 // One word heard as two (كالأترج heard as كل ترجح): the last
@@ -387,7 +398,7 @@ final class RecitationTracker {
                     }
                 } else {
                     if !found.uncertainGap { noteAdded(before: found.hit, in: &s) }
-                    judgeGap(upTo: found.hit, in: &s, lost: found.uncertainGap)
+                    judgeGap(upTo: found.hit, in: &s, lost: found.uncertainGap, glued: remnant)
                 }
                 s.outcomes[found.hit] = found.exact ? .correct : .unsure
                 s.heard[found.hit] = found.exact || joinedFrom != nil ? nil : found.heard
@@ -437,15 +448,44 @@ final class RecitationTracker {
     /// `hit`. While the place is known, heard-but-unmatched tokens fill those
     /// slots in order (a substitution); slots left over were skipped. Words
     /// jumped while re-finding a lost place are `.unheard`.
-    private func judgeGap(upTo hit: Int, in s: inout State, lost: Bool) {
+    private func judgeGap(upTo hit: Int, in s: inout State, lost: Bool, glued remnant: String? = nil) {
         let gap = (s.cursor..<hit).filter { !words[$0].isEmpty }
         guard !gap.isEmpty else { return }   // tokens before an in-place match are extra words
         if lost {
             for w in gap { s.outcomes[w] = .unheard; s.heard[w] = nil }
             return
         }
+        // One token short, the last ending in the last word whole (عفو رب
+        // heard as فرب or قرب): Whisper glued the end of the word before onto
+        // it. Split it there: the last word was said, and the remnant, however
+        // garbled, is the word before running into it.
+        var pending = s.pending
+        var glued: Int?
+        if let remnant {
+            // Already split off the matched word: it is the last gap word's.
+            pending.append((raw: remnant, norm: remnant))
+            glued = gap.count - 1
+        } else if gap.count >= 2, pending.count == gap.count - 1, let token = pending.last,
+           case let lastWord = words[gap[gap.count - 1]],
+           lastWord.count >= 2,   // a lone letter (ب) ends too many words by chance
+           token.norm.count > lastWord.count, token.norm.hasSuffix(lastWord) {
+            let remnant = String(token.norm.dropLast(lastWord.count))
+            pending[pending.count - 1] = (raw: remnant, norm: remnant)
+            pending.append((raw: lastWord, norm: lastWord))
+            glued = gap.count - 2
+        }
         for (k, w) in gap.enumerated() {
-            guard k < s.pending.count else {
+            if let glued, k > glued {
+                s.outcomes[w] = .correct; s.heard[w] = nil
+                continue
+            }
+            if k == glued {
+                let remnant = pending[k].norm
+                s.outcomes[w] = remnant == words[w] ? .correct : .unsure
+                s.heard[w] = remnant == words[w] ? nil : remnant
+                continue
+            }
+            guard k < pending.count else {
                 // A lone letter (a prefix written apart) is hard to hear and
                 // easily dropped by the recognizer: check it, don't call it wrong.
                 s.outcomes[w] = words[w].count == 1 ? .unsure : .skipped
@@ -453,7 +493,7 @@ final class RecitationTracker {
                 continue
             }
             // Any extra heard tokens beyond the gap belong to its last slot.
-            let heard = k == gap.count - 1 ? s.pending[k...] : s.pending[k...k]
+            let heard = k == gap.count - 1 ? pending[k...] : pending[k...k]
             let rawHeard = heard.map(\.raw).joined(separator: " ")
             let near = heard.contains {
                 levenshtein($0.norm, words[w]) <= tuning.nearMissThreshold($0.norm, words[w])
