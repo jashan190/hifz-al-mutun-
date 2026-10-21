@@ -37,6 +37,20 @@ import Foundation
         }
     }
 
+    @Test func aWordsEndGluedToALongerWordIsNotAMistake() {
+        // فرحمة is near enough to رحمة to match it: still split it.
+        let t = tracker(["راجي", "عفو", "رحمه", "سامع"])
+        t.consume(.init(text: "راجي فرحمة سامع", isFinal: true), at: 0)
+        #expect(t.outcomes == [0: .correct, 1: .unsure, 2: .correct, 3: .correct])
+    }
+
+    @Test func anAddedArticleIsNotAGluedWordEnd() {
+        // الناس skipped; Whisper writes مرسلا as المرسلا.
+        let t = tracker(["الي", "الناس", "مرسلا", "و"])
+        t.consume(.init(text: "إلى المرسلا و", isFinal: true), at: 0)
+        #expect(t.outcomes[1] == .skipped)
+    }
+
     @Test func aWordSkippedBeforeItsNeighbourIsStillSkipped() {
         let t = tracker(["راجي", "عفو", "رب", "سامع"])
         t.consume(.init(text: "راجي رب سامع", isFinal: true), at: 0)
