@@ -14,4 +14,16 @@ enum ReadingPosition {
     static func save(page: Int, of matnID: String) {
         UserDefaults.standard.set(page, forKey: key(matnID))
     }
+
+    private static let mostRecentKey = "lastOpenedMatn"
+
+    /// The matn the reader opened last (for the Library's Continue card). nil
+    /// until any matn has been opened.
+    static var mostRecentMatnID: String? {
+        UserDefaults.standard.string(forKey: mostRecentKey)
+    }
+
+    static func recordOpened(_ matnID: String) {
+        UserDefaults.standard.set(matnID, forKey: mostRecentKey)
+    }
 }
