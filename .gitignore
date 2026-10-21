@@ -28,5 +28,8 @@ Config/Local.xcconfig
 # Claude Code agent worktrees
 .claude/worktrees/
 
+# Brainstorming visual-companion mockups
+.superpowers/
+
 # Transcripts of private test recordings: kept on this Mac only
 Tests/SpeechTests/Fixtures/replay_r*.json
