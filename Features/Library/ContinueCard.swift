@@ -18,29 +18,22 @@ struct ContinueCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "play.fill")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(color)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(.white.opacity(0.22)))
-            VStack(alignment: .trailing, spacing: 3) {
-                Text("تابِع الحفظ")
-                    .font(DisplayFont.body(size: 12))
-                    .foregroundStyle(.white.opacity(0.85))
-                Text(matn.title)
-                    .font(DisplayFont.title(size: 24))
-                    .foregroundStyle(.white)
-                Text("صفحة \(Numerals.eastern(lastPage)) · البيت \(Numerals.eastern(currentBayt)) من \(Numerals.eastern(matn.baytCount))")
-                    .font(DisplayFont.body(size: 12))
-                    .foregroundStyle(.white.opacity(0.9))
-                ProgressView(value: progress)
-                    .tint(.white)
-                    .background(Capsule().fill(.white.opacity(0.25)))
-                    .padding(.top, 4)
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+        VStack(alignment: .trailing, spacing: 3) {
+            Text("تابِع الحفظ")
+                .font(DisplayFont.body(size: 12))
+                .foregroundStyle(.white.opacity(0.85))
+            Text(matn.title)
+                .font(DisplayFont.title(size: 24))
+                .foregroundStyle(.white)
+            Text("صفحة \(Numerals.eastern(lastPage)) · البيت \(Numerals.eastern(currentBayt)) من \(Numerals.eastern(matn.baytCount))")
+                .font(DisplayFont.body(size: 12))
+                .foregroundStyle(.white.opacity(0.9))
+            ProgressView(value: progress)
+                .tint(.white)
+                .background(Capsule().fill(.white.opacity(0.25)))
+                .padding(.top, 4)
         }
+        .frame(maxWidth: .infinity, alignment: .trailing)
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(color))
         .shadow(color: color.opacity(0.35), radius: 10, y: 5)
