@@ -18,16 +18,22 @@ struct PageScreen: View {
     /// reciter swiping by hand (which restarts tracking from that page).
     @State private var autoTurnTarget: Int?
 
-    init(matn: Matn) {
+    init(matn: Matn, startOnCover: Bool = false) {
         self.matn = matn
-        // A debug launch arg wins; otherwise reopen at the last page read.
+        // Opening from a shelf cover lands on the title page (page 0). Resuming
+        // (Continue) or a debug arg goes straight to the text page.
         let debugPage = UserDefaults.standard.integer(forKey: "openReaderPage")
         let page = debugPage > 0 ? debugPage : ReadingPosition.lastPage(of: matn.id) ?? 1
-        _currentPage = State(initialValue: min(max(1, page), matn.pageCount))
+        _currentPage = State(initialValue: startOnCover ? 0 : min(max(1, page), matn.pageCount))
     }
 
     var body: some View {
         TabView(selection: $currentPage) {
+            // Page 0: the matn's title page — the same cover, filling the page.
+            MatnCover(matn: matn, style: .page)
+                .tag(0)
+                .contentShape(Rectangle())
+                .onTapGesture { toggleBars() }
             ForEach(1...matn.pageCount, id: \.self) { page in
                 PageView(matn: matn, page: page, mode: mode,
                          reveal: mode == .memorize ? voice.reveal : nil)
@@ -39,7 +45,7 @@ struct PageScreen: View {
         .tabViewStyle(.page(indexDisplayMode: .never))
         .onAppear { ReadingPosition.recordOpened(matn.id) }
         .environment(\.readerActions, actions)
-        .background(Theme.page.ignoresSafeArea())
+        .background(Theme.cover.ignoresSafeArea())
         .safeAreaInset(edge: .top, spacing: 0) { if barsVisible { topBar } }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
@@ -74,17 +80,18 @@ struct PageScreen: View {
                     .frame(width: UIScreen.main.bounds.width * 0.8)
                     .frame(maxHeight: .infinity)
                     .background(Theme.page)
-                    .transition(.move(edge: .trailing))
+                    .transition(.opacity)
                 }
             }
         }
-        .animation(.easeOut(duration: 0.22), value: showIndex)
+        .animation(.easeInOut(duration: 0.18), value: showIndex)
         .onChange(of: currentPage) { _, page in
-            ReadingPosition.save(page: page, of: matn.id)
+            // Page 0 is the cover — don't record it as a reading position.
+            if page >= 1 { ReadingPosition.save(page: page, of: matn.id) }
             // Swiped (or jumped) by hand while reciting: carry on from this page.
             // (Only while a sitting runs: after a stop, swiping back to look at
             // the results must not reset them.)
-            if voice.isActive, mode == .memorize, page != autoTurnTarget {
+            if voice.isActive, mode == .memorize, page >= 1, page != autoTurnTarget {
                 voice.jump(toPage: page)
             }
             autoTurnTarget = nil
@@ -216,7 +223,9 @@ struct PageScreen: View {
                     .transition(.scale.combined(with: .opacity))
                 }
                 Spacer(minLength: 0)
-                Text("\(Numerals.eastern(currentPage)) / \(Numerals.eastern(matn.pageCount))")
+                Text(currentPage >= 1
+                     ? "\(Numerals.eastern(currentPage)) / \(Numerals.eastern(matn.pageCount))"
+                     : "الغلاف")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.onChromeDim)
                     .fixedSize()

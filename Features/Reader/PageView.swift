@@ -85,7 +85,7 @@ struct PageView: View {
                 folio
             }
         }
-        .background(Theme.page)
+        .background(Theme.cover)
     }
 
     // The folio: just the page number, centred at the foot of the page.
