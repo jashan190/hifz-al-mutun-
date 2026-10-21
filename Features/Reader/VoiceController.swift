@@ -6,8 +6,12 @@ import Combine
 struct ReviewSummary: Equatable {
     let baytsRecited: Int
     let revealed: Int
-    /// Each mistake, in recitation order.
+    /// Each mistake, in recitation order, with the ones the reciter went back
+    /// and fixed (listed, but not counted).
     let mistakes: [Mistake]
+
+    var mistakeCount: Int { mistakes.filter { !$0.fixed }.count }
+    var fixedCount: Int { mistakes.filter(\.fixed).count }
 
     struct Mistake: Equatable, Identifiable {
         let id: Int              // flat word index
@@ -22,6 +26,8 @@ struct ReviewSummary: Equatable {
         let heard: String?
         /// `heard` was said after `expected`, which the text doesn't have.
         var added = false
+        /// Said right after going back; `heard` is what was said first.
+        var fixed = false
     }
 }
 
@@ -135,12 +141,14 @@ final class VoiceController: ObservableObject {
     private func makeSummary(_ judged: [Int: WordOutcome], added: [Int: String]) -> ReviewSummary? {
         // A sitting can end with only added words (from the guess) to show.
         guard let index, !judged.isEmpty || !added.isEmpty else { return nil }
-        var mistakes = judged.filter(\.value.isMistake).keys.map { i -> ReviewSummary.Mistake in
+        var mistakes = judged.filter { $0.value.isMistake || $0.value.isFixed }.keys.map { i -> ReviewSummary.Mistake in
             let ref = index.refs[i]
             var heard: String?
             if case .wrong(let said) = judged[i] { heard = said }
+            if case .fixed(let said) = judged[i] { heard = said }
             return .init(id: i, page: ref.page, bayt: ref.bayt, half: ref.half,
-                         wordIndex: ref.wordIndex, expected: index.displayWords[i], heard: heard)
+                         wordIndex: ref.wordIndex, expected: index.displayWords[i], heard: heard,
+                         fixed: judged[i]?.isFixed ?? false)
         }
         // Added words follow the word they came after (ids past every word's).
         mistakes += added.map { i, words in

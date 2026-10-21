@@ -27,10 +27,13 @@ struct RevealState {
     private let outcomes: [Int: WordOutcome]
     private let heard: [Int: String]
     private let added: [Int: String]
+    /// The last word said right: where the reciter is (the glow).
+    private let lastRight: Int?
 
     init(layout: RevealLayout, anchor: Int = 0, cursor: Int, outcomes: [Int: WordOutcome] = [:],
-         heard: [Int: String] = [:], added: [Int: String] = [:]) {
+         heard: [Int: String] = [:], added: [Int: String] = [:], lastRight: Int? = nil) {
         self.layout = layout
+        self.lastRight = lastRight
         self.anchor = anchor
         self.cursor = cursor
         self.outcomes = outcomes
@@ -39,9 +42,9 @@ struct RevealState {
     }
 
     init(index: RecitationIndex, anchor: Int = 0, cursor: Int, outcomes: [Int: WordOutcome] = [:],
-         heard: [Int: String] = [:], added: [Int: String] = [:]) {
+         heard: [Int: String] = [:], added: [Int: String] = [:], lastRight: Int? = nil) {
         self.init(layout: RevealLayout(index: index), anchor: anchor, cursor: cursor,
-                  outcomes: outcomes, heard: heard, added: added)
+                  outcomes: outcomes, heard: heard, added: added, lastRight: lastRight)
     }
 
     private func isRevealed(_ i: Int) -> Bool {
@@ -81,6 +84,12 @@ struct RevealState {
     /// What was heard for a word judged amber or red, if known.
     func heard(bayt: Int, half: Half, wordIndex: Int) -> String? {
         layout.startByHalf[RevealLayout.HalfKey(bayt: bayt, half: half)].flatMap { heard[$0 + wordIndex] }
+    }
+
+    /// Whether this is where the reciter is: the last word they said right.
+    func isCurrent(bayt: Int, half: Half, wordIndex: Int) -> Bool {
+        guard let lastRight else { return false }
+        return flatIndex(bayt: bayt, half: half, wordIndex: wordIndex) == lastRight
     }
 
     /// Words said after this word that the text doesn't have.

@@ -158,6 +158,26 @@ import Foundation
         #expect(voice.summary?.mistakes.isEmpty == true)
     }
 
+    // A mistake the reciter went back and said right is listed as fixed,
+    // isn't counted, and stays flagged for review.
+    @Test func aFixedMistakeIsListedButNotCounted() async throws {
+        let store = FlagStore.inMemory()
+        let voice = VoiceController()
+        UserDefaults.standard.set("يقول راجي عفو رب قادر كتاب|يقول راجي عفو رب قادر محمد", forKey: "debugRecite")
+        defer { UserDefaults.standard.removeObject(forKey: "debugRecite") }
+        voice.start(matn: matn(), fromPage: 1, flags: store)
+        await settle()
+        voice.stop()
+        let summary = try #require(voice.summary)
+        #expect(summary.mistakeCount == 0)
+        #expect(summary.fixedCount == 1)
+        #expect(summary.mistakes.map(\.expected) == ["محمد"])
+        #expect(summary.mistakes.map(\.heard) == ["كتاب"])
+        #expect(voice.mistakeCount == 0)
+        #expect(store.isFlagged("t", FlagKey(bayt: 2, half: .sadr, wordIndex: 1)))
+        #expect(voice.reveal?.isCurrent(bayt: 2, half: .sadr, wordIndex: 1) == true)
+    }
+
     @Test func voiceFailureFallsBackToTapKeepingTheReason() async {
         let voice = VoiceController()
         UserDefaults.standard.set("mic", forKey: "debugVoiceFail")

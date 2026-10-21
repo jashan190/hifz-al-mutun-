@@ -49,12 +49,14 @@ enum WordOutcome: Equatable {
         }
     }
 
+    var isFixed: Bool {
+        if case .fixed = self { return true }
+        return false
+    }
+
     /// Marks the word for review later (UX.md "flags"): mistakes, words the
     /// reciter needed revealed, and mistakes they went back and fixed.
-    var flagsWord: Bool {
-        if case .fixed = self { return true }
-        return isMistake || self == .revealed
-    }
+    var flagsWord: Bool { isMistake || isFixed || self == .revealed }
 }
 
 /// Every matching threshold in one place. These are provisional: they were
