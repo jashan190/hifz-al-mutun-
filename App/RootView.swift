@@ -25,24 +25,24 @@ struct RootView: View {
     private var library: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 20) {
                     header.appear()
 
                     if let error = content.loadError {
-                        ContentUnavailableView(
-                            "Content didn't load",
-                            systemImage: "exclamationmark.triangle",
-                            description: Text(error)
-                        )
+                        ContentUnavailableView("Content didn't load",
+                                               systemImage: "exclamationmark.triangle",
+                                               description: Text(error))
                     } else {
-                        ForEach(Array(content.matns.enumerated()), id: \.element.id) { index, matn in
-                            NavigationLink {
-                                PageScreen(matn: matn)
-                            } label: {
-                                MatnCard(matn: matn, order: index + 1)
+                        if let (matn, page) = continueTarget {
+                            NavigationLink { PageScreen(matn: matn) } label: {
+                                ContinueCard(matn: matn, lastPage: page)
                             }
                             .buttonStyle(PressableStyle())
-                            .appear(delay: 0.06 * Double(index + 1))
+                            .appear()
+                        }
+                        ForEach(Array(content.shelves.enumerated()), id: \.element.id) { i, shelf in
+                            ShelfRow(shelf: shelf)
+                                .appear(delay: 0.06 * Double(i + 1))
                         }
                     }
                 }
@@ -53,6 +53,15 @@ struct RootView: View {
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showSettings) { SettingsSheet() }
         }
+    }
+
+    /// The matn + last page for the Continue card: the most recently opened
+    /// matn that has a saved page. nil if nothing has been opened yet.
+    private var continueTarget: (Matn, Int)? {
+        guard let id = ReadingPosition.mostRecentMatnID,
+              let matn = content.matn(id: id),
+              let page = ReadingPosition.lastPage(of: id) else { return nil }
+        return (matn, page)
     }
 
     private var header: some View {
@@ -80,60 +89,31 @@ struct RootView: View {
     }
 }
 
-// A matn as a card with a green "spine" on the right (RTL), Arabic title, and
-// bayt count. Reads like a volume on a shelf.
-private struct MatnCard: View {
-    let matn: Matn
-    let order: Int
-    @AppStorage private var lastPage: Int   // 0 until the matn is first opened
-
-    init(matn: Matn, order: Int) {
-        self.matn = matn
-        self.order = order
-        _lastPage = AppStorage(wrappedValue: 0, ReadingPosition.key(matn.id))
-    }
+/// One subject's shelf: a header and a horizontally scrolling row of covers.
+private struct ShelfRow: View {
+    let shelf: Shelf
 
     var body: some View {
-        HStack(spacing: 14) {
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(Theme.accent)
-                .frame(width: 5, height: 48)
+        VStack(alignment: .trailing, spacing: 10) {
+            Text(shelf.subject.arabicName)
+                .font(DisplayFont.body(size: 17).weight(.bold))
+                .foregroundStyle(shelf.subject.accent)
+                .frame(maxWidth: .infinity, alignment: .trailing)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(matn.title)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.ink)
-                if let full = matn.fullTitle, !full.isEmpty, full != matn.title {
-                    Text(full)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.ink.opacity(0.6))
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(shelf.matns) { matn in
+                        NavigationLink { PageScreen(matn: matn) } label: {
+                            MatnCover(matn: matn, style: .shelf)
+                                .frame(width: 116)
+                        }
+                        .buttonStyle(PressableStyle())
+                    }
                 }
-                Text(lastPage > 0 ? "\(matn.baytCount) bayts · Page \(lastPage)" : "\(matn.baytCount) bayts")
-                    .font(.system(.footnote, design: .serif))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 1)
+                .padding(.vertical, 2)
             }
-
-            Spacer(minLength: 8)
-
-            Text("\(order)")
-                .font(.system(.footnote, design: .serif).weight(.semibold))
-                .foregroundStyle(Theme.accent)
-                .frame(width: 26, height: 26)
-                .background(Circle().fill(Theme.accent.opacity(0.12)))
+            .environment(\.layoutDirection, .rightToLeft)
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Theme.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Theme.ink.opacity(0.06), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
     }
 }
 
