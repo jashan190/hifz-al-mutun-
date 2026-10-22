@@ -63,15 +63,18 @@ enum ProsePaginator {
     // MARK: Default measurement (used by the reader, not by tests)
 
     #if canImport(UIKit)
-    /// Wrapped height of a run of words at `width`, using the page font. Lives
-    /// behind `canImport(UIKit)` so the pure paginator above stays free of UIKit.
-    static func bodyHeight(_ words: [ProseWord], width: CGFloat, font: UIFont) -> CGFloat {
-        let s = words.map(\.text).joined(separator: " ")
-        guard !s.isEmpty, width > 0 else { return 0 }
-        let rect = (s as NSString).boundingRect(
+    /// Wrapped height of a run of words at `width`, measured from the SAME
+    /// justified, line-spaced attributed string the view renders (colour is
+    /// irrelevant to height), so a page's text fits exactly — no scrolling.
+    /// Lives behind `canImport(UIKit)` so the pure paginator stays UIKit-free.
+    static func bodyHeight(_ words: [ProseWord], width: CGFloat,
+                           font: UIFont, lineSpacing: CGFloat) -> CGFloat {
+        guard !words.isEmpty, width > 0 else { return 0 }
+        let s = ProseText.body(words, font: font, lineSpacing: lineSpacing,
+                               isnad: .black, matn: .black)
+        let rect = s.boundingRect(
             with: CGSize(width: width, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: font], context: nil)
+            options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
         return ceil(rect.height)
     }
     #endif

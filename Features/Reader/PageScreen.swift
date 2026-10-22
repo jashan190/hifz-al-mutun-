@@ -66,15 +66,20 @@ struct PageScreen: View {
             let size = geo.size
             let result = await Task.detached(priority: .userInitiated) {
                 let fontSize = proseBodyFontSize
+                let lineSpacing = ProsePageView.lineSpacing(for: fontSize)
                 let contentWidth = size.width - Theme.margin * 2
-                let bodyHeight = size.height - PageView.folioHeight - Theme.margin * 2
+                // Reserve the folio, margins, and slack for the title/takhrīj
+                // blocks + inter-block spacing so a page never overflows — it
+                // page-turns when full instead of scrolling.
+                let bodyHeight = size.height - PageView.folioHeight - Theme.margin * 2 - 48
                 let font = PageFont.uiFont(size: fontSize)
                 return ProsePaginator.paginate(
                     hadiths,
                     bodyHeight: bodyHeight,
-                    headingHeight: fontSize * 1.6,
-                    takhrijHeight: fontSize * 1.6,
-                    measureBody: { ProsePaginator.bodyHeight($0, width: contentWidth, font: font) })
+                    headingHeight: fontSize * 1.8,
+                    takhrijHeight: 0,
+                    measureBody: { ProsePaginator.bodyHeight($0, width: contentWidth,
+                                                              font: font, lineSpacing: lineSpacing) })
             }.value
             // A newer geometry may have superseded this run while it was off the
             // main actor; don't clobber the current result with a stale one.

@@ -1,26 +1,35 @@
 import SwiftUI
+import UIKit
 
-/// Builds the display text for a hadith body: a single string so wrapping and
-/// justification are natural, with each word coloured by its role.
+/// Builds the hadith body text. One justified, line-spaced, role-coloured
+/// attributed string is the SINGLE source used for both measurement (so the
+/// paginator knows the exact laid-out height) and rendering (so a page never
+/// needs to scroll — it turns when full).
 enum ProseText {
     /// Plain joined text (spaces between words).
     static func plain(_ words: [ProseWord]) -> String {
         words.map(\.text).joined(separator: " ")
     }
 
-    /// One `AttributedString` with isnād words in `isnad` and the Prophet's
-    /// words (matn) in `matn`. A single space (isnād-coloured) joins words.
-    static func attributed(_ words: [ProseWord], isnad: Color, matn: Color) -> AttributedString {
-        var out = AttributedString()
+    /// The body as a justified RTL paragraph: isnād words in `isnad`, the
+    /// Prophet's words (matn) in `matn`, joined by isnād-coloured spaces. The
+    /// shared paragraph style (justified + lineSpacing) is what makes the lines
+    /// fill the width evenly and makes measurement match layout.
+    static func body(_ words: [ProseWord], font: UIFont, lineSpacing: CGFloat,
+                     isnad: UIColor, matn: UIColor) -> NSAttributedString {
+        let para = NSMutableParagraphStyle()
+        para.alignment = .justified
+        para.lineSpacing = lineSpacing
+        para.baseWritingDirection = .rightToLeft
+        let out = NSMutableAttributedString()
         for (i, w) in words.enumerated() {
             if i > 0 {
-                var sp = AttributedString(" ")
-                sp.foregroundColor = isnad
-                out += sp
+                out.append(NSAttributedString(string: " ",
+                    attributes: [.font: font, .foregroundColor: isnad, .paragraphStyle: para]))
             }
-            var piece = AttributedString(w.text)
-            piece.foregroundColor = (w.role == .matn) ? matn : isnad
-            out += piece
+            let color = (w.role == .matn) ? matn : isnad
+            out.append(NSAttributedString(string: w.text,
+                attributes: [.font: font, .foregroundColor: color, .paragraphStyle: para]))
         }
         return out
     }

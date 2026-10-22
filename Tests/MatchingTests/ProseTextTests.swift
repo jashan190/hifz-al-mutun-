@@ -1,29 +1,27 @@
 import Testing
-import SwiftUI
+import UIKit
 @testable import HifzAlMutun
 
 @Suite struct ProseTextTests {
+    private let words = [
+        ProseWord(text: "عَنْ", normalized: "عن", role: .isnad),
+        ProseWord(text: "إِنَّمَا", normalized: "انما", role: .matn),
+    ]
+
     @Test func joinsWordsWithSpaces() {
-        let words = [
-            ProseWord(text: "عَنْ", normalized: "عن", role: .isnad),
-            ProseWord(text: "إِنَّمَا", normalized: "انما", role: .matn),
-        ]
-        let s = ProseText.plain(words)
-        #expect(s == "عَنْ إِنَّمَا")
+        #expect(ProseText.plain(words) == "عَنْ إِنَّمَا")
     }
 
-    @Test func attributedColoursByRole() {
-        let words = [
-            ProseWord(text: "عَنْ", normalized: "عن", role: .isnad),
-            ProseWord(text: "إِنَّمَا", normalized: "انما", role: .matn),
-        ]
-        let a = ProseText.attributed(words, isnad: .black, matn: .red)
-        let runs = Array(a.runs)
-        #expect(runs.count >= 2)
-        #expect(String(a.characters).contains("عَنْ"))
-        #expect(String(a.characters).contains("إِنَّمَا"))
-        // The two roles must actually produce different colours.
-        #expect(runs.first?.foregroundColor == .black)             // isnād
-        #expect(runs.contains { $0.foregroundColor == .red })      // matn
+    @Test func bodyColoursByRoleAndJustifies() {
+        let a = ProseText.body(words, font: .systemFont(ofSize: 20), lineSpacing: 8,
+                               isnad: .black, matn: .red)
+        #expect(a.string == "عَنْ إِنَّمَا")
+        // The isnād word is isnād-coloured; the matn word is matn-coloured.
+        #expect(a.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor == .black)
+        let matnIndex = (a.string as NSString).range(of: "إِنَّمَا").location
+        #expect(a.attribute(.foregroundColor, at: matnIndex, effectiveRange: nil) as? UIColor == .red)
+        // The paragraph is justified so lines fill the width evenly.
+        let para = a.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
+        #expect(para?.alignment == .justified)
     }
 }
