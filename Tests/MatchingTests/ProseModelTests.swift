@@ -50,6 +50,7 @@ import Foundation
         #expect(m.kind == .prose)
         #expect(m.hadiths.count == 1)
         #expect(m.baytCount == 2)        // repurposed as hadith count
+        #expect(m.baytsPerPage == 0)     // prose has no bayt layout
         #expect(m.pages.isEmpty)
         #expect(m.subject == .hadith)
 

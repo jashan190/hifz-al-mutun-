@@ -80,6 +80,8 @@ enum PageItem: Hashable {
 
 extension PageItem: Decodable {
     private enum Keys: String, CodingKey { case type }
+    // Do NOT add .hadith here — HadithFragment is runtime-only (built by
+    // ProsePaginator), never decoded from disk.
     private enum Kind: String, Decodable { case heading, bayt }
 
     init(from decoder: Decoder) throws {

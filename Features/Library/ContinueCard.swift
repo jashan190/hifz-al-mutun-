@@ -25,6 +25,9 @@ struct ContinueCard: View {
             Text(matn.title)
                 .font(DisplayFont.title(size: 24))
                 .foregroundStyle(.white)
+            // TODO(prose): for a prose matn, baytCount is the hadith count and
+            // there are no bayts — this "البيت X من Y" line needs a kind-aware
+            // form (e.g. "الحديث X من Y") in the reader/cover integration task.
             Text("صفحة \(Numerals.eastern(lastPage)) · البيت \(Numerals.eastern(currentBayt)) من \(Numerals.eastern(matn.baytCount))")
                 .font(DisplayFont.body(size: 12))
                 .foregroundStyle(.white.opacity(0.9))

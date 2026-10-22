@@ -22,6 +22,9 @@ struct ReaderSidecar: View {
     private var bar: Color { Theme.subjectChrome(matn.subject) }
     private var accent: Color { matn.subject.accent }
     private var currentBab: Bab? { matn.currentBab(onPage: currentPage) }
+    // TODO(prose): the bayt jump uses baytCount as its max; a prose matn has no
+    // bayts (baytCount is its hadith count), so bayt-jump needs a kind-aware
+    // form (or to be hidden) in the reader integration task.
     private var maxValue: Int { mode == .page ? max(1, matn.pageCount) : max(1, matn.baytCount) }
 
     var body: some View {

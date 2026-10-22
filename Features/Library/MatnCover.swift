@@ -109,6 +109,9 @@ struct MatnCover: View {
         .padding(.top, style == .page ? 0 : sz(22, 46, 0))
         .overlay(alignment: .bottom) {
             // Pinned in the clear zone between the bottom corners.
+            // TODO(prose): for a prose matn, baytCount is the hadith count, so
+            // this unit should read "حديثًا" not "بيت" — made kind-aware in the
+            // cover/reader integration task.
             Text("\(Numerals.eastern(matn.baytCount)) بيت")
                 .font(DisplayFont.body(size: sz(7.5, 12, 15)))
                 .foregroundStyle(color.opacity(0.9))
