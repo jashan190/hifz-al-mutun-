@@ -54,11 +54,18 @@ struct MatnCover: View {
         if style == .page {
             cardStack
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(Rectangle().strokeBorder(color, lineWidth: 3))
         } else {
+            let radius: CGFloat = style == .hero ? 7 : 5
             cardStack
-                .clipShape(RoundedRectangle(cornerRadius: style == .hero ? 10 : 7, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                // Subject-colour outline so the cover stands off the background.
+                .overlay(
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .strokeBorder(color, lineWidth: style == .hero ? 2 : 1.5)
+                )
                 .shadow(color: .black.opacity(0.14), radius: style == .hero ? 10 : 6, y: 4)
-                .aspectRatio(0.78, contentMode: .fit)   // portrait title-page proportion
+                .aspectRatio(0.67, contentMode: .fit)   // portrait title-page proportion
         }
     }
 

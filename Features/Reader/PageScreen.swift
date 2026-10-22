@@ -56,7 +56,8 @@ struct PageScreen: View {
                                 show: { mistake in
                                     if reduceMotion { currentPage = mistake.page }
                                     else { withAnimation { currentPage = mistake.page } }
-                                })
+                                },
+                                tint: subjectAccent)
                         .padding(.horizontal, Theme.margin)
                         .padding(.bottom, 10)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -68,19 +69,23 @@ struct PageScreen: View {
         .navigationBarBackButtonHidden(true)
         .overlay {
             if showIndex {
-                ZStack(alignment: .trailing) {
-                    // Scrim: dims the page, tap to dismiss.
-                    Color.black.opacity(0.38)
-                        .ignoresSafeArea()
-                        .onTapGesture { showIndex = false }
+                GeometryReader { geo in
+                    ZStack(alignment: .trailing) {
+                        // Scrim: dims the page, tap to dismiss.
+                        Color.black.opacity(0.38)
+                            .ignoresSafeArea()
+                            .onTapGesture { showIndex = false }
 
-                    ReaderSidecar(matn: matn, currentPage: $currentPage) {
-                        showIndex = false
+                        ReaderSidecar(matn: matn, currentPage: $currentPage,
+                                      topInset: geo.safeAreaInsets.top) {
+                            showIndex = false
+                        }
+                        .frame(width: geo.size.width * 0.8)
+                        .frame(maxHeight: .infinity)
+                        .background(Theme.page)
+                        .transition(.opacity)
                     }
-                    .frame(width: UIScreen.main.bounds.width * 0.8)
-                    .frame(maxHeight: .infinity)
-                    .background(Theme.page)
-                    .transition(.opacity)
+                    .ignoresSafeArea()
                 }
             }
         }
@@ -173,6 +178,11 @@ struct PageScreen: View {
         else { withAnimation(.easeInOut(duration: 0.2)) { barsVisible.toggle() } }
     }
 
+    /// The header/footer/sidecar bar colour for this matn's subject.
+    private var chrome: Color { Theme.subjectChrome(matn.subject) }
+    /// The vivid subject accent, for controls on cream surfaces.
+    private var subjectAccent: Color { matn.subject.accent }
+
     private var babsCaption: String {
         matn.currentBab(onPage: currentPage)?.title ?? ""
     }
@@ -184,11 +194,13 @@ struct PageScreen: View {
                 Text(matn.title)
                     .font(.headline)
                     .foregroundStyle(Theme.onChrome)
-                Text(babsCaption)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.onChromeDim)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                if !babsCaption.isEmpty {
+                    Text(babsCaption)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.onChromeDim)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
             .frame(maxWidth: .infinity)
             ChromeIconButton(system: "list.bullet", label: "Index") {
@@ -197,7 +209,7 @@ struct PageScreen: View {
         }
         .padding(.horizontal, Theme.margin)
         .padding(.vertical, 5)
-        .background { Theme.chrome.ignoresSafeArea(edges: .top) }
+        .background { chrome.ignoresSafeArea(edges: .top) }
         .overlay(alignment: .bottom) {
             Rectangle().fill(Theme.chromeHairline).frame(height: 1)
         }
@@ -213,13 +225,13 @@ struct PageScreen: View {
                     .transition(.opacity)
             }
             HStack(spacing: 12) {
-                ModeToggle(mode: $mode)
+                ModeToggle(mode: $mode, tint: subjectAccent)
                     .fixedSize()
                 if mode == .memorize {
                     MicButton(isListening: Binding(
                         get: { voice.isLive },
                         set: { on in on ? startVoice() : voice.stop() }
-                    ))
+                    ), tint: subjectAccent)
                     .transition(.scale.combined(with: .opacity))
                 }
                 Spacer(minLength: 0)
@@ -233,7 +245,7 @@ struct PageScreen: View {
         }
         .padding(.horizontal, Theme.margin)
         .padding(.vertical, 7)
-        .background { Theme.chrome.ignoresSafeArea(edges: .bottom) }
+        .background { chrome.ignoresSafeArea(edges: .bottom) }
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.chromeHairline).frame(height: 1)
         }
@@ -312,6 +324,8 @@ private struct SummaryCard: View {
     let reviewAgain: () -> Void
     let backToRead: () -> Void
     let show: (ReviewSummary.Mistake) -> Void
+    /// The matn's subject colour, for the action buttons.
+    var tint: Color = Theme.accent
     /// The list's natural height, measured, so it shrinks to fit a few rows.
     @State private var listHeight: CGFloat = 0
 
@@ -355,7 +369,7 @@ private struct SummaryCard: View {
                 }
                 .buttonStyle(.bordered)
             }
-            .tint(Theme.accent)
+            .tint(tint)
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))

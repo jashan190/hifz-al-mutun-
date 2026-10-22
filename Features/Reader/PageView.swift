@@ -49,6 +49,10 @@ struct PageView: View {
                 (geo.size.width - 2 * hPadding - numberColumn - numberGap - midGap) / 2
             )
             let fontSize = pageFontSize(bayts: bayts, columnWidth: columnWidth)
+            // A full page (its quota of bayts) distributes its rows to fill the
+            // page height; an under-filled last page keeps its gaps capped so it
+            // sits at the top instead of ballooning.
+            let fillPage = bayts.count >= matn.baytsPerPage
 
             VStack(spacing: 0) {
                 ScrollView {
@@ -56,7 +60,8 @@ struct PageView: View {
                         ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                             switch item {
                             case .heading(let heading):
-                                HeadingRow(heading: heading, fontSize: fontSize)
+                                HeadingRow(heading: heading, fontSize: fontSize,
+                                           tint: matn.subject.accent)
                             case .bayt(let bayt):
                                 BaytRow(
                                     matnID: matn.id,
@@ -68,10 +73,21 @@ struct PageView: View {
                                     numberColumn: numberColumn,
                                     numberGap: numberGap,
                                     midGap: midGap,
+                                    subjectColor: matn.subject.accent,
                                     reveal: reveal
                                 )
                             }
-                            if index < items.count - 1 { Spacer(minLength: 8) }
+                            // Spacers distribute items down the page. On a full
+                            // page they expand so the rows fill the height; on an
+                            // under-filled last page they're capped so it sits at
+                            // the top instead of ballooning the gaps.
+                            if index < items.count - 1 {
+                                if fillPage {
+                                    Spacer(minLength: 8)
+                                } else {
+                                    Spacer(minLength: 8).frame(maxHeight: 22)
+                                }
+                            }
                         }
                     }
                     .frame(
@@ -384,6 +400,7 @@ private struct AddedMark: View {
 private struct HeadingRow: View {
     let heading: Heading
     let fontSize: CGFloat
+    var tint: Color = Theme.accent   // the matn's subject colour for headings
 
     var body: some View {
         // Headings read in the Madinah green (the app's section colour); any blue
@@ -393,10 +410,10 @@ private struct HeadingRow: View {
             plain: heading.text,
             size: fontSize * 1.2,
             justifyWidth: 0,                 // never kashida a heading
-            tint: { $0 == .black ? Theme.accent : inkColor($0) }
+            tint: { $0 == .black ? tint : inkColor($0) }
         )
         LayeredText(rendered: rendered, font: PageFont.font(size: fontSize * 1.2),
-                    size: fontSize * 1.2, defaultColor: Theme.accent)
+                    size: fontSize * 1.2, defaultColor: tint)
             .padding(.vertical, 2)
             .accessibilityAddTraits(.isHeader)
     }
@@ -416,6 +433,7 @@ private struct BaytRow: View {
     let numberColumn: CGFloat
     let numberGap: CGFloat
     let midGap: CGFloat
+    var subjectColor: Color = Theme.accent   // the matn's subject colour
     var reveal: RevealState? = nil
 
     private var lineHeight: CGFloat { fontSize * 1.7 }
@@ -444,7 +462,7 @@ private struct BaytRow: View {
     private var number: some View {
         let label = Text(Numerals.eastern(bayt.number))
             .font(PageFont.font(size: fontSize * 0.7))
-            .foregroundStyle(mode == .memorize ? Theme.accent : Theme.numeral)
+            .foregroundStyle(mode == .memorize ? subjectColor : Theme.numeral)
             .lineLimit(1)
             .minimumScaleFactor(0.5)
             .frame(width: numberColumn, height: lineHeight, alignment: .center)

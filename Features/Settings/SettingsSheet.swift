@@ -32,7 +32,7 @@ struct SettingsSheet: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 0) {
-                Text("الإعدادات").font(.subheadline).foregroundStyle(Theme.accent)
+                Text("الإعدادات").font(.subheadline).foregroundStyle(Theme.brand)
                 Text("Settings").serifDisplay(.title2).foregroundStyle(Theme.ink)
             }
             Spacer()
@@ -87,7 +87,7 @@ struct SettingsSheet: View {
                         .foregroundStyle(Theme.ink.opacity(0.7))
                 }
             }
-            .tint(Theme.accent)
+            .tint(Theme.brand)
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
@@ -103,7 +103,7 @@ struct SettingsSheet: View {
             HStack(spacing: 12) {
                 Image(systemName: selected ? "largecircle.fill.circle" : "circle")
                     .font(.system(size: 18))
-                    .foregroundStyle(selected ? Theme.accent : Theme.ink.opacity(0.4))
+                    .foregroundStyle(selected ? Theme.brand : Theme.ink.opacity(0.4))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(model.title).font(.subheadline.weight(.medium)).foregroundStyle(Theme.ink)
                     Text(model.detail + (model.isDownloaded ? " · Downloaded" : ""))
@@ -167,7 +167,7 @@ struct SettingsSheet: View {
             .foregroundStyle(selected ? Theme.onChrome : Theme.ink)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(selected ? Theme.accent : Theme.ink.opacity(0.05))
+                    .fill(selected ? Theme.brand : Theme.ink.opacity(0.05))
             )
         }
         .buttonStyle(PressableStyle())

@@ -5,6 +5,7 @@ import SwiftUI
 // segmented control.
 struct ModeToggle: View {
     @Binding var mode: PageMode
+    var tint: Color = Theme.accent   // the matn's subject colour, on the cream pill
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -22,7 +23,7 @@ struct ModeToggle: View {
                     .font(.system(size: 11, weight: .bold))
                     .opacity(0.55)
             }
-            .foregroundStyle(Theme.accent)
+            .foregroundStyle(tint)
             .padding(.horizontal, 18)
             .padding(.vertical, 9)
             .background(Capsule().fill(Theme.onChrome))

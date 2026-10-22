@@ -73,16 +73,16 @@ struct RootView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text("Mutun")
-                .serifDisplay(.largeTitle)
-                .foregroundStyle(Theme.ink)
+            Text("متون")
+                .font(DisplayFont.title(size: 40))
+                .foregroundStyle(Theme.brand)
             Spacer()
             Button { showSettings = true } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.brand)
                     .frame(width: 40, height: 40)
-                    .background(Circle().fill(Theme.accent.opacity(0.1)))
+                    .background(Circle().fill(Theme.brand.opacity(0.1)))
             }
             .buttonStyle(PressableStyle())
             .accessibilityLabel("Settings")

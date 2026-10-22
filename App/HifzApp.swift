@@ -15,9 +15,9 @@ struct HifzApp: App {
         PageFont.registerBundledFonts()   // bundle Amiri for the page
 
         // iOS doesn't tint a segmented control's selected segment with the app
-        // accent automatically, so set it to Madinah green explicitly.
+        // accent automatically, so set it to the app's charcoal brand explicitly.
         let seg = UISegmentedControl.appearance()
-        seg.selectedSegmentTintColor = UIColor(Theme.accent)
+        seg.selectedSegmentTintColor = UIColor(Theme.brand)
         seg.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .selected)
     }
 
@@ -38,7 +38,7 @@ struct HifzApp: App {
                 .environmentObject(flags)
                 // The mutun are Arabic; lay the UI out right-to-left.
                 .environment(\.layoutDirection, .rightToLeft)
-                .tint(Theme.accent)
+                .tint(Theme.brand)
                 .preferredColorScheme(appearance.colorScheme)
         }
     }
