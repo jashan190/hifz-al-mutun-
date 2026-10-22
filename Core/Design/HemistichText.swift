@@ -140,6 +140,16 @@ enum HemistichText {
         /// leave the kasra a letter-height under the nun; it gets its own offset.
         var belowKasra: AttributedString?
         var footnotes: [Footnote]
+        /// The box to outline (the tapped review word), or nil. `lead` is its
+        /// distance from the leading (right, in RTL) edge; `width` its glyph span.
+        var flashBox: FlashBox?
+    }
+
+    /// Where to draw the flash outline within the half-line's column, measured
+    /// in the laid-out (kashida-justified) text so it hugs the real glyphs.
+    struct FlashBox {
+        var lead: CGFloat
+        var width: CGFloat
     }
 
     /// A footnote marker to float above the line. `lead` is its distance from the
@@ -181,7 +191,7 @@ enum HemistichText {
 
         // Append the same glyph to every layer, visible only on the slot that owns
         // it, so all layers share identical metrics → identical x positions.
-        func add(_ text: String, color: Color, slot: Slot, underline: Bool = false, box: Bool = false, flash: Bool = false) {
+        func add(_ text: String, color: Color, slot: Slot, underline: Bool = false, box: Bool = false) {
             func piece(_ c: Color) -> AttributedString {
                 var a = AttributedString(text)
                 a.foregroundColor = c
@@ -190,7 +200,6 @@ enum HemistichText {
             var basePiece = piece(slot == .normal ? color : .clear)
             if underline { basePiece.underlineStyle = Text.LineStyle(pattern: .solid, color: Theme.flag) }
             if box { basePiece.backgroundColor = Theme.error.opacity(0.14) }   // mistake highlight
-            if flash { basePiece.backgroundColor = Theme.error.opacity(0.34) } // the just-tapped word, darker
             base += basePiece
             above += piece(slot == .above ? color : .clear)
             below += piece(slot == .below ? color : .clear)
@@ -244,10 +253,31 @@ enum HemistichText {
                     if let n = insertions[global] { piece += String(repeating: "\u{0640}", count: n) }
                     add(piece, color: color, slot: .normal,
                         underline: underlined.contains { $0.contains(pidx) },
-                        box: boxed.contains { $0.contains(pidx) },
-                        flash: flashBoxed.contains { $0.contains(pidx) })
+                        box: boxed.contains { $0.contains(pidx) })
                 }
                 i += 1
+            }
+        }
+
+        // The outline box for the tapped review word, measured in the justified
+        // display text (plain scalars with the same kashida inserted) so it lands
+        // exactly over the glyphs. `lead` is the display width before the word.
+        var flashBox: FlashBox?
+        if let r = flashBoxed.first {
+            let scalars = Array(plain.unicodeScalars)
+            func displayWidth(upTo bound: Int) -> CGFloat {
+                guard bound > 0 else { return 0 }
+                var s = ""
+                for g in 0..<min(bound, scalars.count) {
+                    if let n = insertions[g] { s += String(repeating: "\u{0640}", count: n) }
+                    s.unicodeScalars.append(scalars[g])
+                }
+                return PageFont.width(s, size: size)
+            }
+            let lo = max(0, r.lowerBound), hi = min(scalars.count, r.upperBound)
+            if lo < hi {
+                let lead = displayWidth(upTo: lo)
+                flashBox = FlashBox(lead: lead, width: displayWidth(upTo: hi) - lead)
             }
         }
 
@@ -256,7 +286,8 @@ enum HemistichText {
             above: hasAbove ? above : nil,
             below: hasBelow ? below : nil,
             belowKasra: hasBelowKasra ? belowKasra : nil,
-            footnotes: footnotes
+            footnotes: footnotes,
+            flashBox: flashBox
         )
     }
 

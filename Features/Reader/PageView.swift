@@ -181,6 +181,15 @@ private struct LayeredText: View {
                     .fixedSize()
                     .offset(x: fn.lead, y: -size * HemistichText.footnoteLift)
             }
+            // A darker outline around the tapped review word (positive x reads as
+            // leftward under RTL), so you can spot it among the flagged red boxes.
+            if let fb = rendered.flashBox, width != nil {
+                let pad = size * 0.14
+                RoundedRectangle(cornerRadius: size * 0.16, style: .continuous)
+                    .strokeBorder(Theme.error, lineWidth: max(1.5, size * 0.045))
+                    .frame(width: fb.width + pad * 2, height: size * 1.2)
+                    .offset(x: fb.lead - pad, y: 0)
+            }
         }
     }
 

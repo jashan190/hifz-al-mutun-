@@ -55,11 +55,22 @@ struct ProsePageView: View {
             default: return nil
             }
         }
-        // read mode: box flagged words (and the transient flash target, darker so it stands out)
+        // read mode: box flagged words (the tapped one also gets a stroke outline).
         let key = FlagKey(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j)
-        if flashTarget == key { return UIColor(Theme.error).withAlphaComponent(0.34) }
         if flagStore.isFlagged(matnID, key) { return UIColor(Theme.error).withAlphaComponent(0.14) }
         return nil
+    }
+
+    /// The character range (in the justified body string) of the tapped review
+    /// word, so `JustifiedText` can outline exactly its glyphs. Read mode only.
+    private func strokeRange() -> NSRange? {
+        guard reveal == nil, let target = flashTarget,
+              target.bayt == fragment.hadithNumber, target.half == .sadr else { return nil }
+        let j = target.wordIndex - fragment.bodyStart
+        guard j >= 0, j < fragment.words.count else { return nil }
+        var loc = 0
+        for k in 0..<j { loc += (fragment.words[k].text as NSString).length + 1 } // +1 for the joining space
+        return NSRange(location: loc, length: (fragment.words[j].text as NSString).length)
     }
 
     var body: some View {
@@ -76,7 +87,9 @@ struct ProsePageView: View {
                 lineSpacing: Self.lineSpacing(for: fontSize),
                 color: { j, role in wordColor(j, role) },
                 underline: { j in wordUnderline(j) },
-                background: { j in wordBackground(j) }))
+                background: { j in wordBackground(j) }),
+                strokeRange: strokeRange(),
+                strokeColor: UIColor(Theme.error))
                 .frame(maxWidth: .infinity)
                 .contextMenu {
                     let flagged = fragment.words.indices.filter {
@@ -113,24 +126,75 @@ struct ProsePageView: View {
 /// the paginator measures with, so a page's text always fits (no scrolling).
 struct JustifiedText: UIViewRepresentable {
     let attributed: NSAttributedString
+    /// The character range to outline (the tapped review word), or nil.
+    var strokeRange: NSRange? = nil
+    var strokeColor: UIColor = .red
 
-    func makeUIView(context: Context) -> UILabel {
-        let label = UILabel()
+    func makeUIView(context: Context) -> StrokeLabel {
+        let label = StrokeLabel()
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
         label.backgroundColor = .clear
         return label
     }
 
-    func updateUIView(_ label: UILabel, context: Context) {
+    func updateUIView(_ label: StrokeLabel, context: Context) {
         label.attributedText = attributed
+        label.strokeColor = strokeColor
+        label.strokeRange = strokeRange
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UILabel, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: StrokeLabel, context: Context) -> CGSize? {
         guard let width = proposal.width, width > 0 else { return nil }
         let h = attributed.boundingRect(
             with: CGSize(width: width, height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil).height
         return CGSize(width: width, height: ceil(h))
+    }
+}
+
+/// A UILabel that can draw a rounded-rect outline around one character range.
+/// The rect is found with a TextKit stack matching the label's layout (same
+/// string, same width, zero line-fragment padding), so it hugs the real glyphs
+/// even across the justified RTL paragraph.
+final class StrokeLabel: UILabel {
+    var strokeRange: NSRange? { didSet { setNeedsLayout() } }
+    var strokeColor: UIColor = .red { didSet { strokeLayer.strokeColor = strokeColor.cgColor } }
+
+    private let strokeLayer = CAShapeLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        strokeLayer.fillColor = nil
+        strokeLayer.strokeColor = strokeColor.cgColor
+        layer.addSublayer(strokeLayer)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard let attributedText, let range = strokeRange, bounds.width > 0 else {
+            strokeLayer.path = nil
+            return
+        }
+
+        let storage = NSTextStorage(attributedString: attributedText)
+        let manager = NSLayoutManager()
+        let container = NSTextContainer(size: CGSize(width: bounds.width, height: .greatestFiniteMagnitude))
+        container.lineFragmentPadding = 0
+        container.maximumNumberOfLines = 0
+        container.lineBreakMode = .byWordWrapping
+        storage.addLayoutManager(manager)
+        manager.addTextContainer(container)
+
+        let glyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+        var rect = manager.boundingRect(forGlyphRange: glyphs, in: container)
+        // UILabel vertically centres its text when the view is taller than the text.
+        let textHeight = manager.usedRect(for: container).height
+        rect.origin.y += max(0, (bounds.height - textHeight) / 2)
+
+        rect = rect.insetBy(dx: -3, dy: -2)
+        strokeLayer.path = UIBezierPath(roundedRect: rect, cornerRadius: 5).cgPath
+        strokeLayer.lineWidth = 1.5
     }
 }
