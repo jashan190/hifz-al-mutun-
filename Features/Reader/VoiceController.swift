@@ -14,8 +14,8 @@ struct ReviewSummary: Equatable {
         let page: Int
         let bayt: Int
         let half: Half
-        /// Word-in-body (prose) / flat word index of the ref; used to resolve the
-        /// runtime prose page to jump to. Harmless for poems.
+        /// Mirrors `WordRef.wordIndex`: word-in-body for prose, word-in-hemistich
+        /// for poems. Used to resolve the runtime prose page to jump to.
         let wordIndex: Int
         let expected: String     // the word as written
         /// What the recognizer heard in its place; nil when it was skipped.
