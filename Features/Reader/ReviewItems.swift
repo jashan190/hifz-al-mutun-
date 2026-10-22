@@ -11,12 +11,14 @@ struct ReviewItem: Identifiable {
 /// Resolves a matn's flagged positions into display rows, and builds the
 /// (ephemeral) "you said X" annotation map from a sitting's summary.
 enum ReviewItems {
+    /// Reading-order key: bayt, then sadr before ajuz, then word position.
+    private static func sortKey(_ k: FlagKey) -> (Int, Int, Int) {
+        (k.bayt, k.half == .sadr ? 0 : 1, k.wordIndex)
+    }
+
     /// Flagged words for a matn, in reading order. Orphan/out-of-range keys are skipped.
     static func resolve(matn: Matn, flags: Set<FlagKey>) -> [ReviewItem] {
-        let sorted = flags.sorted {
-            ($0.bayt, $0.half == .sadr ? 0 : 1, $0.wordIndex)
-                < ($1.bayt, $1.half == .sadr ? 0 : 1, $1.wordIndex)
-        }
+        let sorted = flags.sorted { sortKey($0) < sortKey($1) }
         return sorted.compactMap { key in
             guard let word = word(matn: matn, key: key) else { return nil }
             return ReviewItem(key: key, word: word, location: location(matn: matn, key: key))
