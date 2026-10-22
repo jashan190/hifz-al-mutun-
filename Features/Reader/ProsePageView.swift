@@ -130,29 +130,36 @@ struct ProsePageView: View {
 }
 
 /// A justified, multi-line Arabic paragraph. SwiftUI `Text` can't fully justify,
-/// so this wraps a `UILabel`; its reported height uses the same `boundingRect`
-/// the paginator measures with, so a page's text always fits (no scrolling).
+/// so this wraps a non-scrolling `UITextView`; its reported height uses the same
+/// `boundingRect` the paginator measures with, so a page's text always fits.
+/// The text view (not a bare label) is used so the mistake outline can be found
+/// from the *same* layout manager that draws the glyphs — a separate TextKit
+/// stack can position a justified RTL run a word off from what's on screen.
 struct JustifiedText: UIViewRepresentable {
     let attributed: NSAttributedString
     /// The character range to outline (the tapped review word), or nil.
     var strokeRange: NSRange? = nil
     var strokeColor: UIColor = .red
 
-    func makeUIView(context: Context) -> StrokeLabel {
-        let label = StrokeLabel()
-        label.numberOfLines = 0
-        label.lineBreakMode = .byWordWrapping
-        label.backgroundColor = .clear
-        return label
+    func makeUIView(context: Context) -> StrokeTextView {
+        let tv = StrokeTextView()
+        tv.isEditable = false
+        tv.isScrollEnabled = false
+        tv.isSelectable = false
+        tv.backgroundColor = .clear
+        tv.textContainerInset = .zero
+        tv.textContainer.lineFragmentPadding = 0
+        tv.textContainer.lineBreakMode = .byWordWrapping
+        return tv
     }
 
-    func updateUIView(_ label: StrokeLabel, context: Context) {
-        label.attributedText = attributed
-        label.strokeColor = strokeColor
-        label.strokeRange = strokeRange
+    func updateUIView(_ tv: StrokeTextView, context: Context) {
+        tv.attributedText = attributed
+        tv.strokeColor = strokeColor
+        tv.strokeRange = strokeRange
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: StrokeLabel, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: StrokeTextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width > 0 else { return nil }
         let h = attributed.boundingRect(
             with: CGSize(width: width, height: .greatestFiniteMagnitude),
@@ -161,18 +168,19 @@ struct JustifiedText: UIViewRepresentable {
     }
 }
 
-/// A UILabel that can draw a rounded-rect outline around one character range.
-/// The rect is found with a TextKit stack matching the label's layout (same
-/// string, same width, zero line-fragment padding), so it hugs the real glyphs
-/// even across the justified RTL paragraph.
-final class StrokeLabel: UILabel {
+/// A non-scrolling text view that outlines one character range (the tapped review
+/// mistake). The rect comes from the view's own `layoutManager`, so it matches the
+/// glyphs exactly — horizontally hugging the word via the selection-style
+/// enclosing rects, vertically the line's used height (so it doesn't bleed into
+/// the lines above and below).
+final class StrokeTextView: UITextView {
     var strokeRange: NSRange? { didSet { setNeedsLayout() } }
     var strokeColor: UIColor = .red { didSet { strokeLayer.strokeColor = strokeColor.cgColor } }
 
     private let strokeLayer = CAShapeLayer()
 
-    override init(frame: CGRect) {
-        super.init(frame: frame)
+    override init(frame: CGRect, textContainer: NSTextContainer?) {
+        super.init(frame: frame, textContainer: textContainer)
         strokeLayer.fillColor = nil
         strokeLayer.strokeColor = strokeColor.cgColor
         layer.addSublayer(strokeLayer)
@@ -181,44 +189,34 @@ final class StrokeLabel: UILabel {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        guard let attributedText, let range = strokeRange, bounds.width > 0,
-              range.length > 0, range.location + range.length <= attributedText.length else {
+        let length = textStorage.length
+        guard let range = strokeRange, range.length > 0,
+              range.location + range.length <= length else {
             strokeLayer.path = nil
             return
         }
 
-        let storage = NSTextStorage(attributedString: attributedText)
-        let manager = NSLayoutManager()
-        let container = NSTextContainer(size: CGSize(width: bounds.width, height: .greatestFiniteMagnitude))
-        container.lineFragmentPadding = 0
-        container.maximumNumberOfLines = 0
-        container.lineBreakMode = .byWordWrapping
-        storage.addLayoutManager(manager)
-        manager.addTextContainer(container)
-        manager.ensureLayout(for: container)
-
-        let glyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+        let glyphs = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
         guard glyphs.length > 0 else { strokeLayer.path = nil; return }
 
         // Horizontal extent: the selection-style enclosing rects hug just this
-        // word's glyphs. (boundingRect(forGlyphRange:) over-reports the width of a
-        // run in a justified RTL paragraph — it includes the stretched word-spacing
-        // — which made the outline run well past the highlight.)
+        // word's glyphs. (boundingRect(forGlyphRange:) over-reports a justified RTL
+        // run's width — it folds in the stretched word-spacing.)
         var hx: CGRect = .null
-        manager.enumerateEnclosingRects(forGlyphRange: glyphs,
-                                        withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0),
-                                        in: container) { r, _ in hx = hx.union(r) }
+        layoutManager.enumerateEnclosingRects(forGlyphRange: glyphs,
+                                              withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0),
+                                              in: textContainer) { r, _ in hx = hx.union(r) }
         guard !hx.isNull else { strokeLayer.path = nil; return }
 
         // Vertical extent: the USED height of the word's line fragment — the part
-        // the glyphs actually occupy. The full line-fragment rect also includes the
-        // inter-line spacing, which would make the box bleed into the lines above
-        // and below; the used rect matches the highlight fill's height.
-        let used = manager.lineFragmentUsedRect(forGlyphAt: glyphs.location, effectiveRange: nil)
+        // the glyphs actually occupy, matching the highlight fill (the full
+        // line-fragment rect would also include the inter-line spacing).
+        let used = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphs.location, effectiveRange: nil)
 
-        // UILabel vertically centres its text when the view is taller than the text.
-        let dy = max(0, (bounds.height - manager.usedRect(for: container).height) / 2)
-        var rect = CGRect(x: hx.minX, y: used.minY + dy, width: hx.width, height: used.height)
+        // Container coordinates → view coordinates (inset is zero, but be explicit).
+        var rect = CGRect(x: hx.minX + textContainerInset.left,
+                          y: used.minY + textContainerInset.top,
+                          width: hx.width, height: used.height)
         rect = rect.insetBy(dx: -2, dy: -1)
         strokeLayer.path = UIBezierPath(roundedRect: rect, cornerRadius: 5).cgPath
         strokeLayer.lineWidth = 2
