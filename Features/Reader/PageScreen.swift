@@ -101,9 +101,20 @@ struct PageScreen: View {
                                 reviewAgain: { startVoice() },
                                 backToRead: { setMode(.read) },
                                 show: { mistake in
-                                    if reduceMotion { currentPage = mistake.page }
-                                    else { withAnimation { currentPage = mistake.page } }
+                                    let target: Int
+                                    if matn.kind == .prose {
+                                        // Prose pages are runtime: find the page
+                                        // holding this hadith's word-in-body.
+                                        target = prosePage(hadith: mistake.bayt,
+                                                           wordInBody: mistake.wordIndex)
+                                            ?? max(1, currentPage)
+                                    } else {
+                                        target = mistake.page
+                                    }
+                                    if reduceMotion { currentPage = target }
+                                    else { withAnimation { currentPage = target } }
                                 },
+                                matnKind: matn.kind,
                                 tint: subjectAccent)
                         .padding(.horizontal, Theme.margin)
                         .padding(.bottom, 10)
@@ -151,8 +162,18 @@ struct PageScreen: View {
         }
         // Turn the page as soon as its last word is recited.
         .onChange(of: voice.cursor) { _, c in
-            guard mode == .memorize, voice.isActive,
-                  let target = voice.page(forCursor: c), target != currentPage else { return }
+            guard mode == .memorize, voice.isActive else { return }
+            let resolved: Int?
+            if matn.kind == .prose {
+                // Prose pages are runtime; map the cursor's (hadith, word-in-body)
+                // onto the page that holds that fragment.
+                resolved = voice.proseRef(forCursor: c).flatMap {
+                    prosePage(hadith: $0.hadith, wordInBody: $0.wordInBody)
+                }
+            } else {
+                resolved = voice.page(forCursor: c)
+            }
+            guard let target = resolved, target != currentPage else { return }
             autoTurnTarget = target
             if reduceMotion { currentPage = target } else { withAnimation { currentPage = target } }
         }
@@ -214,8 +235,28 @@ struct PageScreen: View {
         )
     }
 
+    /// The hadith number shown on the current page (prose), else nil.
+    private var currentHadith: Int? {
+        displayPages.first { $0.page == currentPage }?
+            .items.compactMap { if case .hadith(let f) = $0 { return f.hadithNumber } else { return nil } }.first
+    }
+
+    /// The runtime prose page that holds this hadith's `wordInBody`, or nil.
+    private func prosePage(hadith: Int, wordInBody: Int) -> Int? {
+        for page in prosePages {
+            for item in page.items {
+                guard case .hadith(let f) = item, f.hadithNumber == hadith else { continue }
+                if f.bodyStart <= wordInBody && wordInBody < f.bodyStart + f.words.count {
+                    return page.page
+                }
+            }
+        }
+        return nil
+    }
+
     private func startVoice(bayt: Int? = nil) {
-        voice.start(matn: matn, fromPage: currentPage, bayt: bayt, flags: flagStore)
+        let seed = matn.kind == .prose ? currentHadith : bayt
+        voice.start(matn: matn, fromPage: currentPage, bayt: seed, flags: flagStore)
     }
 
     private func setMode(_ m: PageMode) {
@@ -274,18 +315,16 @@ struct PageScreen: View {
                     .transition(.opacity)
             }
             HStack(spacing: 12) {
-                // Memorize + voice target the bayt poems; prose is read-only for
-                // now (no toggle, no mic), so the controls aren't reachable.
-                if matn.kind == .poem {
-                    ModeToggle(mode: $mode, tint: subjectAccent)
-                        .fixedSize()
-                    if mode == .memorize {
-                        MicButton(isListening: Binding(
-                            get: { voice.isLive },
-                            set: { on in on ? startVoice() : voice.stop() }
-                        ), tint: subjectAccent)
-                        .transition(.scale.combined(with: .opacity))
-                    }
+                // Memorize + voice target both poems (per bayt) and prose (per
+                // hadith): the toggle and mic are reachable for both.
+                ModeToggle(mode: $mode, tint: subjectAccent)
+                    .fixedSize()
+                if mode == .memorize {
+                    MicButton(isListening: Binding(
+                        get: { voice.isLive },
+                        set: { on in on ? startVoice() : voice.stop() }
+                    ), tint: subjectAccent)
+                    .transition(.scale.combined(with: .opacity))
                 }
                 Spacer(minLength: 0)
                 Text(currentPage >= 1
@@ -377,6 +416,8 @@ private struct SummaryCard: View {
     let reviewAgain: () -> Void
     let backToRead: () -> Void
     let show: (ReviewSummary.Mistake) -> Void
+    /// Poem or prose: the mistake rows phrase the place by bayt+half, or hadith.
+    var matnKind: MatnKind = .poem
     /// The matn's subject colour, for the action buttons.
     var tint: Color = Theme.accent
     /// The list's natural height, measured, so it shrinks to fit a few rows.
@@ -400,7 +441,7 @@ private struct SummaryCard: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(summary.mistakes) { mistake in
-                            MistakeRow(mistake: mistake) { show(mistake) }
+                            MistakeRow(mistake: mistake, matnKind: matnKind) { show(mistake) }
                             if mistake.id != summary.mistakes.last?.id {
                                 Divider().overlay(Theme.outline)
                             }
@@ -443,6 +484,7 @@ private struct SummaryCard: View {
 // One mistake: where it was, the word as written, and what was heard.
 private struct MistakeRow: View {
     let mistake: ReviewSummary.Mistake
+    var matnKind: MatnKind = .poem
     let action: () -> Void
 
     /// The word as written, its differing letters (and their harakat) red.
@@ -462,7 +504,9 @@ private struct MistakeRow: View {
     }
 
     private var place: String {
-        "Bayt \(mistake.bayt) · \(mistake.half == .sadr ? "first half" : "second half")"
+        matnKind == .prose
+            ? "الحديث \(Numerals.eastern(mistake.bayt))"
+            : "Bayt \(mistake.bayt) · \(mistake.half == .sadr ? "first half" : "second half")"
     }
 
     var body: some View {

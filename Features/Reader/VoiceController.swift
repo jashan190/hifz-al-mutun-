@@ -14,6 +14,9 @@ struct ReviewSummary: Equatable {
         let page: Int
         let bayt: Int
         let half: Half
+        /// Word-in-body (prose) / flat word index of the ref; used to resolve the
+        /// runtime prose page to jump to. Harmless for poems.
+        let wordIndex: Int
         let expected: String     // the word as written
         /// What the recognizer heard in its place; nil when it was skipped.
         let heard: String?
@@ -137,13 +140,13 @@ final class VoiceController: ObservableObject {
             var heard: String?
             if case .wrong(let said) = judged[i] { heard = said }
             return .init(id: i, page: ref.page, bayt: ref.bayt, half: ref.half,
-                         expected: index.displayWords[i], heard: heard)
+                         wordIndex: ref.wordIndex, expected: index.displayWords[i], heard: heard)
         }
         // Added words follow the word they came after (ids past every word's).
         mistakes += added.map { i, words in
             let ref = index.refs[i]
             return .init(id: index.refs.count + i, page: ref.page, bayt: ref.bayt, half: ref.half,
-                         expected: index.displayWords[i], heard: words, added: true)
+                         wordIndex: ref.wordIndex, expected: index.displayWords[i], heard: words, added: true)
         }
         let n = index.refs.count
         mistakes.sort { ($0.id % n, $0.added ? 1 : 0) < ($1.id % n, $1.added ? 1 : 0) }
