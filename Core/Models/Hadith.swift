@@ -40,4 +40,7 @@ struct HadithFragment: Hashable {
     let takhrij: String
     let isFirst: Bool
     let isLast: Bool
+    /// Index in the full hadith body of this fragment's first word, so a rendered
+    /// word maps back to its (hadith, wordInBody) position for reveal/outcome.
+    var bodyStart: Int = 0
 }

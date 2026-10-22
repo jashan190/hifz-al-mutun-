@@ -67,6 +67,15 @@ import CoreGraphics
         #expect(pages.isEmpty && first.isEmpty)
     }
 
+    @Test func fragmentsCarryBodyStartOffset() {
+        // 15-word hadith over 2 pages (bodyHeight 10, heading 2 → 8 then 7).
+        let (pages, _) = ProsePaginator.paginate(
+            [hadith(1, words: 15)],
+            bodyHeight: 10, headingHeight: 2, takhrijHeight: 1, measureBody: measure)
+        #expect(frag(pages[0]).bodyStart == 0)
+        #expect(frag(pages[1]).bodyStart == 8)   // second page resumes after the first 8 words
+    }
+
     private func frag(_ p: MatnPage) -> HadithFragment {
         guard case .hadith(let f) = p.items[0] else { fatalError("not a hadith page") }
         return f

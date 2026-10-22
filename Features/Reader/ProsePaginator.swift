@@ -28,6 +28,7 @@ enum ProsePaginator {
             firstPageOf[h.number] = pageNo + 1
             var rest = h.body
             var first = true
+            var consumed = 0                      // words of this hadith already paged
             repeat {
                 pageNo += 1
                 let cap = max(1, bodyHeight - (first ? headingHeight : 0))
@@ -38,7 +39,8 @@ enum ProsePaginator {
                 pages.append(MatnPage(page: pageNo, items: [.hadith(
                     HadithFragment(hadithNumber: h.number, title: h.title,
                                    words: slice, takhrij: h.takhrij,
-                                   isFirst: first, isLast: isLast))]))
+                                   isFirst: first, isLast: isLast, bodyStart: consumed))]))
+                consumed += slice.count
                 first = false
             } while !rest.isEmpty
         }
