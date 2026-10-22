@@ -124,7 +124,9 @@ def validate(doc):
             errors.append(f"bab {bab.get('id')!r}: end {e} before start {s}")
         last_end = e
         covered.extend(range(s, e + 1))
-    if bayts and last_end != len(bayts):
+    # Chapters (babs) are optional — some matns are printed without any chapter
+    # headings. Only when a matn declares them must they cover every bayt.
+    if babs and bayts and last_end != len(bayts):
         errors.append(
             f"babs cover up to bayt {last_end}, but there are {len(bayts)} bayts"
         )
@@ -228,6 +230,52 @@ def validate_pages(doc):
     return errors, warnings, len(bayts)
 
 
+def validate_prose(doc):
+    """Validate a prose (hadith) matn: no bayts/pages — a list of hadiths, each a
+    title and a role-tagged word body. It is paginated at runtime, so there are
+    no pages here and `baytCount` carries the hadith count."""
+    errors = []
+    warnings = []
+    hadiths = doc.get("hadiths", [])
+
+    # 1. continuous numbering 1..N
+    numbers = [h.get("number") for h in hadiths]
+    if numbers != list(range(1, len(hadiths) + 1)):
+        for i, n in enumerate(numbers):
+            if n != i + 1:
+                errors.append(f"hadith numbering breaks at position {i + 1}: expected {i + 1}, got {n}")
+                break
+        else:
+            errors.append(f"hadith count mismatch: {len(numbers)} hadiths but numbers go to "
+                          f"{numbers[-1] if numbers else 0}")
+
+    # 2. each hadith has a title and a non-empty body of role-tagged words
+    for h in hadiths:
+        n = h.get("number")
+        if not (h.get("title") or "").strip():
+            errors.append(f"hadith {n}: empty title")
+        body = h.get("body", [])
+        if not body:
+            errors.append(f"hadith {n}: empty body")
+        for w in body:
+            if not (w.get("text") or "").strip():
+                errors.append(f"hadith {n}: a body word has empty text")
+            if w.get("role") not in ("isnad", "matn"):
+                errors.append(f"hadith {n}: word {w.get('text')!r} has unknown role {w.get('role')!r}")
+            if not (w.get("norm") or ""):
+                warnings.append(f"hadith {n}: word {w.get('text')!r} normalizes to empty")
+
+    # 3. declared count agrees; no verse layout is expected
+    if doc.get("baytCount") != len(hadiths):
+        errors.append(f"baytCount {doc.get('baytCount')} != actual {len(hadiths)} hadiths")
+    if doc.get("bayts"):
+        errors.append("prose matn should have no bayts")
+    if doc.get("pages"):
+        errors.append("prose matn should have no pages (it is paginated at runtime)")
+
+    return errors, warnings, len(hadiths)
+
+
 def main(argv):
     if len(argv) != 2:
         print("usage: python3 validate_matn.py <matn.json>", file=sys.stderr)
@@ -236,17 +284,21 @@ def main(argv):
         doc = json.load(f)
 
     version = doc.get("schemaVersion", 1)
-    if version == 1:
+    is_prose = doc.get("kind") == "prose"
+    if is_prose:
+        errors, warnings, unit_count = validate_prose(doc)
+    elif version == 1:
         errors, warnings = validate(doc)
-        bayt_count = len(doc.get("bayts", []))
+        unit_count = len(doc.get("bayts", []))
     elif version == 2:
-        errors, warnings, bayt_count = validate_pages(doc)
+        errors, warnings, unit_count = validate_pages(doc)
     else:
         print(f"unsupported schemaVersion {version!r} (expected 1 or 2)")
         return 1
 
     title = doc.get("titleLatin") or doc.get("id")
-    print(f"Validating {title} (schemaVersion {version}): {bayt_count} bayts, "
+    unit = "hadiths" if is_prose else "bayts"
+    print(f"Validating {title} (schemaVersion {version}): {unit_count} {unit}, "
           f"{len(doc.get('babs', []))} babs, {doc.get('pageCount')} pages")
 
     for w in warnings:
