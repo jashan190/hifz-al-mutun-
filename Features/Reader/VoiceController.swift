@@ -212,11 +212,20 @@ final class VoiceController: ObservableObject {
     }
 
     /// The page to show for the cursor (auto page-turn): the page of the next
-    /// word expected, so the page turns as soon as the last word of a page is
-    /// recited; at the very end, the last page.
+    /// word expected. For prose the index carries page 0 (runtime pagination),
+    /// so return nil and let PageScreen resolve the page via prosePages.
     func page(forCursor c: Int) -> Int? {
         guard let index, !index.refs.isEmpty else { return nil }
-        return index.refs[min(max(0, c), index.refs.count - 1)].page
+        let r = index.refs[min(max(0, c), index.refs.count - 1)]
+        return r.page > 0 ? r.page : nil
+    }
+
+    /// The (hadith number, word-in-body) a flat cursor points at, for prose page
+    /// mapping (prose pages are runtime, so PageScreen resolves the actual page).
+    func proseRef(forCursor c: Int) -> (hadith: Int, wordInBody: Int)? {
+        guard let index, !index.refs.isEmpty else { return nil }
+        let r = index.refs[min(max(0, c), index.refs.count - 1)]
+        return (r.bayt, r.wordIndex)
     }
 
     // MARK: - Flags
