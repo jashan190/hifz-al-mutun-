@@ -69,6 +69,23 @@ struct ProsePageView: View {
                 underline: { j in wordUnderline(j) },
                 background: { j in wordBackground(j) }))
                 .frame(maxWidth: .infinity)
+                .contextMenu {
+                    let flagged = fragment.words.indices.filter {
+                        flagStore.isFlagged(matnID, FlagKey(bayt: fragment.hadithNumber,
+                                                            half: .sadr, wordIndex: fragment.bodyStart + $0))
+                    }
+                    if flagged.isEmpty {
+                        Text("No flagged words on this page")
+                    } else {
+                        ForEach(flagged, id: \.self) { j in
+                            Button("Remove flag: \(fragment.words[j].text)", systemImage: "flag.slash") {
+                                flagStore.setFlag(false, matnID: matnID,
+                                    FlagKey(bayt: fragment.hadithNumber, half: .sadr,
+                                            wordIndex: fragment.bodyStart + j))
+                            }
+                        }
+                    }
+                }
             if fragment.isLast && !fragment.takhrij.isEmpty {
                 // The attribution, kept small so it tucks under the text.
                 Text(fragment.takhrij)
