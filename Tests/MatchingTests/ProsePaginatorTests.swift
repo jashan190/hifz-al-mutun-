@@ -49,6 +49,24 @@ import CoreGraphics
         #expect(pages[0].page == 1 && pages[1].page == 2)
     }
 
+    @Test func headingTallerThanBodyClampsFirstPage() {
+        // headingHeight >= bodyHeight → first-page cap clamps to 1 word; later
+        // pages use the full bodyHeight. No infinite loop.
+        let (pages, _) = ProsePaginator.paginate(
+            [hadith(1, words: 3)],
+            bodyHeight: 5, headingHeight: 5, takhrijHeight: 1, measureBody: measure)
+        #expect(pages.count == 2)
+        #expect(frag(pages[0]).words.count == 1)   // only 1 fits the clamped first page
+        #expect(frag(pages[1]).words.count == 2)
+        #expect(frag(pages[0]).isFirst && frag(pages[1]).isLast)
+    }
+
+    @Test func emptyInputProducesNoPages() {
+        let (pages, first) = ProsePaginator.paginate(
+            [], bodyHeight: 10, headingHeight: 2, takhrijHeight: 1, measureBody: measure)
+        #expect(pages.isEmpty && first.isEmpty)
+    }
+
     private func frag(_ p: MatnPage) -> HadithFragment {
         guard case .hadith(let f) = p.items[0] else { fatalError("not a hadith page") }
         return f

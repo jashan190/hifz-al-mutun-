@@ -1,5 +1,7 @@
 import CoreGraphics
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// Flows hadith (semantic units) into page-sized fragments. Each hadith starts
 /// a fresh page; a short one leaves its page partly empty, a long one spills
@@ -60,7 +62,9 @@ enum ProsePaginator {
 
     // MARK: Default measurement (used by the reader, not by tests)
 
-    /// Wrapped height of a run of words at `width`, using the page font.
+    #if canImport(UIKit)
+    /// Wrapped height of a run of words at `width`, using the page font. Lives
+    /// behind `canImport(UIKit)` so the pure paginator above stays free of UIKit.
     static func bodyHeight(_ words: [ProseWord], width: CGFloat, font: UIFont) -> CGFloat {
         let s = words.map(\.text).joined(separator: " ")
         guard !s.isEmpty, width > 0 else { return 0 }
@@ -70,4 +74,5 @@ enum ProsePaginator {
             attributes: [.font: font], context: nil)
         return ceil(rect.height)
     }
+    #endif
 }
