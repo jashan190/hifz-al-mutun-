@@ -22,7 +22,7 @@ struct MatnCover: View {
     private var cornerSize: CGFloat { sz(34, 71, 96) }
     private var cartLabel: String {
         switch matn.kind {
-        case .prose: return "الأربعون"
+        case .prose: return "حديث"
         case .poem:  return matn.meter.isEmpty ? "متن" : "منظومة"
         }
     }
