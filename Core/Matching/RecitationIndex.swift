@@ -27,24 +27,39 @@ struct RecitationIndex {
         var refs: [WordRef] = []
         var pageStart: [Int: Int] = [:]
         var baytStart: [Int: Int] = [:]
-        for page in matn.pages {
-            pageStart[page.page] = words.count
-            for item in page.items {
-                guard case .bayt(let bayt) = item else { continue }
-                baytStart[bayt.number] = words.count
-                for (half, hemi) in [(Half.sadr, bayt.sadr), (Half.ajuz, bayt.ajuz)] {
-                    for (wi, word) in hemi.words.enumerated() {
-                        // Normalize at runtime with the same function the tracker
-                        // applies to recognizer output, so both sides always agree
-                        // (the stored forms can differ, e.g. keeping ئ/ؤ).
-                        words.append(ArabicNormalize.normalize(word.text))
-                        display.append(word.text)
-                        refs.append(WordRef(page: page.page, bayt: bayt.number,
-                                            half: half, wordIndex: wi))
+
+        if matn.kind == .prose {
+            // Each hadith is one "bayt" unit (bayt = hadith number); all its body
+            // words live in the .sadr half. The reveal/session machinery is unit-
+            // agnostic, so this reuses it unchanged. `page` is 0 here — prose pages
+            // are computed at runtime (ProsePaginator), so PageScreen maps a word's
+            // page, not this index.
+            for hadith in matn.hadiths {
+                baytStart[hadith.number] = words.count
+                for (wi, w) in hadith.body.enumerated() {
+                    words.append(ArabicNormalize.normalize(w.text))
+                    display.append(w.text)
+                    refs.append(WordRef(page: 0, bayt: hadith.number, half: .sadr, wordIndex: wi))
+                }
+            }
+        } else {
+            for page in matn.pages {
+                pageStart[page.page] = words.count
+                for item in page.items {
+                    guard case .bayt(let bayt) = item else { continue }
+                    baytStart[bayt.number] = words.count
+                    for (half, hemi) in [(Half.sadr, bayt.sadr), (Half.ajuz, bayt.ajuz)] {
+                        for (wi, word) in hemi.words.enumerated() {
+                            words.append(word.normalized)
+                            display.append(word.text)
+                            refs.append(WordRef(page: page.page, bayt: bayt.number,
+                                                half: half, wordIndex: wi))
+                        }
                     }
                 }
             }
         }
+
         self.normalizedWords = words
         self.displayWords = display
         self.refs = refs
