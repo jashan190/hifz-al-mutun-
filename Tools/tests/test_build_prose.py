@@ -36,7 +36,7 @@ def main():
     assert h1["takhrij"] == "رواه البخاري ومسلم"
     roles = {w["text"]: w["role"] for w in h1["body"]}
     assert roles["عَنْ"] == "isnad"
-    assert roles.get("«إِنَّمَا") == "matn" or roles.get("إِنَّمَا") == "matn"
+    assert roles.get("إِنَّمَا") == "matn"
     assert all("«" not in w["text"] and "»" not in w["text"] for w in h1["body"]), \
         [w["text"] for w in h1["body"]]
     matn_words = [w for w in h1["body"] if w["role"] == "matn"]

@@ -106,7 +106,13 @@ def parse_prose_source(path):
             if s.startswith("@"):
                 body = s[1:].strip()
                 num_str, _, title = body.partition("|")
-                current = {"number": int(num_str.strip()),
+                try:
+                    number = int(num_str.strip())
+                except ValueError:
+                    raise ValueError(
+                        f"{path}:{lineno}: hadith number is not an integer: {num_str.strip()!r}"
+                    )
+                current = {"number": number,
                            "title": title.strip(), "body_lines": [], "takhrij": ""}
                 hadiths.append(current)
                 continue
@@ -161,7 +167,8 @@ def build_prose(meta, hadiths):
             "body": words, "takhrij": h["takhrij"],
         })
     nums = [h["number"] for h in out_hadiths]
-    assert nums == list(range(1, len(nums) + 1)), f"hadith numbers not 1..N: {nums}"
+    if nums != list(range(1, len(nums) + 1)):
+        raise ValueError(f"hadith numbers not 1..N: {nums}")
     return {
         "schemaVersion": SCHEMA_VERSION,
         "id": meta.get("id", ""),
