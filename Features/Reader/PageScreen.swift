@@ -76,6 +76,9 @@ struct PageScreen: View {
                     takhrijHeight: fontSize * 1.6,
                     measureBody: { ProsePaginator.bodyHeight($0, width: contentWidth, font: font) })
             }.value
+            // A newer geometry may have superseded this run while it was off the
+            // main actor; don't clobber the current result with a stale one.
+            guard !Task.isCancelled else { return }
             prosePages = result.pages
             proseBabs = hadiths.map {
                 Bab(id: "h\($0.number)", title: $0.title, startPage: result.firstPageOf[$0.number] ?? 1)
@@ -266,14 +269,18 @@ struct PageScreen: View {
                     .transition(.opacity)
             }
             HStack(spacing: 12) {
-                ModeToggle(mode: $mode, tint: subjectAccent)
-                    .fixedSize()
-                if mode == .memorize {
-                    MicButton(isListening: Binding(
-                        get: { voice.isLive },
-                        set: { on in on ? startVoice() : voice.stop() }
-                    ), tint: subjectAccent)
-                    .transition(.scale.combined(with: .opacity))
+                // Memorize + voice target the bayt poems; prose is read-only for
+                // now (no toggle, no mic), so the controls aren't reachable.
+                if matn.kind == .poem {
+                    ModeToggle(mode: $mode, tint: subjectAccent)
+                        .fixedSize()
+                    if mode == .memorize {
+                        MicButton(isListening: Binding(
+                            get: { voice.isLive },
+                            set: { on in on ? startVoice() : voice.stop() }
+                        ), tint: subjectAccent)
+                        .transition(.scale.combined(with: .opacity))
+                    }
                 }
                 Spacer(minLength: 0)
                 Text(currentPage >= 1

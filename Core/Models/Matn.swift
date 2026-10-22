@@ -188,9 +188,10 @@ extension Matn {
         }
     }
 
-    /// The chapter/section active on a page: the last heading at or before it.
-    func currentBab(onPage n: Int) -> Bab? { babs.last { $0.startPage <= n } }
-
-    /// The 1-based page a bayt number falls on.
-    func page(ofBayt bayt: Int) -> Int { (bayt - 1) / baytsPerPage + 1 }
+    /// The 1-based page a bayt number falls on. Prose has no bayts
+    /// (`baytsPerPage == 0`); guard the divide and fall back to page 1.
+    func page(ofBayt bayt: Int) -> Int {
+        guard baytsPerPage > 0 else { return 1 }
+        return (bayt - 1) / baytsPerPage + 1
+    }
 }
