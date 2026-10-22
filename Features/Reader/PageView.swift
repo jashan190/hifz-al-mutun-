@@ -494,7 +494,7 @@ private struct BaytRow: View {
                     size: fontSize,
                     justifyWidth: justifyWidth,
                     tint: inkColor,
-                    underlined: ranges.indices.filter { flagged(which, $0) }.map { ranges[$0] }
+                    boxed: ranges.indices.filter { flagged(which, $0) }.map { ranges[$0] }
                 ),
                 font: PageFont.font(size: fontSize),
                 size: fontSize,

@@ -164,6 +164,7 @@ enum HemistichText {
         justifyWidth: CGFloat,
         tint: (SegmentColor) -> Color,
         underlined: [Range<Int>] = [],
+        boxed: [Range<Int>] = [],
         emphasis: (ranges: [Range<Int>], color: Color)? = nil
     ) -> Rendered {
         let insertions = kashida(plain: plain, targetWidth: justifyWidth, size: size)
@@ -179,7 +180,7 @@ enum HemistichText {
 
         // Append the same glyph to every layer, visible only on the slot that owns
         // it, so all layers share identical metrics → identical x positions.
-        func add(_ text: String, color: Color, slot: Slot, underline: Bool = false) {
+        func add(_ text: String, color: Color, slot: Slot, underline: Bool = false, box: Bool = false) {
             func piece(_ c: Color) -> AttributedString {
                 var a = AttributedString(text)
                 a.foregroundColor = c
@@ -187,6 +188,7 @@ enum HemistichText {
             }
             var basePiece = piece(slot == .normal ? color : .clear)
             if underline { basePiece.underlineStyle = Text.LineStyle(pattern: .solid, color: Theme.flag) }
+            if box { basePiece.backgroundColor = Theme.error.opacity(0.14) }   // mistake highlight
             base += basePiece
             above += piece(slot == .above ? color : .clear)
             below += piece(slot == .below ? color : .clear)
@@ -239,7 +241,8 @@ enum HemistichText {
                 } else {
                     if let n = insertions[global] { piece += String(repeating: "\u{0640}", count: n) }
                     add(piece, color: color, slot: .normal,
-                        underline: underlined.contains { $0.contains(pidx) })
+                        underline: underlined.contains { $0.contains(pidx) },
+                        box: boxed.contains { $0.contains(pidx) })
                 }
                 i += 1
             }
