@@ -37,4 +37,13 @@ import UIKit
         #expect(a.attribute(.underlineColor, at: i2, effectiveRange: nil) as? UIColor == .blue)
         #expect((a.attribute(.underlineStyle, at: 0, effectiveRange: nil) as? Int ?? 0) == 0)
     }
+
+    @Test func attributedAppliesPerWordBackground() {
+        let a = ProseText.attributed(words, font: .systemFont(ofSize: 20), lineSpacing: 8,
+            color: { _, _ in .black }, underline: { _ in nil },
+            background: { i in i == 1 ? .yellow : nil })
+        let i2 = (a.string as NSString).range(of: "إِنَّمَا").location
+        #expect(a.attribute(.backgroundColor, at: i2, effectiveRange: nil) as? UIColor == .yellow)
+        #expect(a.attribute(.backgroundColor, at: 0, effectiveRange: nil) == nil)
+    }
 }

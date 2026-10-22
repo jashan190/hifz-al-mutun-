@@ -79,6 +79,7 @@ struct PageView: View {
                             case .hadith(let fragment):
                                 ProsePageView(fragment: fragment,
                                               subjectColor: matn.subject.accent,
+                                              matnID: matn.id,
                                               reveal: mode == .memorize ? reveal : nil)
                             }
                             // Spacers distribute items down the page. On a full

@@ -9,8 +9,11 @@ let proseBodyFontSize: CGFloat = 24
 /// (last page). The folio is drawn by the containing `PageView`. Assumes the
 /// RTL layout the app root already provides.
 struct ProsePageView: View {
+    @EnvironmentObject private var flagStore: FlagStore
+
     let fragment: HadithFragment
     let subjectColor: Color
+    let matnID: String
     /// Fixed, comfortable reading size for prose (not auto-fitted like poems).
     var fontSize: CGFloat = proseBodyFontSize
 
@@ -42,6 +45,14 @@ struct ProsePageView: View {
         (reveal != nil && !shown(j)) ? UIColor(Theme.ink.opacity(0.3)) : nil
     }
 
+    /// In read mode, flagged words get a soft red background box.
+    /// Returns nil in memorize mode (handled by a later task).
+    private func wordBackground(_ j: Int) -> UIColor? {
+        guard reveal == nil else { return nil }   // flag boxes are a read-mode aid
+        let key = FlagKey(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j)
+        return flagStore.isFlagged(matnID, key) ? UIColor(Theme.error).withAlphaComponent(0.14) : nil
+    }
+
     var body: some View {
         VStack(alignment: .center, spacing: 10) {
             if fragment.isFirst {
@@ -55,7 +66,8 @@ struct ProsePageView: View {
                 font: PageFont.uiFont(size: fontSize),
                 lineSpacing: Self.lineSpacing(for: fontSize),
                 color: { j, role in wordColor(j, role) },
-                underline: { j in wordUnderline(j) }))
+                underline: { j in wordUnderline(j) },
+                background: { j in wordBackground(j) }))
                 .frame(maxWidth: .infinity)
             if fragment.isLast && !fragment.takhrij.isEmpty {
                 // The attribution, kept small so it tucks under the text.

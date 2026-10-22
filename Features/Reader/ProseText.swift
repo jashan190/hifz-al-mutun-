@@ -20,7 +20,8 @@ enum ProseText {
     /// defaults to the foreground colour otherwise, which would also be cream).
     static func attributed(_ words: [ProseWord], font: UIFont, lineSpacing: CGFloat,
                            color: (_ index: Int, _ role: ProseRole) -> UIColor,
-                           underline: (_ index: Int) -> UIColor?) -> NSAttributedString {
+                           underline: (_ index: Int) -> UIColor?,
+                           background: (_ index: Int) -> UIColor? = { _ in nil }) -> NSAttributedString {
         let para = NSMutableParagraphStyle()
         para.alignment = .justified
         para.lineSpacing = lineSpacing
@@ -33,10 +34,11 @@ enum ProseText {
             }
             var attrs: [NSAttributedString.Key: Any] =
                 [.font: font, .foregroundColor: color(i, w.role), .paragraphStyle: para]
-            if let underlineColor = underline(i) {
+            if let u = underline(i) {
                 attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
-                attrs[.underlineColor] = underlineColor
+                attrs[.underlineColor] = u
             }
+            if let bg = background(i) { attrs[.backgroundColor] = bg }
             out.append(NSAttributedString(string: w.text, attributes: attrs))
         }
         return out
