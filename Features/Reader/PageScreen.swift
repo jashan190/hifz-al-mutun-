@@ -18,6 +18,9 @@ struct PageScreen: View {
     /// reciter swiping by hand (which restarts tracking from that page).
     @State private var autoTurnTarget: Int?
 
+    /// A word to briefly flash after jumping to a mistake (then it clears).
+    @State private var flashTarget: FlagKey?
+
     /// For prose: pages produced by the paginator for the current geometry, and
     /// the per-hadith index built from them. Empty for poems.
     @State private var prosePages: [MatnPage] = []
@@ -53,7 +56,8 @@ struct PageScreen: View {
                 .onTapGesture { toggleBars() }
             ForEach(displayPages, id: \.page) { pageModel in
                 PageView(matn: matn, pageModel: pageModel, mode: mode,
-                         reveal: mode == .memorize ? voice.reveal : nil)
+                         reveal: mode == .memorize ? voice.reveal : nil,
+                         flashTarget: flashTarget)
                     .tag(pageModel.page)
                     .contentShape(Rectangle())
                     .onTapGesture { toggleBars() }
@@ -113,6 +117,13 @@ struct PageScreen: View {
                                     }
                                     if reduceMotion { currentPage = target }
                                     else { withAnimation { currentPage = target } }
+                                    let flashKey = FlagKey(bayt: mistake.bayt,
+                                                           half: mistake.half, wordIndex: mistake.wordIndex)
+                                    flashTarget = flashKey
+                                    Task {
+                                        try? await Task.sleep(nanoseconds: 1_200_000_000)
+                                        if flashTarget == flashKey { flashTarget = nil }
+                                    }
                                 },
                                 matnKind: matn.kind,
                                 tint: subjectAccent)
@@ -512,27 +523,24 @@ private struct MistakeRow: View {
     var body: some View {
         Button(action: action) {
             HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(place)
-                        .font(.caption)
-                        .foregroundStyle(Theme.ink.opacity(0.7))
-                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        .font(.subheadline.weight(.semibold))      // was .caption
+                        .foregroundStyle(Theme.ink)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(mistake.added ? "After" : "Should be")
-                            .font(.caption)
-                            .foregroundStyle(Theme.ink.opacity(0.7))
+                            .font(.footnote).foregroundStyle(Theme.ink.opacity(0.7))
                         Text(expected)
-                            .font(PageFont.font(size: 20))
+                            .font(PageFont.font(size: 24))          // was 20
                         Text(mistake.added ? "· you added" : mistake.heard == nil ? "· skipped" : "· you said")
-                            .font(.caption)
-                            .foregroundStyle(Theme.error)
+                            .font(.footnote).foregroundStyle(Theme.error)
                         if let heard = mistake.heard {
                             Text(heard)
-                                .font(PageFont.font(size: 20))
+                                .font(PageFont.font(size: 24))
                                 .foregroundStyle(Theme.error)
                         }
                     }
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .lineLimit(1).minimumScaleFactor(0.6)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.forward")

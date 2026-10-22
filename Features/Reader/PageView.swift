@@ -22,6 +22,7 @@ struct PageView: View {
     let pageModel: MatnPage
     let mode: PageMode
     var reveal: RevealState? = nil
+    var flashTarget: FlagKey? = nil
 
     // Tighter margins/gaps give each hemistich more width, which — since the text
     // is sized to fill its column — makes the glyphs noticeably larger.
@@ -74,13 +75,15 @@ struct PageView: View {
                                     numberGap: numberGap,
                                     midGap: midGap,
                                     subjectColor: matn.subject.accent,
-                                    reveal: reveal
+                                    reveal: reveal,
+                                    flashTarget: flashTarget
                                 )
                             case .hadith(let fragment):
                                 ProsePageView(fragment: fragment,
                                               subjectColor: matn.subject.accent,
                                               matnID: matn.id,
-                                              reveal: mode == .memorize ? reveal : nil)
+                                              reveal: mode == .memorize ? reveal : nil,
+                                              flashTarget: flashTarget)
                             }
                             // Spacers distribute items down the page. On a full
                             // page they expand so the rows fill the height; on an
@@ -440,6 +443,7 @@ private struct BaytRow: View {
     let midGap: CGFloat
     var subjectColor: Color = Theme.accent   // the matn's subject colour
     var reveal: RevealState? = nil
+    var flashTarget: FlagKey? = nil
 
     private var lineHeight: CGFloat { fontSize * 1.7 }
 
@@ -488,6 +492,12 @@ private struct BaytRow: View {
         switch mode {
         case .read:
             let ranges = HemistichReveal.wordRanges(in: half.text)
+            let flagRanges = ranges.indices.filter { flagged(which, $0) }.map { ranges[$0] }
+            let flashRanges: [Range<Int>] = {
+                guard let f = flashTarget, f.bayt == bayt.number, f.half == which,
+                      f.wordIndex < ranges.count else { return [] }
+                return [ranges[f.wordIndex]]
+            }()
             LayeredText(
                 rendered: HemistichText.render(
                     segments: half.segments,
@@ -495,7 +505,7 @@ private struct BaytRow: View {
                     size: fontSize,
                     justifyWidth: justifyWidth,
                     tint: inkColor,
-                    boxed: ranges.indices.filter { flagged(which, $0) }.map { ranges[$0] }
+                    boxed: Array(Set(flagRanges + flashRanges))
                 ),
                 font: PageFont.font(size: fontSize),
                 size: fontSize,
