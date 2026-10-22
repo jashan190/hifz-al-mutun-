@@ -34,7 +34,7 @@ struct ProsePageView: View {
         guard let reveal else { return base }               // read mode
         guard shown(j) else { return UIColor(Theme.cover) } // not yet reached → invisible ink
         switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j) {
-        case .wrong: return UIColor(Theme.rumuz)            // said wrong
+        case .wrong: return UIColor(Theme.error)            // said wrong (signal-red, not content-red)
         case .skipped, .unheard: return UIColor(Theme.ink.opacity(0.35))
         default: return base                                // correct / revealed / shown
         }
@@ -45,10 +45,14 @@ struct ProsePageView: View {
         (reveal != nil && !shown(j)) ? UIColor(Theme.ink.opacity(0.3)) : nil
     }
 
-    /// In read mode, flagged words get a soft red background box.
-    /// Returns nil in memorize mode (handled by a later task).
     private func wordBackground(_ j: Int) -> UIColor? {
-        guard reveal == nil else { return nil }   // flag boxes are a read-mode aid
+        if let reveal {    // memorize: box the live mistakes
+            switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j) {
+            case .wrong, .skipped: return UIColor(Theme.error).withAlphaComponent(0.12)
+            default: return nil
+            }
+        }
+        // read mode: box flagged words
         let key = FlagKey(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j)
         return flagStore.isFlagged(matnID, key) ? UIColor(Theme.error).withAlphaComponent(0.14) : nil
     }
