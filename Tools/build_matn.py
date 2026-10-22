@@ -86,6 +86,101 @@ def parse_source(path):
     return meta, babs, bayts
 
 
+def parse_prose_source(path):
+    """Parse a prose (hadith) source: metadata, then per hadith a '@ n | title'
+    header, body lines, and a '= takhrij' line. Text inside «…» is matn."""
+    meta = {}
+    hadiths = []
+    current = None   # {number, title, body_lines[], takhrij}
+
+    with open(path, encoding="utf-8") as f:
+        for lineno, raw in enumerate(f, 1):
+            line = raw.rstrip("\n")
+            s = line.strip()
+            if not s or s.startswith("#"):
+                continue
+            if s.startswith("%"):
+                key, _, value = s[1:].partition("=")
+                meta[key.strip()] = value.strip()
+                continue
+            if s.startswith("@"):
+                body = s[1:].strip()
+                num_str, _, title = body.partition("|")
+                current = {"number": int(num_str.strip()),
+                           "title": title.strip(), "body_lines": [], "takhrij": ""}
+                hadiths.append(current)
+                continue
+            if s.startswith("="):
+                if current is None:
+                    raise ValueError(f"{path}:{lineno}: '=' takhrij before any '@' hadith")
+                current["takhrij"] = s[1:].strip()
+                continue
+            if current is None:
+                raise ValueError(f"{path}:{lineno}: body before any '@' hadith")
+            current["body_lines"].append(s)
+
+    return meta, hadiths
+
+
+def prose_words(text):
+    """Split body text into role-tagged words. Text inside «…» is 'matn',
+    everything else 'isnad'. Guillemets are stripped from stored text."""
+    out = []
+    buf = []
+    role = "isnad"
+
+    def flush():
+        nonlocal buf
+        if buf:
+            w = "".join(buf)
+            if w:
+                out.append({"text": w, "norm": normalize(w), "role": role})
+            buf = []
+
+    for ch in text:
+        if ch == "«":
+            flush(); role = "matn"; continue
+        if ch == "»":
+            flush(); role = "isnad"; continue
+        if ch.isspace():
+            flush(); continue
+        buf.append(ch)
+    flush()
+    return out
+
+
+def build_prose(meta, hadiths):
+    out_hadiths = []
+    for h in hadiths:
+        body_text = " ".join(h["body_lines"])
+        words = prose_words(body_text)
+        if not words:
+            raise ValueError(f"hadith {h['number']} has an empty body")
+        out_hadiths.append({
+            "number": h["number"], "title": h["title"],
+            "body": words, "takhrij": h["takhrij"],
+        })
+    nums = [h["number"] for h in out_hadiths]
+    assert nums == list(range(1, len(nums) + 1)), f"hadith numbers not 1..N: {nums}"
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "id": meta.get("id", ""),
+        "title": meta.get("title", ""),
+        "fullTitle": meta.get("fullTitle", ""),
+        "titleLatin": meta.get("titleLatin", ""),
+        "author": meta.get("author", ""),
+        "meter": meta.get("meter", ""),
+        "subject": meta.get("subject", "hadith"),
+        "kind": "prose",
+        "baytsPerPage": 0,
+        "pageCount": 0,
+        "baytCount": len(out_hadiths),   # hadith count
+        "pages": [],
+        "babs": [],
+        "hadiths": out_hadiths,
+    }
+
+
 def words_of(hemistich):
     """Split a hemistich into words, honouring colour markers.
 
@@ -207,15 +302,30 @@ def main(argv):
         print("usage: python3 build_matn.py <source.txt> <output.json>", file=sys.stderr)
         return 2
     src, dst = argv[1], argv[2]
-    meta, babs, bayts = parse_source(src)
-    doc = build(meta, babs, bayts)
+    kind = "poem"
+    with open(src, encoding="utf-8") as f:
+        for line in f:
+            s = line.strip()
+            if s.startswith("%"):
+                k, _, v = s[1:].partition("=")
+                if k.strip() == "kind":
+                    kind = v.strip()
+    if kind == "prose":
+        meta, hadiths = parse_prose_source(src)
+        doc = build_prose(meta, hadiths)
+    else:
+        meta, babs, bayts = parse_source(src)
+        doc = build(meta, babs, bayts)
     with open(dst, "w", encoding="utf-8") as f:
         json.dump(doc, f, ensure_ascii=False, indent=2)
         f.write("\n")
-    print(
-        f"wrote {dst}: {doc['baytCount']} bayts, {len(doc['babs'])} babs, "
-        f"{doc['pageCount']} pages ({doc['baytsPerPage']}/page)"
-    )
+    if kind == "prose":
+        print(f"wrote {dst}: {doc['baytCount']} hadith (prose)")
+    else:
+        print(
+            f"wrote {dst}: {doc['baytCount']} bayts, {len(doc['babs'])} babs, "
+            f"{doc['pageCount']} pages ({doc['baytsPerPage']}/page)"
+        )
     return 0
 
 
