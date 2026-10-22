@@ -47,8 +47,10 @@ struct ContinueCard: View {
     }
 }
 
+#if DEBUG
 #Preview {
     ContinueCard(matn: .preview, lastPage: 3)
         .padding()
         .background(Color(hex: 0xFBF8F1))
 }
+#endif

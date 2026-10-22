@@ -429,6 +429,8 @@ private struct VoiceStatusLabel: View {
     }
 }
 
+#if DEBUG
 #Preview("Reader") {
     NavigationStack { PageScreen(matn: .preview) }
 }
+#endif

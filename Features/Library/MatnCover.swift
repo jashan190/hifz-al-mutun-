@@ -124,6 +124,7 @@ struct MatnCover: View {
     }
 }
 
+#if DEBUG
 #Preview("Shelf") {
     HStack {
         MatnCover(matn: .preview, style: .shelf).frame(width: 116)
@@ -132,3 +133,4 @@ struct MatnCover: View {
     .padding()
     .background(Color(hex: 0xEADFC6))
 }
+#endif

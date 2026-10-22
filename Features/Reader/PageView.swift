@@ -560,6 +560,7 @@ private struct BaytRow: View {
     }
 }
 
+#if DEBUG
 private let previewPage = Matn.preview.pages.first ?? MatnPage(page: 1, items: [])
 
 #Preview("Read — light") {
@@ -591,3 +592,4 @@ private let previewPage = Matn.preview.pages.first ?? MatnPage(page: 1, items: [
                     reveal: RevealState(index: idx, cursor: 5, outcomes: [2: .unsure, 3: .wrong(heard: "كلمة"), 4: .skipped]))
         .environmentObject(FlagStore.inMemory())
 }
+#endif
