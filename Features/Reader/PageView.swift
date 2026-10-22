@@ -505,7 +505,8 @@ private struct BaytRow: View {
                     size: fontSize,
                     justifyWidth: justifyWidth,
                     tint: inkColor,
-                    boxed: Array(Set(flagRanges + flashRanges))
+                    boxed: flagRanges,
+                    flashBoxed: flashRanges
                 ),
                 font: PageFont.font(size: fontSize),
                 size: fontSize,

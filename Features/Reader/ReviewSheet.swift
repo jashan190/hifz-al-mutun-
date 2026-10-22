@@ -111,17 +111,23 @@ struct MistakeCard: View {
                     Text(location)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.ink)
-                    Text(wordText)
-                        .font(PageFont.font(size: 26))
                     if let m = mistake {
-                        HStack(spacing: 5) {
-                            Text(m.added ? "you added" : m.heard == nil ? "skipped" : "you said")
-                                .font(.footnote).foregroundStyle(Theme.error)
+                        // What it should be, then what you read.
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(m.added ? "After" : "Should be")
+                                .font(.caption).foregroundStyle(Theme.ink.opacity(0.6))
+                            Text(wordText).font(PageFont.font(size: 24))
+                        }
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(m.added ? "You added" : m.heard == nil ? "Skipped" : "You said")
+                                .font(.caption).foregroundStyle(Theme.error.opacity(0.85))
                             if let heard = m.heard {
-                                Text(heard).font(PageFont.font(size: 20)).foregroundStyle(Theme.error)
+                                Text(heard).font(PageFont.font(size: 24)).foregroundStyle(Theme.error)
                             }
                         }
                         .lineLimit(1).minimumScaleFactor(0.6)
+                    } else {
+                        Text(wordText).font(PageFont.font(size: 26))
                     }
                 }
                 Spacer(minLength: 0)

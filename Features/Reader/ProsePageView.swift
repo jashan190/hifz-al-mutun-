@@ -55,10 +55,10 @@ struct ProsePageView: View {
             default: return nil
             }
         }
-        // read mode: box flagged words (and the transient flash target)
+        // read mode: box flagged words (and the transient flash target, darker so it stands out)
         let key = FlagKey(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j)
+        if flashTarget == key { return UIColor(Theme.error).withAlphaComponent(0.34) }
         if flagStore.isFlagged(matnID, key) { return UIColor(Theme.error).withAlphaComponent(0.14) }
-        if flashTarget == key { return UIColor(Theme.error).withAlphaComponent(0.22) }
         return nil
     }
 
