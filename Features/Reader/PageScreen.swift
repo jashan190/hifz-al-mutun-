@@ -21,6 +21,9 @@ struct PageScreen: View {
     /// A word to briefly flash after jumping to a mistake (then it clears).
     @State private var flashTarget: FlagKey?
 
+    /// The cumulative review sheet.
+    @State private var reviewPresented = false
+
     /// For prose: pages produced by the paginator for the current geometry, and
     /// the per-hadith index built from them. Empty for poems.
     @State private var prosePages: [MatnPage] = []
@@ -100,39 +103,21 @@ struct PageScreen: View {
         .safeAreaInset(edge: .top, spacing: 0) { if barsVisible { topBar } }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
-                if let summary = voice.summary, mode == .memorize {
-                    SummaryCard(summary: summary,
-                                reviewAgain: { startVoice() },
-                                backToRead: { setMode(.read) },
-                                show: { mistake in
-                                    let target: Int
-                                    if matn.kind == .prose {
-                                        // Prose pages are runtime: find the page
-                                        // holding this hadith's word-in-body.
-                                        target = prosePage(hadith: mistake.bayt,
-                                                           wordInBody: mistake.wordIndex)
-                                            ?? max(1, currentPage)
-                                    } else {
-                                        target = mistake.page
-                                    }
-                                    if reduceMotion { currentPage = target }
-                                    else { withAnimation { currentPage = target } }
-                                    let flashKey = FlagKey(bayt: mistake.bayt,
-                                                           half: mistake.half, wordIndex: mistake.wordIndex)
-                                    flashTarget = flashKey
-                                    Task {
-                                        try? await Task.sleep(nanoseconds: 1_200_000_000)
-                                        if flashTarget == flashKey { flashTarget = nil }
-                                    }
-                                },
-                                matnKind: matn.kind,
-                                tint: subjectAccent)
-                        .padding(.horizontal, Theme.margin)
-                        .padding(.bottom, 10)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
                 if barsVisible { footer }
             }
+        }
+        .sheet(isPresented: $reviewPresented) {
+            ReviewSheet(
+                matn: matn,
+                annotations: voice.summary.map { ReviewItems.annotations($0) } ?? [:],
+                onSelect: { key in reviewPresented = false; goToFlag(key) },
+                onRemove: { key in flagStore.setFlag(false, matnID: matn.id, key) },
+                reviewAgain: { reviewPresented = false; startVoice() },
+                done: { reviewPresented = false })
+            .environmentObject(flagStore)
+        }
+        .onChange(of: voice.summary != nil) { _, hasSummary in
+            if hasSummary { reviewPresented = true }
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
@@ -265,6 +250,22 @@ struct PageScreen: View {
         return nil
     }
 
+    /// Jump to a flagged/mistaken word and flash it.
+    private func goToFlag(_ key: FlagKey) {
+        let target: Int
+        if matn.kind == .prose {
+            target = prosePage(hadith: key.bayt, wordInBody: key.wordIndex) ?? max(1, currentPage)
+        } else {
+            target = min(max(1, matn.page(ofBayt: key.bayt)), max(1, displayPageCount))
+        }
+        if reduceMotion { currentPage = target } else { withAnimation { currentPage = target } }
+        flashTarget = key
+        Task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            if flashTarget == key { flashTarget = nil }
+        }
+    }
+
     private func startVoice(bayt: Int? = nil) {
         let seed = matn.kind == .prose ? currentHadith : bayt
         voice.start(matn: matn, fromPage: currentPage, bayt: seed, flags: flagStore)
@@ -337,6 +338,19 @@ struct PageScreen: View {
                     ), tint: subjectAccent)
                     .transition(.scale.combined(with: .opacity))
                 }
+                Button { reviewPresented = true } label: {
+                    let n = flagStore.count(for: matn.id)
+                    HStack(spacing: 5) {
+                        Image(systemName: "flag.fill").font(.system(size: 12, weight: .semibold))
+                        Text(n > 0 ? "مراجعة · \(Numerals.eastern(n))" : "مراجعة")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .foregroundStyle(n > 0 ? Theme.onChrome : Theme.onChromeDim)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(Capsule().fill(Theme.onChrome.opacity(0.12)))
+                }
+                .buttonStyle(PressableStyle())
+                .fixedSize()
                 Spacer(minLength: 0)
                 Text(currentPage >= 1
                      ? "\(Numerals.eastern(currentPage)) / \(Numerals.eastern(displayPageCount))"
@@ -416,150 +430,6 @@ private struct VoiceStatusLabel: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 }
-
-// Shown when a Review sitting stops (UX.md): what was covered, then Review
-// again or go back to reading.
-// After each sitting (one press of the mic until it stops): what was recited,
-// and every mistake — the word as written, and what was heard in its place.
-// Tapping a mistake turns to its page.
-private struct SummaryCard: View {
-    let summary: ReviewSummary
-    let reviewAgain: () -> Void
-    let backToRead: () -> Void
-    let show: (ReviewSummary.Mistake) -> Void
-    /// Poem or prose: the mistake rows phrase the place by bayt+half, or hadith.
-    var matnKind: MatnKind = .poem
-    /// The matn's subject colour, for the action buttons.
-    var tint: Color = Theme.accent
-    /// The list's natural height, measured, so it shrinks to fit a few rows.
-    @State private var listHeight: CGFloat = 0
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Session review")
-                .font(.headline)
-                .foregroundStyle(Theme.ink)
-            HStack(spacing: 18) {
-                stat(summary.baytsRecited, summary.baytsRecited == 1 ? "bayt recited" : "bayts recited")
-                stat(summary.mistakes.count, summary.mistakes.count == 1 ? "mistake" : "mistakes")
-                if summary.revealed > 0 { stat(summary.revealed, "revealed") }
-            }
-            if summary.mistakes.isEmpty {
-                Text("No mistakes this session.")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.ink.opacity(0.7))
-            } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(summary.mistakes) { mistake in
-                            MistakeRow(mistake: mistake, matnKind: matnKind) { show(mistake) }
-                            if mistake.id != summary.mistakes.last?.id {
-                                Divider().overlay(Theme.outline)
-                            }
-                        }
-                    }
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { listHeight = $0 }
-                }
-                // As tall as its rows, up to about three; then it scrolls.
-                .frame(height: min(260, max(listHeight, 1)))
-                .scrollBounceBehavior(.basedOnSize)
-            }
-            HStack(spacing: 10) {
-                Button(action: reviewAgain) {
-                    Text("Review again").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                Button(action: backToRead) {
-                    Text("Back to Read").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-            }
-            .tint(tint)
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.ink.opacity(0.08)))
-        .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
-        .accessibilityElement(children: .contain)
-    }
-
-    private func stat(_ n: Int, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("\(n)").font(.title2.weight(.semibold)).foregroundStyle(Theme.ink)
-            Text(label).font(.caption).foregroundStyle(Theme.ink.opacity(0.7))
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-// One mistake: where it was, the word as written, and what was heard.
-private struct MistakeRow: View {
-    let mistake: ReviewSummary.Mistake
-    var matnKind: MatnKind = .poem
-    let action: () -> Void
-
-    /// The word as written, its differing letters (and their harakat) red.
-    private var expected: AttributedString {
-        var text = AttributedString(mistake.expected)
-        text.foregroundColor = Theme.ink
-        guard let heard = mistake.heard, !mistake.added else { return text }
-        let scalars = mistake.expected.unicodeScalars
-        for r in LetterEmphasis.ranges(written: mistake.expected, heard: heard) {
-            let lo = scalars.index(scalars.startIndex, offsetBy: r.lowerBound)
-            let hi = scalars.index(scalars.startIndex, offsetBy: r.upperBound)
-            guard let a = AttributedString.Index(lo, within: text),
-                  let b = AttributedString.Index(hi, within: text) else { continue }
-            text[a..<b].foregroundColor = Theme.error
-        }
-        return text
-    }
-
-    private var place: String {
-        matnKind == .prose
-            ? "الحديث \(Numerals.eastern(mistake.bayt))"
-            : "Bayt \(mistake.bayt) · \(mistake.half == .sadr ? "first half" : "second half")"
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(place)
-                        .font(.subheadline.weight(.semibold))      // was .caption
-                        .foregroundStyle(Theme.ink)
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(mistake.added ? "After" : "Should be")
-                            .font(.footnote).foregroundStyle(Theme.ink.opacity(0.7))
-                        Text(expected)
-                            .font(PageFont.font(size: 24))          // was 20
-                        Text(mistake.added ? "· you added" : mistake.heard == nil ? "· skipped" : "· you said")
-                            .font(.footnote).foregroundStyle(Theme.error)
-                        if let heard = mistake.heard {
-                            Text(heard)
-                                .font(PageFont.font(size: 24))
-                                .foregroundStyle(Theme.error)
-                        }
-                    }
-                    .lineLimit(1).minimumScaleFactor(0.6)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.forward")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.ink.opacity(0.35))
-            }
-            .padding(.vertical, 4)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(mistake.added
-                            ? "\(place). After \(mistake.expected), you added \(mistake.heard ?? "")."
-                            : "\(place). Should be \(mistake.expected). "
-                              + (mistake.heard.map { "You said \($0)." } ?? "You skipped it."))
-        .accessibilityHint("Shows this bayt's page")
-    }
-}
-
 
 #Preview("Reader") {
     NavigationStack { PageScreen(matn: .preview) }
