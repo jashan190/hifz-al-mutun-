@@ -24,4 +24,15 @@ import UIKit
         let para = a.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
         #expect(para?.alignment == .justified)
     }
+
+    @Test func attributedAppliesPerWordColourAndUnderline() {
+        let a = ProseText.attributed(words, font: .systemFont(ofSize: 20), lineSpacing: 8,
+            color: { i, _ in i == 0 ? .green : .red },
+            underline: { i in i == 1 })
+        #expect(a.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor == .green)
+        let i2 = (a.string as NSString).range(of: "إِنَّمَا").location
+        #expect(a.attribute(.foregroundColor, at: i2, effectiveRange: nil) as? UIColor == .red)
+        #expect((a.attribute(.underlineStyle, at: i2, effectiveRange: nil) as? Int ?? 0) != 0)
+        #expect((a.attribute(.underlineStyle, at: 0, effectiveRange: nil) as? Int ?? 0) == 0)
+    }
 }

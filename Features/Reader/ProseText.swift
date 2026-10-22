@@ -11,12 +11,12 @@ enum ProseText {
         words.map(\.text).joined(separator: " ")
     }
 
-    /// The body as a justified RTL paragraph: isnād words in `isnad`, the
-    /// Prophet's words (matn) in `matn`, joined by isnād-coloured spaces. The
-    /// shared paragraph style (justified + lineSpacing) is what makes the lines
-    /// fill the width evenly and makes measurement match layout.
-    static func body(_ words: [ProseWord], font: UIFont, lineSpacing: CGFloat,
-                     isnad: UIColor, matn: UIColor) -> NSAttributedString {
+    /// The body as a justified RTL paragraph, each word styled by closures so the
+    /// same builder serves read mode, memorize (reveal) mode, and measurement
+    /// (colour/underline don't affect layout, so heights match across modes).
+    static func attributed(_ words: [ProseWord], font: UIFont, lineSpacing: CGFloat,
+                           color: (_ index: Int, _ role: ProseRole) -> UIColor,
+                           underline: (_ index: Int) -> Bool) -> NSAttributedString {
         let para = NSMutableParagraphStyle()
         para.alignment = .justified
         para.lineSpacing = lineSpacing
@@ -25,12 +25,24 @@ enum ProseText {
         for (i, w) in words.enumerated() {
             if i > 0 {
                 out.append(NSAttributedString(string: " ",
-                    attributes: [.font: font, .foregroundColor: isnad, .paragraphStyle: para]))
+                    attributes: [.font: font, .foregroundColor: color(i, w.role), .paragraphStyle: para]))
             }
-            let color = (w.role == .matn) ? matn : isnad
-            out.append(NSAttributedString(string: w.text,
-                attributes: [.font: font, .foregroundColor: color, .paragraphStyle: para]))
+            var attrs: [NSAttributedString.Key: Any] =
+                [.font: font, .foregroundColor: color(i, w.role), .paragraphStyle: para]
+            if underline(i) { attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue }
+            out.append(NSAttributedString(string: w.text, attributes: attrs))
         }
         return out
+    }
+
+    /// The body as a justified RTL paragraph: isnād words in `isnad`, the
+    /// Prophet's words (matn) in `matn`, joined by isnād-coloured spaces. The
+    /// shared paragraph style (justified + lineSpacing) is what makes the lines
+    /// fill the width evenly and makes measurement match layout.
+    static func body(_ words: [ProseWord], font: UIFont, lineSpacing: CGFloat,
+                     isnad: UIColor, matn: UIColor) -> NSAttributedString {
+        attributed(words, font: font, lineSpacing: lineSpacing,
+                   color: { _, role in role == .matn ? matn : isnad },
+                   underline: { _ in false })
     }
 }
