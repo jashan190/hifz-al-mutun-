@@ -18,31 +18,49 @@ struct PageScreen: View {
     /// reciter swiping by hand (which restarts tracking from that page).
     @State private var autoTurnTarget: Int?
 
+    /// For prose: pages produced by the paginator for the current geometry, and
+    /// the per-hadith index built from them. Empty for poems.
+    @State private var prosePages: [MatnPage] = []
+    @State private var proseBabs: [Bab] = []
+
+    /// The pages the reader shows: poems come straight from the matn; prose is
+    /// paginated at runtime.
+    private var displayPages: [MatnPage] { matn.kind == .prose ? prosePages : matn.pages }
+    private var displayPageCount: Int { displayPages.count }
+    private var displayBabs: [Bab] { matn.kind == .prose ? proseBabs : matn.babs }
+
     init(matn: Matn, startOnCover: Bool = false) {
         self.matn = matn
         // Opening from a shelf cover lands on the title page (page 0). Resuming
         // (Continue) or a debug arg goes straight to the text page.
         let debugPage = UserDefaults.standard.integer(forKey: "openReaderPage")
         let page = debugPage > 0 ? debugPage : ReadingPosition.lastPage(of: matn.id) ?? 1
-        _currentPage = State(initialValue: startOnCover ? 0 : min(max(1, page), matn.pageCount))
+        // Prose has no static pageCount (0 until paginated at runtime), so don't
+        // clamp to it here; prose is re-clamped in repaginateIfProse. Poems were
+        // already within range.
+        _currentPage = State(initialValue: startOnCover ? 0 : max(1, page))
     }
 
     var body: some View {
+      // Outer GeometryReader gives the screen size so prose can be paginated at
+      // runtime; poems ignore it (behaviour unchanged).
+      GeometryReader { geo in
         TabView(selection: $currentPage) {
             // Page 0: the matn's title page — the same cover, filling the page.
             MatnCover(matn: matn, style: .page)
                 .tag(0)
                 .contentShape(Rectangle())
                 .onTapGesture { toggleBars() }
-            ForEach(1...matn.pageCount, id: \.self) { page in
-                PageView(matn: matn, page: page, mode: mode,
+            ForEach(displayPages, id: \.page) { pageModel in
+                PageView(matn: matn, pageModel: pageModel, mode: mode,
                          reveal: mode == .memorize ? voice.reveal : nil)
-                    .tag(page)
+                    .tag(pageModel.page)
                     .contentShape(Rectangle())
                     .onTapGesture { toggleBars() }
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        .task(id: geo.size) { repaginateIfProse(in: geo.size) }
         .onAppear { ReadingPosition.recordOpened(matn.id) }
         .environment(\.readerActions, actions)
         .background(Theme.cover.ignoresSafeArea())
@@ -76,7 +94,7 @@ struct PageScreen: View {
                             .ignoresSafeArea()
                             .onTapGesture { showIndex = false }
 
-                        ReaderSidecar(matn: matn, currentPage: $currentPage,
+                        ReaderSidecar(matn: matn, babs: displayBabs, currentPage: $currentPage,
                                       topInset: geo.safeAreaInsets.top) {
                             showIndex = false
                         }
@@ -148,6 +166,28 @@ struct PageScreen: View {
             }
         }
         #endif
+      }
+    }
+
+    private func repaginateIfProse(in size: CGSize) {
+        guard matn.kind == .prose, size.width > 0, size.height > 0 else { return }
+        let fontSize: CGFloat = 24          // MUST equal ProsePageView's default fontSize
+        let folio: CGFloat = 34
+        let contentWidth = size.width - Theme.margin * 2
+        let bodyHeight = size.height - folio - Theme.margin * 2
+        let font = PageFont.uiFont(size: fontSize)
+        let headingHeight = fontSize * 1.6
+        let (pages, firstPageOf) = ProsePaginator.paginate(
+            matn.hadiths,
+            bodyHeight: bodyHeight,
+            headingHeight: headingHeight,
+            takhrijHeight: fontSize * 1.6,
+            measureBody: { ProsePaginator.bodyHeight($0, width: contentWidth, font: font) })
+        prosePages = pages
+        proseBabs = matn.hadiths.map {
+            Bab(id: "h\($0.number)", title: $0.title, startPage: firstPageOf[$0.number] ?? 1)
+        }
+        if currentPage > pages.count { currentPage = max(1, pages.count) }
     }
 
     private var actions: ReaderActions {
@@ -184,7 +224,7 @@ struct PageScreen: View {
     private var subjectAccent: Color { matn.subject.accent }
 
     private var babsCaption: String {
-        matn.currentBab(onPage: currentPage)?.title ?? ""
+        displayBabs.last { $0.startPage <= currentPage }?.title ?? ""
     }
 
     private var topBar: some View {
@@ -236,7 +276,7 @@ struct PageScreen: View {
                 }
                 Spacer(minLength: 0)
                 Text(currentPage >= 1
-                     ? "\(Numerals.eastern(currentPage)) / \(Numerals.eastern(matn.pageCount))"
+                     ? "\(Numerals.eastern(currentPage)) / \(Numerals.eastern(displayPageCount))"
                      : "الغلاف")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.onChromeDim)

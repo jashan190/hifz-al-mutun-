@@ -19,7 +19,7 @@ enum PageMode: String, CaseIterable, Identifiable {
 //    large Dynamic Type makes it taller and it scrolls.
 struct PageView: View {
     let matn: Matn
-    let page: Int
+    let pageModel: MatnPage
     let mode: PageMode
     var reveal: RevealState? = nil
 
@@ -42,8 +42,8 @@ struct PageView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let items = matn.items(onPage: page)
-            let bayts = matn.bayts(onPage: page)
+            let items = pageModel.items
+            let bayts = items.compactMap { if case .bayt(let b) = $0 { return b } else { return nil } }
             let columnWidth = max(
                 1,
                 (geo.size.width - 2 * hPadding - numberColumn - numberGap - midGap) / 2
@@ -76,8 +76,8 @@ struct PageView: View {
                                     subjectColor: matn.subject.accent,
                                     reveal: reveal
                                 )
-                            case .hadith:
-                                EmptyView()   // prose rendering not yet implemented
+                            case .hadith(let fragment):
+                                ProsePageView(fragment: fragment, subjectColor: matn.subject.accent)
                             }
                             // Spacers distribute items down the page. On a full
                             // page they expand so the rows fill the height; on an
@@ -108,12 +108,12 @@ struct PageView: View {
 
     // The folio: just the page number, centred at the foot of the page.
     private var folio: some View {
-        Text(Numerals.eastern(page))
+        Text(Numerals.eastern(pageModel.page))
             .font(PageFont.font(size: 15))
             .foregroundStyle(Theme.numeral)
             .frame(maxWidth: .infinity)
             .frame(height: folioHeight)
-            .accessibilityLabel("Page \(page)")
+            .accessibilityLabel("Page \(pageModel.page)")
     }
 
     private func pageFontSize(bayts: [Bayt], columnWidth: CGFloat) -> CGFloat {
@@ -536,24 +536,26 @@ private struct BaytRow: View {
     }
 }
 
+private let previewPage = Matn.preview.pages.first ?? MatnPage(page: 1, items: [])
+
 #Preview("Read — light") {
-    PageView(matn: .preview, page: 1, mode: .read)
+    PageView(matn: .preview, pageModel: previewPage, mode: .read)
         .environmentObject(FlagStore.inMemory())
 }
 
 #Preview("Memorize — light") {
-    PageView(matn: .preview, page: 1, mode: .memorize)
+    PageView(matn: .preview, pageModel: previewPage, mode: .memorize)
         .environmentObject(FlagStore.inMemory())
 }
 
 #Preview("Read — dark") {
-    PageView(matn: .preview, page: 1, mode: .read)
+    PageView(matn: .preview, pageModel: previewPage, mode: .read)
         .environmentObject(FlagStore.inMemory())
         .preferredColorScheme(.dark)
 }
 
 #Preview("Read — XL type") {
-    PageView(matn: .preview, page: 1, mode: .read)
+    PageView(matn: .preview, pageModel: previewPage, mode: .read)
         .environmentObject(FlagStore.inMemory())
         .environment(\.dynamicTypeSize, .accessibility5)
 }
@@ -561,7 +563,7 @@ private struct BaytRow: View {
 #Preview("Memorize — revealing") {
     let matn = Matn.preview
     let idx = RecitationIndex(matn: matn)
-    return PageView(matn: matn, page: 1, mode: .memorize,
+    return PageView(matn: matn, pageModel: matn.pages.first ?? MatnPage(page: 1, items: []), mode: .memorize,
                     reveal: RevealState(index: idx, cursor: 5, outcomes: [2: .unsure, 3: .wrong(heard: "كلمة"), 4: .skipped]))
         .environmentObject(FlagStore.inMemory())
 }

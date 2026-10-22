@@ -20,7 +20,12 @@ struct MatnCover: View {
     private var cream: Color { Theme.cover }
     private var titleSize: CGFloat { sz(20, 34, 46) }
     private var cornerSize: CGFloat { sz(34, 71, 96) }
-    private var cartLabel: String { matn.meter.isEmpty ? "متن" : "منظومة" }
+    private var cartLabel: String {
+        switch matn.kind {
+        case .prose: return "الأربعون"
+        case .poem:  return matn.meter.isEmpty ? "متن" : "منظومة"
+        }
+    }
 
     // Where the border lines sit, in from the edge. The hatch is clipped to this
     // so the texture stays inside the frame (never out in the margin).
@@ -109,10 +114,9 @@ struct MatnCover: View {
         .padding(.top, style == .page ? 0 : sz(22, 46, 0))
         .overlay(alignment: .bottom) {
             // Pinned in the clear zone between the bottom corners.
-            // TODO(prose): for a prose matn, baytCount is the hadith count, so
-            // this unit should read "حديثًا" not "بيت" — made kind-aware in the
-            // cover/reader integration task.
-            Text("\(Numerals.eastern(matn.baytCount)) بيت")
+            Text(matn.kind == .prose
+                 ? "\(Numerals.eastern(matn.baytCount)) حديثًا"
+                 : "\(Numerals.eastern(matn.baytCount)) بيت")
                 .font(DisplayFont.body(size: sz(7.5, 12, 15)))
                 .foregroundStyle(color.opacity(0.9))
                 .padding(.bottom, style == .page ? 46 : sz(10, 18, 0))

@@ -8,6 +8,8 @@ import SwiftUI
 /// header lines up with the reader's.
 struct ReaderSidecar: View {
     let matn: Matn
+    /// The resolved index (poems: matn.babs; prose: per-hadith, built at runtime).
+    var babs: [Bab]
     @Binding var currentPage: Int
     var topInset: CGFloat = 0
     let onClose: () -> Void
@@ -21,17 +23,19 @@ struct ReaderSidecar: View {
 
     private var bar: Color { Theme.subjectChrome(matn.subject) }
     private var accent: Color { matn.subject.accent }
-    private var currentBab: Bab? { matn.currentBab(onPage: currentPage) }
-    // TODO(prose): the bayt jump uses baytCount as its max; a prose matn has no
-    // bayts (baytCount is its hadith count), so bayt-jump needs a kind-aware
-    // form (or to be hidden) in the reader integration task.
-    private var maxValue: Int { mode == .page ? max(1, matn.pageCount) : max(1, matn.baytCount) }
+    private var currentBab: Bab? { babs.last { $0.startPage <= currentPage } }
+    /// Prose has no bayts (and no static pageCount), so only the page jump is
+    /// offered; the max there is the index's last page.
+    private var maxValue: Int {
+        if matn.kind == .prose { return max(1, babs.map(\.startPage).max() ?? 1) }
+        return mode == .page ? max(1, matn.pageCount) : max(1, matn.baytCount)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             header
             jump
-            if !matn.babs.isEmpty {
+            if !babs.isEmpty {
                 Divider().overlay(Theme.chromeHairline.opacity(0.4))
                 baabsHeader
                 chapterList
@@ -41,6 +45,8 @@ struct ReaderSidecar: View {
         }
         .background(Theme.page)
         .onAppear {
+            // Prose offers only the page jump (no bayts).
+            if matn.kind == .prose { mode = .page }
             goToPage = currentPage
             goToBayt = (currentPage - 1) * matn.baytsPerPage + 1
         }
@@ -75,10 +81,14 @@ struct ReaderSidecar: View {
 
     private var jump: some View {
         VStack(spacing: 12) {
-            Picker("", selection: $mode) {
-                ForEach(JumpMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            // Poems can jump by page or by bayt; prose has no bayts, so the mode
+            // picker is hidden and the jump stays on pages.
+            if matn.kind == .poem {
+                Picker("", selection: $mode) {
+                    ForEach(JumpMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
 
             HStack(spacing: 14) {
                 nudgeButton("minus") { nudge(-1) }
@@ -158,7 +168,7 @@ struct ReaderSidecar: View {
     private var chapterList: some View {
         ScrollView {
             VStack(spacing: 0) {
-                ForEach(matn.babs) { bab in
+                ForEach(babs) { bab in
                     let isCurrent = bab.id == currentBab?.id
                     Button {
                         currentPage = bab.startPage; onClose()
