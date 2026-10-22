@@ -19,9 +19,10 @@ enum PageMode: String, CaseIterable, Identifiable {
 //    large Dynamic Type makes it taller and it scrolls.
 struct PageView: View {
     let matn: Matn
-    let page: Int
+    let pageModel: MatnPage
     let mode: PageMode
     var reveal: RevealState? = nil
+    var flashTarget: FlagKey? = nil
 
     // Tighter margins/gaps give each hemistich more width, which — since the text
     // is sized to fill its column — makes the glyphs noticeably larger.
@@ -38,17 +39,21 @@ struct PageView: View {
 
     @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
 
-    private let folioHeight: CGFloat = 34
+    static let folioHeight: CGFloat = 34
 
     var body: some View {
         GeometryReader { geo in
-            let items = matn.items(onPage: page)
-            let bayts = matn.bayts(onPage: page)
+            let items = pageModel.items
+            let bayts = items.compactMap { if case .bayt(let b) = $0 { return b } else { return nil } }
             let columnWidth = max(
                 1,
                 (geo.size.width - 2 * hPadding - numberColumn - numberGap - midGap) / 2
             )
             let fontSize = pageFontSize(bayts: bayts, columnWidth: columnWidth)
+            // A full page (its quota of bayts) distributes its rows to fill the
+            // page height; an under-filled last page keeps its gaps capped so it
+            // sits at the top instead of ballooning.
+            let fillPage = bayts.count >= matn.baytsPerPage
 
             VStack(spacing: 0) {
                 ScrollView {
@@ -56,7 +61,8 @@ struct PageView: View {
                         ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                             switch item {
                             case .heading(let heading):
-                                HeadingRow(heading: heading, fontSize: fontSize)
+                                HeadingRow(heading: heading, fontSize: fontSize,
+                                           tint: matn.subject.accent)
                             case .bayt(let bayt):
                                 BaytRow(
                                     matnID: matn.id,
@@ -68,15 +74,34 @@ struct PageView: View {
                                     numberColumn: numberColumn,
                                     numberGap: numberGap,
                                     midGap: midGap,
-                                    reveal: reveal
+                                    subjectColor: matn.subject.accent,
+                                    reveal: reveal,
+                                    flashTarget: flashTarget
                                 )
+                            case .hadith(let fragment):
+                                ProsePageView(fragment: fragment,
+                                              subjectColor: matn.subject.accent,
+                                              matnID: matn.id,
+                                              reveal: mode == .memorize ? reveal : nil,
+                                              memorizing: mode == .memorize,
+                                              flashTarget: flashTarget)
                             }
-                            if index < items.count - 1 { Spacer(minLength: 8) }
+                            // Spacers distribute items down the page. On a full
+                            // page they expand so the rows fill the height; on an
+                            // under-filled last page they're capped so it sits at
+                            // the top instead of ballooning the gaps.
+                            if index < items.count - 1 {
+                                if fillPage {
+                                    Spacer(minLength: 8)
+                                } else {
+                                    Spacer(minLength: 8).frame(maxHeight: 22)
+                                }
+                            }
                         }
                     }
                     .frame(
                         maxWidth: .infinity,
-                        minHeight: geo.size.height - folioHeight - 2 * Theme.margin,
+                        minHeight: geo.size.height - Self.folioHeight - 2 * Theme.margin,
                         alignment: .top
                     )
                     .padding(.horizontal, hPadding)
@@ -90,12 +115,12 @@ struct PageView: View {
 
     // The folio: just the page number, centred at the foot of the page.
     private var folio: some View {
-        Text(Numerals.eastern(page))
+        Text(Numerals.eastern(pageModel.page))
             .font(PageFont.font(size: 15))
             .foregroundStyle(Theme.numeral)
             .frame(maxWidth: .infinity)
-            .frame(height: folioHeight)
-            .accessibilityLabel("Page \(page)")
+            .frame(height: Self.folioHeight)
+            .accessibilityLabel("Page \(pageModel.page)")
     }
 
     private func pageFontSize(bayts: [Bayt], columnWidth: CGFloat) -> CGFloat {
@@ -156,6 +181,15 @@ private struct LayeredText: View {
                     .foregroundStyle(Theme.numeral)
                     .fixedSize()
                     .offset(x: fn.lead, y: -size * HemistichText.footnoteLift)
+            }
+            // A darker outline around the tapped review word (positive x reads as
+            // leftward under RTL), so you can spot it among the flagged red boxes.
+            if let fb = rendered.flashBox, width != nil {
+                let pad = size * 0.14
+                RoundedRectangle(cornerRadius: size * 0.16, style: .continuous)
+                    .strokeBorder(Theme.errorEdge, lineWidth: 2)
+                    .frame(width: fb.width + pad * 2, height: size * 1.2)
+                    .offset(x: fb.lead - pad, y: 0)
             }
         }
     }
@@ -384,6 +418,7 @@ private struct AddedMark: View {
 private struct HeadingRow: View {
     let heading: Heading
     let fontSize: CGFloat
+    var tint: Color = Theme.accent   // the matn's subject colour for headings
 
     var body: some View {
         // Headings read in the Madinah green (the app's section colour); any blue
@@ -393,10 +428,10 @@ private struct HeadingRow: View {
             plain: heading.text,
             size: fontSize * 1.2,
             justifyWidth: 0,                 // never kashida a heading
-            tint: { $0 == .black ? Theme.accent : inkColor($0) }
+            tint: { $0 == .black ? tint : inkColor($0) }
         )
         LayeredText(rendered: rendered, font: PageFont.font(size: fontSize * 1.2),
-                    size: fontSize * 1.2, defaultColor: Theme.accent)
+                    size: fontSize * 1.2, defaultColor: tint)
             .padding(.vertical, 2)
             .accessibilityAddTraits(.isHeader)
     }
@@ -416,7 +451,9 @@ private struct BaytRow: View {
     let numberColumn: CGFloat
     let numberGap: CGFloat
     let midGap: CGFloat
+    var subjectColor: Color = Theme.accent   // the matn's subject colour
     var reveal: RevealState? = nil
+    var flashTarget: FlagKey? = nil
 
     private var lineHeight: CGFloat { fontSize * 1.7 }
 
@@ -444,7 +481,7 @@ private struct BaytRow: View {
     private var number: some View {
         let label = Text(Numerals.eastern(bayt.number))
             .font(PageFont.font(size: fontSize * 0.7))
-            .foregroundStyle(mode == .memorize ? Theme.accent : Theme.numeral)
+            .foregroundStyle(mode == .memorize ? subjectColor : Theme.numeral)
             .lineLimit(1)
             .minimumScaleFactor(0.5)
             .frame(width: numberColumn, height: lineHeight, alignment: .center)
@@ -465,6 +502,12 @@ private struct BaytRow: View {
         switch mode {
         case .read:
             let ranges = HemistichReveal.wordRanges(in: half.text)
+            let flagRanges = ranges.indices.filter { flagged(which, $0) }.map { ranges[$0] }
+            let flashRanges: [Range<Int>] = {
+                guard let f = flashTarget, f.bayt == bayt.number, f.half == which,
+                      f.wordIndex < ranges.count else { return [] }
+                return [ranges[f.wordIndex]]
+            }()
             LayeredText(
                 rendered: HemistichText.render(
                     segments: half.segments,
@@ -472,7 +515,8 @@ private struct BaytRow: View {
                     size: fontSize,
                     justifyWidth: justifyWidth,
                     tint: inkColor,
-                    underlined: ranges.indices.filter { flagged(which, $0) }.map { ranges[$0] }
+                    boxed: flagRanges,
+                    flashBoxed: flashRanges
                 ),
                 font: PageFont.font(size: fontSize),
                 size: fontSize,
@@ -516,24 +560,26 @@ private struct BaytRow: View {
     }
 }
 
+private let previewPage = Matn.preview.pages.first ?? MatnPage(page: 1, items: [])
+
 #Preview("Read — light") {
-    PageView(matn: .preview, page: 1, mode: .read)
+    PageView(matn: .preview, pageModel: previewPage, mode: .read)
         .environmentObject(FlagStore.inMemory())
 }
 
 #Preview("Memorize — light") {
-    PageView(matn: .preview, page: 1, mode: .memorize)
+    PageView(matn: .preview, pageModel: previewPage, mode: .memorize)
         .environmentObject(FlagStore.inMemory())
 }
 
 #Preview("Read — dark") {
-    PageView(matn: .preview, page: 1, mode: .read)
+    PageView(matn: .preview, pageModel: previewPage, mode: .read)
         .environmentObject(FlagStore.inMemory())
         .preferredColorScheme(.dark)
 }
 
 #Preview("Read — XL type") {
-    PageView(matn: .preview, page: 1, mode: .read)
+    PageView(matn: .preview, pageModel: previewPage, mode: .read)
         .environmentObject(FlagStore.inMemory())
         .environment(\.dynamicTypeSize, .accessibility5)
 }
@@ -541,7 +587,7 @@ private struct BaytRow: View {
 #Preview("Memorize — revealing") {
     let matn = Matn.preview
     let idx = RecitationIndex(matn: matn)
-    return PageView(matn: matn, page: 1, mode: .memorize,
+    return PageView(matn: matn, pageModel: matn.pages.first ?? MatnPage(page: 1, items: []), mode: .memorize,
                     reveal: RevealState(index: idx, cursor: 5, outcomes: [2: .unsure, 3: .wrong(heard: "كلمة"), 4: .skipped]))
         .environmentObject(FlagStore.inMemory())
 }

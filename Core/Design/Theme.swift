@@ -28,18 +28,27 @@ extension Color {
 enum Theme {
     // Surfaces and ink
     static let page = Color.dynamic(light: 0xFBF8F1, dark: 0x141413)
-    // Warmer manuscript cream used by the matn covers and the reader pages.
-    static let cover = Color.dynamic(light: 0xF4EBD3, dark: 0x262320)
+    // Soft manuscript cream used by the matn covers and the reader pages — a
+    // warm off-white (less yellow than the old 0xF4EBD3).
+    static let cover = Color.dynamic(light: 0xF8F4EA, dark: 0x262320)
     static let ink = Color.dynamic(light: 0x1D1B18, dark: 0xE9E5DD)
     // UX.md asks for ≥4.5:1 on the page; its 45% gave 2.8:1 (light), so 62%.
     static let inkSecondary = ink.opacity(0.62)   // revealed hints, dimmed text
     static let numeral = ink.opacity(0.75)        // page / bayt / footnote numbers
     static let outline = ink.opacity(0.12)         // hidden hemistichs in Test
 
+    // The app's own identity colour — a warm charcoal/ink, deliberately NOT any
+    // subject hue (red/yellow/green/blue), used for app-level chrome (the home
+    // masthead, settings, etc.). Flips light⇄dark so it stays legible.
+    static let brand = Color.dynamic(light: 0x2E2C27, dark: 0xDAD5C9)
+
     // Accents and marks
     static let accent = Color.dynamic(light: 0x1E5B3A, dark: 0x5FB585)   // Madinah green
     static let flag = Color.dynamic(light: 0xB4532A, dark: 0xE08A5F)
     static let error = Color.dynamic(light: 0xC62828, dark: 0xEF6B6B)
+    // A deeper red for the outline drawn around the tapped review mistake, so the
+    // edge reads darker than the light-red highlight fill it borders.
+    static let errorEdge = Color.dynamic(light: 0x8E1B1B, dark: 0xC65454)
     // UX.md's light amber #B7860B is 3.1:1 on the page; darkened to 4.9:1.
     static let unsure = Color.dynamic(light: 0x8C6608, dark: 0xE0B341)
 
@@ -49,6 +58,20 @@ enum Theme {
     static let onChrome = Color.dynamic(light: 0xF4EEDE, dark: 0xE8E2D2)     // cream on green
     static let onChromeDim = onChrome.opacity(0.65)
     static let chromeHairline = onChrome.opacity(0.22)
+
+    /// The header/footer (and sidecar) bar colour for a subject — a deep,
+    /// saturated version that stays dark enough for cream (`onChrome`) text in
+    /// both light and dark mode. Qur'ān keeps the original Madinah green.
+    static func subjectChrome(_ subject: Subject) -> Color {
+        switch subject {
+        case .quran:   return chrome
+        case .hadith:  return .dynamic(light: 0xB0302A, dark: 0x7C241E)
+        case .seerah:  return .dynamic(light: 0x203C9E, dark: 0x172A6E)
+        case .aqeedah: return .dynamic(light: 0x5A2E6B, dark: 0x3C1E49)
+        case .arabic:  return .dynamic(light: 0x6B4A2A, dark: 0x48311C)
+        case .fiqh:    return .dynamic(light: 0x0E7E77, dark: 0x09605A)
+        }
+    }
 
     // Raised surfaces (library cards, sheets) above the paper.
     static let surface = Color.dynamic(light: 0xFFFFFF, dark: 0x201F1C)
@@ -72,7 +95,7 @@ enum Theme {
         switch subject {
         case .quran:   return accent                                   // Madinah green
         case .hadith:  return .dynamic(light: 0xC0362C, dark: 0xE87E76)
-        case .seerah:  return .dynamic(light: 0x2A4FC4, dark: 0x8098EE)
+        case .seerah:  return .dynamic(light: 0x203C9E, dark: 0x7389E6)
         case .aqeedah: return .dynamic(light: 0x5A2E6B, dark: 0xB487C6)
         case .arabic:  return .dynamic(light: 0x6B4A2A, dark: 0xC59C6E)
         case .fiqh:    return .dynamic(light: 0x0E8E86, dark: 0x53C6BE)

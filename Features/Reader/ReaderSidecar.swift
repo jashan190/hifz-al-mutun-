@@ -2,11 +2,19 @@
 import SwiftUI
 
 /// The in-reader navigation panel: a page/bayt jump and the baab (chapter) list,
-/// as a right-edge overlay. The current baab is highlighted. Replaces the old
-/// bottom index sheet. The caller owns presentation (overlay + scrim).
+/// as a right-edge overlay. Its header matches the reader's top bar (same size,
+/// subject colour); accents follow the matn's subject too. The caller owns
+/// presentation (overlay + scrim) and passes the top safe-area inset so the
+/// header lines up with the reader's.
 struct ReaderSidecar: View {
     let matn: Matn
+    /// The resolved index (poems: matn.babs; prose: per-hadith, built at runtime).
+    var babs: [Bab]
+    /// The document's total page count (poems: matn.pageCount; prose: the
+    /// runtime-paginated page count).
+    var pageCount: Int
     @Binding var currentPage: Int
+    var topInset: CGFloat = 0
     let onClose: () -> Void
 
     @State private var mode: JumpMode = .page
@@ -16,51 +24,74 @@ struct ReaderSidecar: View {
 
     enum JumpMode: String, CaseIterable { case page = "صفحة", bayt = "بيت" }
 
-    private var currentBab: Bab? { matn.currentBab(onPage: currentPage) }
-    private var maxValue: Int { mode == .page ? max(1, matn.pageCount) : max(1, matn.baytCount) }
+    private var bar: Color { Theme.subjectChrome(matn.subject) }
+    private var accent: Color { matn.subject.accent }
+    private var currentBab: Bab? { babs.last { $0.startPage <= currentPage } }
+    /// Prose has no bayts (and no static pageCount), so only the page jump is
+    /// offered; the max there is the index's last page.
+    private var maxValue: Int {
+        if matn.kind == .prose { return max(1, pageCount) }
+        return mode == .page ? max(1, matn.pageCount) : max(1, matn.baytCount)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             header
             jump
-            Divider().overlay(Theme.chromeHairline)
-            baabsHeader
-            chapterList
+            if !babs.isEmpty {
+                Divider().overlay(Theme.chromeHairline.opacity(0.4))
+                baabsHeader
+                chapterList
+            } else {
+                Spacer(minLength: 0)
+            }
         }
         .background(Theme.page)
         .onAppear {
+            // Prose offers only the page jump (no bayts).
+            if matn.kind == .prose { mode = .page }
             goToPage = currentPage
             goToBayt = (currentPage - 1) * matn.baytsPerPage + 1
         }
     }
 
+    // Mirrors PageScreen.topBar: a close button, a two-line title, and a balance
+    // spacer, at the same padding and on the same subject-coloured bar.
     private var header: some View {
-        HStack {
-            Text(matn.title)
-                .font(DisplayFont.title(size: 22))
-                .foregroundStyle(Theme.onChrome)
-            Spacer()
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
+        HStack(spacing: 12) {
+            ChromeIconButton(system: "xmark", label: "Close") { onClose() }
+            VStack(spacing: 2) {
+                Text(matn.title)
+                    .font(.headline)
                     .foregroundStyle(Theme.onChrome)
-                    .frame(width: 34, height: 34)
-                    .background(Circle().fill(Theme.onChrome.opacity(0.15)))
+                Text("الفهرس")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.onChromeDim)
             }
-            .buttonStyle(PressableStyle())
+            .frame(maxWidth: .infinity)
+            Color.clear.frame(width: 30, height: 30)   // balances the close button
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
-        .background(Theme.chrome)
+        .padding(.horizontal, Theme.margin)
+        .padding(.top, topInset + 5)
+        .padding(.bottom, 5)
+        .background { bar.ignoresSafeArea(edges: .top) }
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Theme.chromeHairline).frame(height: 1)
+        }
     }
 
     // MARK: - Jump (type a number, confirm with اذهب; ± to nudge)
 
     private var jump: some View {
         VStack(spacing: 12) {
-            Picker("", selection: $mode) {
-                ForEach(JumpMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            // Poems can jump by page or by bayt; prose has no bayts, so the mode
+            // picker is hidden and the jump stays on pages.
+            if matn.kind == .poem {
+                Picker("", selection: $mode) {
+                    ForEach(JumpMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
 
             HStack(spacing: 14) {
                 nudgeButton("minus") { nudge(-1) }
@@ -74,7 +105,7 @@ struct ReaderSidecar: View {
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .font(.system(size: 30, weight: .bold, design: .serif))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(accent)
                 .focused($fieldFocused)
                 .frame(maxWidth: .infinity)
                 nudgeButton("plus") { nudge(1) }
@@ -90,7 +121,7 @@ struct ReaderSidecar: View {
                     .foregroundStyle(Theme.onChrome)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.accent))
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(accent))
             }
             .buttonStyle(PressableStyle())
         }
@@ -102,9 +133,9 @@ struct ReaderSidecar: View {
         Button(action: action) {
             Image(systemName: system)
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(accent)
                 .frame(width: 42, height: 42)
-                .background(Circle().fill(Theme.accent.opacity(0.12)))
+                .background(Circle().fill(accent.opacity(0.12)))
         }
         .buttonStyle(PressableStyle())
     }
@@ -129,7 +160,7 @@ struct ReaderSidecar: View {
     private var baabsHeader: some View {
         Text("الأبواب")
             .font(DisplayFont.body(size: 15).weight(.bold))
-            .foregroundStyle(Theme.accent)
+            .foregroundStyle(accent)
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.horizontal, 14)
             .padding(.top, 10)
@@ -140,7 +171,7 @@ struct ReaderSidecar: View {
     private var chapterList: some View {
         ScrollView {
             VStack(spacing: 0) {
-                ForEach(matn.babs) { bab in
+                ForEach(babs) { bab in
                     let isCurrent = bab.id == currentBab?.id
                     Button {
                         currentPage = bab.startPage; onClose()
@@ -148,17 +179,17 @@ struct ReaderSidecar: View {
                         HStack(spacing: 10) {
                             Text(bab.title)
                                 .font(DisplayFont.body(size: 17))
-                                .foregroundStyle(isCurrent ? Theme.accent : Theme.ink)
+                                .foregroundStyle(isCurrent ? accent : Theme.ink)
                             Spacer(minLength: 8)
                             Text("ص \(Numerals.eastern(bab.startPage))")
                                 .font(.system(.footnote, design: .serif))
                                 .foregroundStyle(Theme.numeral)
                         }
                         .padding(.vertical, 11).padding(.horizontal, 14)
-                        .background(isCurrent ? Theme.accent.opacity(0.1) : .clear)
+                        .background(isCurrent ? accent.opacity(0.1) : .clear)
                         .overlay(alignment: .trailing) {
                             if isCurrent {
-                                Rectangle().fill(Theme.accent).frame(width: 3)
+                                Rectangle().fill(accent).frame(width: 3)
                             }
                         }
                         .contentShape(Rectangle())

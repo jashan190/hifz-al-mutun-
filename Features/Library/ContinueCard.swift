@@ -25,13 +25,19 @@ struct ContinueCard: View {
             Text(matn.title)
                 .font(DisplayFont.title(size: 24))
                 .foregroundStyle(.white)
-            Text("صفحة \(Numerals.eastern(lastPage)) · البيت \(Numerals.eastern(currentBayt)) من \(Numerals.eastern(matn.baytCount))")
+            // Prose has no bayts and no static total page count, so show just the
+            // page and hide the bayt-based progress; poems keep both as before.
+            Text(matn.kind == .prose
+                 ? "صفحة \(Numerals.eastern(lastPage))"
+                 : "صفحة \(Numerals.eastern(lastPage)) · البيت \(Numerals.eastern(currentBayt)) من \(Numerals.eastern(matn.baytCount))")
                 .font(DisplayFont.body(size: 12))
                 .foregroundStyle(.white.opacity(0.9))
-            ProgressView(value: progress)
-                .tint(.white)
-                .background(Capsule().fill(.white.opacity(0.25)))
-                .padding(.top, 4)
+            if matn.kind == .poem {
+                ProgressView(value: progress)
+                    .tint(.white)
+                    .background(Capsule().fill(.white.opacity(0.25)))
+                    .padding(.top, 4)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
         .padding(16)

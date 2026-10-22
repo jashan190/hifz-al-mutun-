@@ -14,6 +14,9 @@ struct ReviewSummary: Equatable {
         let page: Int
         let bayt: Int
         let half: Half
+        /// Mirrors `WordRef.wordIndex`: word-in-body for prose, word-in-hemistich
+        /// for poems. Used to resolve the runtime prose page to jump to.
+        let wordIndex: Int
         let expected: String     // the word as written
         /// What the recognizer heard in its place; nil when it was skipped.
         let heard: String?
@@ -137,13 +140,13 @@ final class VoiceController: ObservableObject {
             var heard: String?
             if case .wrong(let said) = judged[i] { heard = said }
             return .init(id: i, page: ref.page, bayt: ref.bayt, half: ref.half,
-                         expected: index.displayWords[i], heard: heard)
+                         wordIndex: ref.wordIndex, expected: index.displayWords[i], heard: heard)
         }
         // Added words follow the word they came after (ids past every word's).
         mistakes += added.map { i, words in
             let ref = index.refs[i]
             return .init(id: index.refs.count + i, page: ref.page, bayt: ref.bayt, half: ref.half,
-                         expected: index.displayWords[i], heard: words, added: true)
+                         wordIndex: ref.wordIndex, expected: index.displayWords[i], heard: words, added: true)
         }
         let n = index.refs.count
         mistakes.sort { ($0.id % n, $0.added ? 1 : 0) < ($1.id % n, $1.added ? 1 : 0) }
@@ -212,11 +215,20 @@ final class VoiceController: ObservableObject {
     }
 
     /// The page to show for the cursor (auto page-turn): the page of the next
-    /// word expected, so the page turns as soon as the last word of a page is
-    /// recited; at the very end, the last page.
+    /// word expected. For prose the index carries page 0 (runtime pagination),
+    /// so return nil and let PageScreen resolve the page via prosePages.
     func page(forCursor c: Int) -> Int? {
         guard let index, !index.refs.isEmpty else { return nil }
-        return index.refs[min(max(0, c), index.refs.count - 1)].page
+        let r = index.refs[min(max(0, c), index.refs.count - 1)]
+        return r.page > 0 ? r.page : nil
+    }
+
+    /// The (hadith number, word-in-body) a flat cursor points at, for prose page
+    /// mapping (prose pages are runtime, so PageScreen resolves the actual page).
+    func proseRef(forCursor c: Int) -> (hadith: Int, wordInBody: Int)? {
+        guard let index, !index.refs.isEmpty else { return nil }
+        let r = index.refs[min(max(0, c), index.refs.count - 1)]
+        return (r.bayt, r.wordIndex)
     }
 
     // MARK: - Flags

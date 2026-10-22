@@ -7,6 +7,7 @@ import SwiftUI
 // matn word-by-word as the user recites.
 struct MicButton: View {
     @Binding var isListening: Bool
+    var tint: Color = Theme.accent   // the matn's subject colour
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulse = false
 
@@ -17,9 +18,9 @@ struct MicButton: View {
         } label: {
             Image(systemName: "mic.fill")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(isListening ? Theme.onChrome : Theme.accent)
+                .foregroundStyle(isListening ? Theme.onChrome : tint)
                 .frame(width: 40, height: 40)
-                .background(Circle().fill(isListening ? Theme.accent : Theme.onChrome))
+                .background(Circle().fill(isListening ? tint : Theme.onChrome))
                 .overlay(
                     Circle()
                         .stroke(Theme.onChrome, lineWidth: 2)

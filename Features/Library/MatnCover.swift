@@ -20,7 +20,12 @@ struct MatnCover: View {
     private var cream: Color { Theme.cover }
     private var titleSize: CGFloat { sz(20, 34, 46) }
     private var cornerSize: CGFloat { sz(34, 71, 96) }
-    private var cartLabel: String { matn.meter.isEmpty ? "متن" : "منظومة" }
+    private var cartLabel: String {
+        switch matn.kind {
+        case .prose: return "حديث"
+        case .poem:  return matn.meter.isEmpty ? "متن" : "منظومة"
+        }
+    }
 
     // Where the border lines sit, in from the edge. The hatch is clipped to this
     // so the texture stays inside the frame (never out in the margin).
@@ -54,11 +59,18 @@ struct MatnCover: View {
         if style == .page {
             cardStack
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(Rectangle().strokeBorder(color, lineWidth: 3))
         } else {
+            let radius: CGFloat = style == .hero ? 7 : 5
             cardStack
-                .clipShape(RoundedRectangle(cornerRadius: style == .hero ? 10 : 7, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                // Subject-colour outline so the cover stands off the background.
+                .overlay(
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .strokeBorder(color, lineWidth: style == .hero ? 2 : 1.5)
+                )
                 .shadow(color: .black.opacity(0.14), radius: style == .hero ? 10 : 6, y: 4)
-                .aspectRatio(0.78, contentMode: .fit)   // portrait title-page proportion
+                .aspectRatio(0.67, contentMode: .fit)   // portrait title-page proportion
         }
     }
 
@@ -102,7 +114,9 @@ struct MatnCover: View {
         .padding(.top, style == .page ? 0 : sz(22, 46, 0))
         .overlay(alignment: .bottom) {
             // Pinned in the clear zone between the bottom corners.
-            Text("\(Numerals.eastern(matn.baytCount)) بيت")
+            Text(matn.kind == .prose
+                 ? "\(Numerals.eastern(matn.baytCount)) حديثًا"
+                 : "\(Numerals.eastern(matn.baytCount)) بيت")
                 .font(DisplayFont.body(size: sz(7.5, 12, 15)))
                 .foregroundStyle(color.opacity(0.9))
                 .padding(.bottom, style == .page ? 46 : sz(10, 18, 0))

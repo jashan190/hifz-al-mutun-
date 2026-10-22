@@ -18,69 +18,127 @@ struct PageScreen: View {
     /// reciter swiping by hand (which restarts tracking from that page).
     @State private var autoTurnTarget: Int?
 
+    /// A word to briefly flash after jumping to a mistake (then it clears).
+    @State private var flashTarget: FlagKey?
+
+    /// The cumulative review sheet.
+    @State private var reviewPresented = false
+
+    /// For prose: pages produced by the paginator for the current geometry, and
+    /// the per-hadith index built from them. Empty for poems.
+    @State private var prosePages: [MatnPage] = []
+    @State private var proseBabs: [Bab] = []
+
+    /// The pages the reader shows: poems come straight from the matn; prose is
+    /// paginated at runtime.
+    private var displayPages: [MatnPage] { matn.kind == .prose ? prosePages : matn.pages }
+    private var displayPageCount: Int { displayPages.count }
+    private var displayBabs: [Bab] { matn.kind == .prose ? proseBabs : matn.babs }
+
     init(matn: Matn, startOnCover: Bool = false) {
         self.matn = matn
         // Opening from a shelf cover lands on the title page (page 0). Resuming
         // (Continue) or a debug arg goes straight to the text page.
         let debugPage = UserDefaults.standard.integer(forKey: "openReaderPage")
         let page = debugPage > 0 ? debugPage : ReadingPosition.lastPage(of: matn.id) ?? 1
-        _currentPage = State(initialValue: startOnCover ? 0 : min(max(1, page), matn.pageCount))
+        // Prose has no static pageCount (0 until paginated at runtime), so don't
+        // clamp to it here; prose is re-clamped in repaginateIfProse. Poems were
+        // already within range.
+        _currentPage = State(initialValue: startOnCover ? 0 : max(1, page))
     }
 
     var body: some View {
+      // Outer GeometryReader gives the screen size so prose can be paginated at
+      // runtime; poems ignore it (behaviour unchanged).
+      GeometryReader { geo in
         TabView(selection: $currentPage) {
             // Page 0: the matn's title page — the same cover, filling the page.
             MatnCover(matn: matn, style: .page)
                 .tag(0)
                 .contentShape(Rectangle())
                 .onTapGesture { toggleBars() }
-            ForEach(1...matn.pageCount, id: \.self) { page in
-                PageView(matn: matn, page: page, mode: mode,
-                         reveal: mode == .memorize ? voice.reveal : nil)
-                    .tag(page)
+            ForEach(displayPages, id: \.page) { pageModel in
+                PageView(matn: matn, pageModel: pageModel, mode: mode,
+                         reveal: mode == .memorize ? voice.reveal : nil,
+                         flashTarget: flashTarget)
+                    .tag(pageModel.page)
                     .contentShape(Rectangle())
                     .onTapGesture { toggleBars() }
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        .task(id: geo.size) {
+            guard matn.kind == .prose, geo.size.width > 0, geo.size.height > 0 else { return }
+            let hadiths = matn.hadiths
+            let size = geo.size
+            let result = await Task.detached(priority: .userInitiated) {
+                let fontSize = proseBodyFontSize
+                let lineSpacing = ProsePageView.lineSpacing(for: fontSize)
+                let contentWidth = size.width - Theme.margin * 2
+                // Reserve the folio, margins, and slack for the title/takhrīj
+                // blocks + inter-block spacing so a page never overflows — it
+                // page-turns when full instead of scrolling.
+                let bodyHeight = size.height - PageView.folioHeight - Theme.margin * 2 - 48
+                let font = PageFont.uiFont(size: fontSize)
+                return ProsePaginator.paginate(
+                    hadiths,
+                    bodyHeight: bodyHeight,
+                    headingHeight: fontSize * 1.8,
+                    takhrijHeight: 0,
+                    measureBody: { ProsePaginator.bodyHeight($0, width: contentWidth,
+                                                              font: font, lineSpacing: lineSpacing) })
+            }.value
+            // A newer geometry may have superseded this run while it was off the
+            // main actor; don't clobber the current result with a stale one.
+            guard !Task.isCancelled else { return }
+            prosePages = result.pages
+            proseBabs = hadiths.map {
+                Bab(id: "h\($0.number)", title: $0.title, startPage: result.firstPageOf[$0.number] ?? 1)
+            }
+            if currentPage > result.pages.count { currentPage = max(1, result.pages.count) }
+        }
         .onAppear { ReadingPosition.recordOpened(matn.id) }
         .environment(\.readerActions, actions)
         .background(Theme.cover.ignoresSafeArea())
         .safeAreaInset(edge: .top, spacing: 0) { if barsVisible { topBar } }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 0) {
-                if let summary = voice.summary, mode == .memorize {
-                    SummaryCard(summary: summary,
-                                reviewAgain: { startVoice() },
-                                backToRead: { setMode(.read) },
-                                show: { mistake in
-                                    if reduceMotion { currentPage = mistake.page }
-                                    else { withAnimation { currentPage = mistake.page } }
-                                })
-                        .padding(.horizontal, Theme.margin)
-                        .padding(.bottom, 10)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-                if barsVisible { footer }
-            }
+            if barsVisible { footer }
+        }
+        .sheet(isPresented: $reviewPresented) {
+            ReviewSheet(
+                matn: matn,
+                annotations: voice.summary.map { ReviewItems.annotations($0) } ?? [:],
+                onSelect: { key in reviewPresented = false; goToFlag(key) },
+                onRemove: { key in flagStore.setFlag(false, matnID: matn.id, key) },
+                reviewAgain: { reviewPresented = false; startVoice() },
+                done: { reviewPresented = false })
+            .environmentObject(flagStore)
+        }
+        .onChange(of: voice.summary != nil) { _, hasSummary in
+            if hasSummary { reviewPresented = true }
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         .overlay {
             if showIndex {
-                ZStack(alignment: .trailing) {
-                    // Scrim: dims the page, tap to dismiss.
-                    Color.black.opacity(0.38)
-                        .ignoresSafeArea()
-                        .onTapGesture { showIndex = false }
+                GeometryReader { geo in
+                    ZStack(alignment: .trailing) {
+                        // Scrim: dims the page, tap to dismiss.
+                        Color.black.opacity(0.38)
+                            .ignoresSafeArea()
+                            .onTapGesture { showIndex = false }
 
-                    ReaderSidecar(matn: matn, currentPage: $currentPage) {
-                        showIndex = false
+                        ReaderSidecar(matn: matn, babs: displayBabs, pageCount: displayPageCount,
+                                      currentPage: $currentPage,
+                                      topInset: geo.safeAreaInsets.top) {
+                            showIndex = false
+                        }
+                        .frame(width: geo.size.width * 0.8)
+                        .frame(maxHeight: .infinity)
+                        .background(Theme.page)
+                        .transition(.opacity)
                     }
-                    .frame(width: UIScreen.main.bounds.width * 0.8)
-                    .frame(maxHeight: .infinity)
-                    .background(Theme.page)
-                    .transition(.opacity)
+                    .ignoresSafeArea()
                 }
             }
         }
@@ -98,8 +156,18 @@ struct PageScreen: View {
         }
         // Turn the page as soon as its last word is recited.
         .onChange(of: voice.cursor) { _, c in
-            guard mode == .memorize, voice.isActive,
-                  let target = voice.page(forCursor: c), target != currentPage else { return }
+            guard mode == .memorize, voice.isActive else { return }
+            let resolved: Int?
+            if matn.kind == .prose {
+                // Prose pages are runtime; map the cursor's (hadith, word-in-body)
+                // onto the page that holds that fragment.
+                resolved = voice.proseRef(forCursor: c).flatMap {
+                    prosePage(hadith: $0.hadith, wordInBody: $0.wordInBody)
+                }
+            } else {
+                resolved = voice.page(forCursor: c)
+            }
+            guard let target = resolved, target != currentPage else { return }
             autoTurnTarget = target
             if reduceMotion { currentPage = target } else { withAnimation { currentPage = target } }
         }
@@ -143,6 +211,7 @@ struct PageScreen: View {
             }
         }
         #endif
+      }
     }
 
     private var actions: ReaderActions {
@@ -160,8 +229,44 @@ struct PageScreen: View {
         )
     }
 
+    /// The hadith number shown on the current page (prose), else nil.
+    private var currentHadith: Int? {
+        displayPages.first { $0.page == currentPage }?
+            .items.compactMap { if case .hadith(let f) = $0 { return f.hadithNumber } else { return nil } }.first
+    }
+
+    /// The runtime prose page that holds this hadith's `wordInBody`, or nil.
+    private func prosePage(hadith: Int, wordInBody: Int) -> Int? {
+        for page in prosePages {
+            for item in page.items {
+                guard case .hadith(let f) = item, f.hadithNumber == hadith else { continue }
+                if f.bodyStart <= wordInBody && wordInBody < f.bodyStart + f.words.count {
+                    return page.page
+                }
+            }
+        }
+        return nil
+    }
+
+    /// Jump to a flagged/mistaken word and flash it.
+    private func goToFlag(_ key: FlagKey) {
+        let target: Int
+        if matn.kind == .prose {
+            target = prosePage(hadith: key.bayt, wordInBody: key.wordIndex) ?? max(1, currentPage)
+        } else {
+            target = min(max(1, matn.page(ofBayt: key.bayt)), max(1, displayPageCount))
+        }
+        if reduceMotion { currentPage = target } else { withAnimation { currentPage = target } }
+        flashTarget = key
+        Task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            if flashTarget == key { flashTarget = nil }
+        }
+    }
+
     private func startVoice(bayt: Int? = nil) {
-        voice.start(matn: matn, fromPage: currentPage, bayt: bayt, flags: flagStore)
+        let seed = matn.kind == .prose ? currentHadith : bayt
+        voice.start(matn: matn, fromPage: currentPage, bayt: seed, flags: flagStore)
     }
 
     private func setMode(_ m: PageMode) {
@@ -173,8 +278,13 @@ struct PageScreen: View {
         else { withAnimation(.easeInOut(duration: 0.2)) { barsVisible.toggle() } }
     }
 
+    /// The header/footer/sidecar bar colour for this matn's subject.
+    private var chrome: Color { Theme.subjectChrome(matn.subject) }
+    /// The vivid subject accent, for controls on cream surfaces.
+    private var subjectAccent: Color { matn.subject.accent }
+
     private var babsCaption: String {
-        matn.currentBab(onPage: currentPage)?.title ?? ""
+        displayBabs.last { $0.startPage <= currentPage }?.title ?? ""
     }
 
     private var topBar: some View {
@@ -184,11 +294,13 @@ struct PageScreen: View {
                 Text(matn.title)
                     .font(.headline)
                     .foregroundStyle(Theme.onChrome)
-                Text(babsCaption)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.onChromeDim)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                if !babsCaption.isEmpty {
+                    Text(babsCaption)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.onChromeDim)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
             .frame(maxWidth: .infinity)
             ChromeIconButton(system: "list.bullet", label: "Index") {
@@ -197,7 +309,7 @@ struct PageScreen: View {
         }
         .padding(.horizontal, Theme.margin)
         .padding(.vertical, 5)
-        .background { Theme.chrome.ignoresSafeArea(edges: .top) }
+        .background { chrome.ignoresSafeArea(edges: .top) }
         .overlay(alignment: .bottom) {
             Rectangle().fill(Theme.chromeHairline).frame(height: 1)
         }
@@ -213,18 +325,33 @@ struct PageScreen: View {
                     .transition(.opacity)
             }
             HStack(spacing: 12) {
-                ModeToggle(mode: $mode)
+                // Memorize + voice target both poems (per bayt) and prose (per
+                // hadith): the toggle and mic are reachable for both.
+                ModeToggle(mode: $mode, tint: subjectAccent)
                     .fixedSize()
                 if mode == .memorize {
                     MicButton(isListening: Binding(
                         get: { voice.isLive },
                         set: { on in on ? startVoice() : voice.stop() }
-                    ))
+                    ), tint: subjectAccent)
                     .transition(.scale.combined(with: .opacity))
                 }
+                Button { reviewPresented = true } label: {
+                    let n = flagStore.count(for: matn.id)
+                    HStack(spacing: 5) {
+                        Image(systemName: "flag.fill").font(.system(size: 12, weight: .semibold))
+                        Text(n > 0 ? "مراجعة · \(Numerals.eastern(n))" : "مراجعة")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .foregroundStyle(n > 0 ? Theme.onChrome : Theme.onChromeDim)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(Capsule().fill(Theme.onChrome.opacity(0.12)))
+                }
+                .buttonStyle(PressableStyle())
+                .fixedSize()
                 Spacer(minLength: 0)
                 Text(currentPage >= 1
-                     ? "\(Numerals.eastern(currentPage)) / \(Numerals.eastern(matn.pageCount))"
+                     ? "\(Numerals.eastern(currentPage)) / \(Numerals.eastern(displayPageCount))"
                      : "الغلاف")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.onChromeDim)
@@ -233,7 +360,7 @@ struct PageScreen: View {
         }
         .padding(.horizontal, Theme.margin)
         .padding(.vertical, 7)
-        .background { Theme.chrome.ignoresSafeArea(edges: .bottom) }
+        .background { chrome.ignoresSafeArea(edges: .bottom) }
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.chromeHairline).frame(height: 1)
         }
@@ -301,146 +428,6 @@ private struct VoiceStatusLabel: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 }
-
-// Shown when a Review sitting stops (UX.md): what was covered, then Review
-// again or go back to reading.
-// After each sitting (one press of the mic until it stops): what was recited,
-// and every mistake — the word as written, and what was heard in its place.
-// Tapping a mistake turns to its page.
-private struct SummaryCard: View {
-    let summary: ReviewSummary
-    let reviewAgain: () -> Void
-    let backToRead: () -> Void
-    let show: (ReviewSummary.Mistake) -> Void
-    /// The list's natural height, measured, so it shrinks to fit a few rows.
-    @State private var listHeight: CGFloat = 0
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Session review")
-                .font(.headline)
-                .foregroundStyle(Theme.ink)
-            HStack(spacing: 18) {
-                stat(summary.baytsRecited, summary.baytsRecited == 1 ? "bayt recited" : "bayts recited")
-                stat(summary.mistakes.count, summary.mistakes.count == 1 ? "mistake" : "mistakes")
-                if summary.revealed > 0 { stat(summary.revealed, "revealed") }
-            }
-            if summary.mistakes.isEmpty {
-                Text("No mistakes this session.")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.ink.opacity(0.7))
-            } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(summary.mistakes) { mistake in
-                            MistakeRow(mistake: mistake) { show(mistake) }
-                            if mistake.id != summary.mistakes.last?.id {
-                                Divider().overlay(Theme.outline)
-                            }
-                        }
-                    }
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { listHeight = $0 }
-                }
-                // As tall as its rows, up to about three; then it scrolls.
-                .frame(height: min(260, max(listHeight, 1)))
-                .scrollBounceBehavior(.basedOnSize)
-            }
-            HStack(spacing: 10) {
-                Button(action: reviewAgain) {
-                    Text("Review again").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                Button(action: backToRead) {
-                    Text("Back to Read").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-            }
-            .tint(Theme.accent)
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.ink.opacity(0.08)))
-        .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
-        .accessibilityElement(children: .contain)
-    }
-
-    private func stat(_ n: Int, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("\(n)").font(.title2.weight(.semibold)).foregroundStyle(Theme.ink)
-            Text(label).font(.caption).foregroundStyle(Theme.ink.opacity(0.7))
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-// One mistake: where it was, the word as written, and what was heard.
-private struct MistakeRow: View {
-    let mistake: ReviewSummary.Mistake
-    let action: () -> Void
-
-    /// The word as written, its differing letters (and their harakat) red.
-    private var expected: AttributedString {
-        var text = AttributedString(mistake.expected)
-        text.foregroundColor = Theme.ink
-        guard let heard = mistake.heard, !mistake.added else { return text }
-        let scalars = mistake.expected.unicodeScalars
-        for r in LetterEmphasis.ranges(written: mistake.expected, heard: heard) {
-            let lo = scalars.index(scalars.startIndex, offsetBy: r.lowerBound)
-            let hi = scalars.index(scalars.startIndex, offsetBy: r.upperBound)
-            guard let a = AttributedString.Index(lo, within: text),
-                  let b = AttributedString.Index(hi, within: text) else { continue }
-            text[a..<b].foregroundColor = Theme.error
-        }
-        return text
-    }
-
-    private var place: String {
-        "Bayt \(mistake.bayt) · \(mistake.half == .sadr ? "first half" : "second half")"
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(place)
-                        .font(.caption)
-                        .foregroundStyle(Theme.ink.opacity(0.7))
-                    HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text(mistake.added ? "After" : "Should be")
-                            .font(.caption)
-                            .foregroundStyle(Theme.ink.opacity(0.7))
-                        Text(expected)
-                            .font(PageFont.font(size: 20))
-                        Text(mistake.added ? "· you added" : mistake.heard == nil ? "· skipped" : "· you said")
-                            .font(.caption)
-                            .foregroundStyle(Theme.error)
-                        if let heard = mistake.heard {
-                            Text(heard)
-                                .font(PageFont.font(size: 20))
-                                .foregroundStyle(Theme.error)
-                        }
-                    }
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.forward")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.ink.opacity(0.35))
-            }
-            .padding(.vertical, 4)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(mistake.added
-                            ? "\(place). After \(mistake.expected), you added \(mistake.heard ?? "")."
-                            : "\(place). Should be \(mistake.expected). "
-                              + (mistake.heard.map { "You said \($0)." } ?? "You skipped it."))
-        .accessibilityHint("Shows this bayt's page")
-    }
-}
-
 
 #Preview("Reader") {
     NavigationStack { PageScreen(matn: .preview) }

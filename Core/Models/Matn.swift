@@ -75,10 +75,13 @@ struct Bayt: Decodable, Hashable, Identifiable {
 enum PageItem: Hashable {
     case heading(Heading)
     case bayt(Bayt)
+    case hadith(HadithFragment)   // produced by ProsePaginator, never decoded
 }
 
 extension PageItem: Decodable {
     private enum Keys: String, CodingKey { case type }
+    // Do NOT add .hadith here — HadithFragment is runtime-only (built by
+    // ProsePaginator), never decoded from disk.
     private enum Kind: String, Decodable { case heading, bayt }
 
     init(from decoder: Decoder) throws {
@@ -110,8 +113,8 @@ struct ReviewNote: Decodable, Hashable {
     let notes: [String]
 }
 
-/// A whole poem: metadata, every page in print order, the heading index, and the
-/// (debug-only) review notes.
+/// A whole matn: metadata, every page in print order, the heading index, and the
+/// (debug-only) review notes. May be a poem (bayts) or prose (hadiths).
 struct Matn: Hashable, Identifiable {
     let id: String
     let title: String          // common / nickname title, shown prominently
@@ -120,9 +123,11 @@ struct Matn: Hashable, Identifiable {
     let author: String
     let meter: String
     let subject: Subject
+    let kind: MatnKind            // poem (bayts) or prose (hadith)
+    let hadiths: [Hadith]         // prose only; empty for poems
     let baytsPerPage: Int
     let pageCount: Int
-    let baytCount: Int
+    let baytCount: Int            // for prose, repurposed as hadith count
     let pages: [MatnPage]
     let babs: [Bab]
     let reviewNotes: [ReviewNote]
@@ -133,6 +138,7 @@ struct Matn: Hashable, Identifiable {
 extension Matn: Decodable {
     private enum Keys: String, CodingKey {
         case schemaVersion, id, title, fullTitle, titleLatin, author, meter, subject
+        case kind, hadiths
         case baytsPerPage, pageCount, baytCount, pages, babs, reviewNotes
     }
 
@@ -150,6 +156,8 @@ extension Matn: Decodable {
         author = try c.decode(String.self, forKey: .author)
         meter = try c.decode(String.self, forKey: .meter)
         subject = Subject.from(id: try c.decodeIfPresent(String.self, forKey: .subject))
+        kind = try c.decodeIfPresent(MatnKind.self, forKey: .kind) ?? .poem
+        hadiths = try c.decodeIfPresent([Hadith].self, forKey: .hadiths) ?? []
         baytsPerPage = try c.decode(Int.self, forKey: .baytsPerPage)
         pageCount = try c.decode(Int.self, forKey: .pageCount)
         baytCount = try c.decode(Int.self, forKey: .baytCount)
@@ -173,9 +181,17 @@ extension Matn {
         items(onPage: n).compactMap { if case .bayt(let b) = $0 { return b } else { return nil } }
     }
 
-    /// The chapter/section active on a page: the last heading at or before it.
-    func currentBab(onPage n: Int) -> Bab? { babs.last { $0.startPage <= n } }
+    /// The hadith fragments on a page (prose), in order.
+    func hadithFragments(onPage n: Int) -> [HadithFragment] {
+        items(onPage: n).compactMap {
+            if case .hadith(let f) = $0 { return f } else { return nil }
+        }
+    }
 
-    /// The 1-based page a bayt number falls on.
-    func page(ofBayt bayt: Int) -> Int { (bayt - 1) / baytsPerPage + 1 }
+    /// The 1-based page a bayt number falls on. Prose has no bayts
+    /// (`baytsPerPage == 0`); guard the divide and fall back to page 1.
+    func page(ofBayt bayt: Int) -> Int {
+        guard baytsPerPage > 0 else { return 1 }
+        return (bayt - 1) / baytsPerPage + 1
+    }
 }
