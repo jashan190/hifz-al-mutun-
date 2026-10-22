@@ -173,7 +173,8 @@ final class StrokeLabel: UILabel {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        guard let attributedText, let range = strokeRange, bounds.width > 0 else {
+        guard let attributedText, let range = strokeRange, bounds.width > 0,
+              range.length > 0, range.location + range.length <= attributedText.length else {
             strokeLayer.path = nil
             return
         }
@@ -186,14 +187,23 @@ final class StrokeLabel: UILabel {
         container.lineBreakMode = .byWordWrapping
         storage.addLayoutManager(manager)
         manager.addTextContainer(container)
+        manager.ensureLayout(for: container)
 
         let glyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-        var rect = manager.boundingRect(forGlyphRange: glyphs, in: container)
-        // UILabel vertically centres its text when the view is taller than the text.
-        let textHeight = manager.usedRect(for: container).height
-        rect.origin.y += max(0, (bounds.height - textHeight) / 2)
+        guard glyphs.length > 0 else { strokeLayer.path = nil; return }
 
-        rect = rect.insetBy(dx: -3, dy: -2)
+        // Horizontal extent: just this word's glyphs.
+        let hRect = manager.boundingRect(forGlyphRange: glyphs, in: container)
+        // Vertical extent: the USED height of the word's line fragment — the part
+        // the glyphs actually occupy. The full line-fragment rect also includes the
+        // inter-line spacing, which would make the box bleed into the lines above
+        // and below; the used rect matches the highlight fill's height.
+        let used = manager.lineFragmentUsedRect(forGlyphAt: glyphs.location, effectiveRange: nil)
+
+        // UILabel vertically centres its text when the view is taller than the text.
+        let dy = max(0, (bounds.height - manager.usedRect(for: container).height) / 2)
+        var rect = CGRect(x: hRect.minX, y: used.minY + dy, width: hRect.width, height: used.height)
+        rect = rect.insetBy(dx: -3, dy: -1)
         strokeLayer.path = UIBezierPath(roundedRect: rect, cornerRadius: 5).cgPath
         strokeLayer.lineWidth = 1.5
     }
