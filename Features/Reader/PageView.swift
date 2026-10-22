@@ -38,7 +38,7 @@ struct PageView: View {
 
     @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
 
-    private let folioHeight: CGFloat = 34
+    static let folioHeight: CGFloat = 34
 
     var body: some View {
         GeometryReader { geo in
@@ -94,7 +94,7 @@ struct PageView: View {
                     }
                     .frame(
                         maxWidth: .infinity,
-                        minHeight: geo.size.height - folioHeight - 2 * Theme.margin,
+                        minHeight: geo.size.height - Self.folioHeight - 2 * Theme.margin,
                         alignment: .top
                     )
                     .padding(.horizontal, hPadding)
@@ -112,7 +112,7 @@ struct PageView: View {
             .font(PageFont.font(size: 15))
             .foregroundStyle(Theme.numeral)
             .frame(maxWidth: .infinity)
-            .frame(height: folioHeight)
+            .frame(height: Self.folioHeight)
             .accessibilityLabel("Page \(pageModel.page)")
     }
 

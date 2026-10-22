@@ -1,5 +1,8 @@
 import SwiftUI
 
+/// The fixed prose reading size; the paginator must measure with the same value.
+let proseBodyFontSize: CGFloat = 24
+
 /// Renders one `HadithFragment`: the heading (first page), the right-aligned
 /// body paragraph (Prophet's words in the subject colour), and the takhrīj
 /// (last page). The folio is drawn by the containing `PageView`. Assumes the
@@ -8,7 +11,7 @@ struct ProsePageView: View {
     let fragment: HadithFragment
     let subjectColor: Color
     /// Fixed, comfortable reading size for prose (not auto-fitted like poems).
-    var fontSize: CGFloat = 24
+    var fontSize: CGFloat = proseBodyFontSize
 
     var body: some View {
         VStack(alignment: .center, spacing: 16) {

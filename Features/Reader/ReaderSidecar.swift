@@ -10,6 +10,9 @@ struct ReaderSidecar: View {
     let matn: Matn
     /// The resolved index (poems: matn.babs; prose: per-hadith, built at runtime).
     var babs: [Bab]
+    /// The document's total page count (poems: matn.pageCount; prose: the
+    /// runtime-paginated page count).
+    var pageCount: Int
     @Binding var currentPage: Int
     var topInset: CGFloat = 0
     let onClose: () -> Void
@@ -27,7 +30,7 @@ struct ReaderSidecar: View {
     /// Prose has no bayts (and no static pageCount), so only the page jump is
     /// offered; the max there is the index's last page.
     private var maxValue: Int {
-        if matn.kind == .prose { return max(1, babs.map(\.startPage).max() ?? 1) }
+        if matn.kind == .prose { return max(1, pageCount) }
         return mode == .page ? max(1, matn.pageCount) : max(1, matn.baytCount)
     }
 

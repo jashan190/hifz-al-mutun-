@@ -60,7 +60,28 @@ struct PageScreen: View {
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
-        .task(id: geo.size) { repaginateIfProse(in: geo.size) }
+        .task(id: geo.size) {
+            guard matn.kind == .prose, geo.size.width > 0, geo.size.height > 0 else { return }
+            let hadiths = matn.hadiths
+            let size = geo.size
+            let result = await Task.detached(priority: .userInitiated) {
+                let fontSize = proseBodyFontSize
+                let contentWidth = size.width - Theme.margin * 2
+                let bodyHeight = size.height - PageView.folioHeight - Theme.margin * 2
+                let font = PageFont.uiFont(size: fontSize)
+                return ProsePaginator.paginate(
+                    hadiths,
+                    bodyHeight: bodyHeight,
+                    headingHeight: fontSize * 1.6,
+                    takhrijHeight: fontSize * 1.6,
+                    measureBody: { ProsePaginator.bodyHeight($0, width: contentWidth, font: font) })
+            }.value
+            prosePages = result.pages
+            proseBabs = hadiths.map {
+                Bab(id: "h\($0.number)", title: $0.title, startPage: result.firstPageOf[$0.number] ?? 1)
+            }
+            if currentPage > result.pages.count { currentPage = max(1, result.pages.count) }
+        }
         .onAppear { ReadingPosition.recordOpened(matn.id) }
         .environment(\.readerActions, actions)
         .background(Theme.cover.ignoresSafeArea())
@@ -94,7 +115,8 @@ struct PageScreen: View {
                             .ignoresSafeArea()
                             .onTapGesture { showIndex = false }
 
-                        ReaderSidecar(matn: matn, babs: displayBabs, currentPage: $currentPage,
+                        ReaderSidecar(matn: matn, babs: displayBabs, pageCount: displayPageCount,
+                                      currentPage: $currentPage,
                                       topInset: geo.safeAreaInsets.top) {
                             showIndex = false
                         }
@@ -167,27 +189,6 @@ struct PageScreen: View {
         }
         #endif
       }
-    }
-
-    private func repaginateIfProse(in size: CGSize) {
-        guard matn.kind == .prose, size.width > 0, size.height > 0 else { return }
-        let fontSize: CGFloat = 24          // MUST equal ProsePageView's default fontSize
-        let folio: CGFloat = 34
-        let contentWidth = size.width - Theme.margin * 2
-        let bodyHeight = size.height - folio - Theme.margin * 2
-        let font = PageFont.uiFont(size: fontSize)
-        let headingHeight = fontSize * 1.6
-        let (pages, firstPageOf) = ProsePaginator.paginate(
-            matn.hadiths,
-            bodyHeight: bodyHeight,
-            headingHeight: headingHeight,
-            takhrijHeight: fontSize * 1.6,
-            measureBody: { ProsePaginator.bodyHeight($0, width: contentWidth, font: font) })
-        prosePages = pages
-        proseBabs = matn.hadiths.map {
-            Bab(id: "h\($0.number)", title: $0.title, startPage: firstPageOf[$0.number] ?? 1)
-        }
-        if currentPage > pages.count { currentPage = max(1, pages.count) }
     }
 
     private var actions: ReaderActions {
