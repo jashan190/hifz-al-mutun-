@@ -102,9 +102,7 @@ struct PageScreen: View {
         .background(Theme.cover.ignoresSafeArea())
         .safeAreaInset(edge: .top, spacing: 0) { if barsVisible { topBar } }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 0) {
-                if barsVisible { footer }
-            }
+            if barsVisible { footer }
         }
         .sheet(isPresented: $reviewPresented) {
             ReviewSheet(
