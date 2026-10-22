@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Renders one `HadithFragment`: the heading (first page), the justified body
-/// paragraph (Prophet's words in the subject colour), and the takhrīj (last
-/// page). The folio is drawn by the containing `PageView`.
+/// Renders one `HadithFragment`: the heading (first page), the right-aligned
+/// body paragraph (Prophet's words in the subject colour), and the takhrīj
+/// (last page). The folio is drawn by the containing `PageView`. Assumes the
+/// RTL layout the app root already provides (so "leading" reads as the right).
 struct ProsePageView: View {
     let fragment: HadithFragment
     let subjectColor: Color
@@ -19,10 +20,9 @@ struct ProsePageView: View {
             }
             Text(ProseText.attributed(fragment.words, isnad: Theme.ink, matn: subjectColor))
                 .font(PageFont.font(size: fontSize))
-                .multilineTextAlignment(.leading)   // justified RTL paragraph
+                .multilineTextAlignment(.leading)   // leading = right under RTL
                 .lineSpacing(fontSize * 0.5)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .environment(\.layoutDirection, .rightToLeft)
+                .frame(maxWidth: .infinity, alignment: .leading)
             if fragment.isLast && !fragment.takhrij.isEmpty {
                 Text(fragment.takhrij)
                     .font(.system(.footnote, design: .serif))

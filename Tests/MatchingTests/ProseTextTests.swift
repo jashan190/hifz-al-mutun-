@@ -22,5 +22,8 @@ import SwiftUI
         #expect(runs.count >= 2)
         #expect(String(a.characters).contains("عَنْ"))
         #expect(String(a.characters).contains("إِنَّمَا"))
+        // The two roles must actually produce different colours.
+        #expect(runs.first?.foregroundColor == .black)             // isnād
+        #expect(runs.contains { $0.foregroundColor == .red })      // matn
     }
 }
