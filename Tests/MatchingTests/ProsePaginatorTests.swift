@@ -76,6 +76,16 @@ import CoreGraphics
         #expect(frag(pages[1]).bodyStart == 8)   // second page resumes after the first 8 words
     }
 
+    @Test func bodyStartResetsPerHadith() {
+        // Each hadith's first fragment starts at bodyStart 0 (the offset is per
+        // hadith, not cumulative across the collection).
+        let (pages, _) = ProsePaginator.paginate(
+            [hadith(1, words: 5), hadith(2, words: 3)],
+            bodyHeight: 10, headingHeight: 2, takhrijHeight: 1, measureBody: measure)
+        #expect(frag(pages[0]).hadithNumber == 1 && frag(pages[0]).bodyStart == 0)
+        #expect(frag(pages[1]).hadithNumber == 2 && frag(pages[1]).bodyStart == 0)
+    }
+
     private func frag(_ p: MatnPage) -> HadithFragment {
         guard case .hadith(let f) = p.items[0] else { fatalError("not a hadith page") }
         return f
