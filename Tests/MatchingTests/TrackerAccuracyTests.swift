@@ -178,7 +178,7 @@ import Foundation
     @MainActor @Test(arguments: [false, true])
     func perfectRecitationOfEveryMatnHasNoMistakes(whisperStyle: Bool) {
         let matns = Self.allMatns()
-        #expect(matns.count == 3)
+        #expect(matns.count >= 3)   // at least the original three; more ship now
         for matn in matns {
             let index = RecitationIndex(matn: matn)
             let t = RecitationTracker(words: index.normalizedWords, startIndex: 0)
