@@ -11,7 +11,8 @@ import Testing
         }
         let b = Bayt(number: 1, sadr: hemi(["يقول", "راجي"]), ajuz: hemi(["عفو", "رب"]))
         return RecitationIndex(matn: Matn(id: "t", title: "t", fullTitle: nil, titleLatin: "t",
-            author: "a", meter: "m", subject: .quran, baytsPerPage: 1, pageCount: 1, baytCount: 1,
+            author: "a", meter: "m", subject: .quran, kind: .poem, hadiths: [],
+            baytsPerPage: 1, pageCount: 1, baytCount: 1,
             pages: [MatnPage(page: 1, items: [.bayt(b)])], babs: [], reviewNotes: []))
     }
 

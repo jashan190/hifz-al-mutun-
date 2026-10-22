@@ -35,4 +35,32 @@ import Foundation
         #expect(frag.hadithNumber == 3)
         #expect(frag.isFirst && !frag.isLast)
     }
+
+    @Test func proseMatnDecodesAndPoemsStillDecode() throws {
+        let prose = """
+        {"schemaVersion":1,"id":"x","title":"الأربعون","titleLatin":"arbaeen",
+         "author":"النووي","meter":"","subject":"hadith","kind":"prose",
+         "baytsPerPage":0,"pageCount":0,"baytCount":2,
+         "pages":[],"babs":[],
+         "hadiths":[{"number":1,"title":"الحديث الأول",
+           "body":[{"text":"عَنْ","norm":"عن","role":"isnad"}],
+           "takhrij":"رواه مسلم"}]}
+        """.data(using: .utf8)!
+        let m = try JSONDecoder().decode(Matn.self, from: prose)
+        #expect(m.kind == .prose)
+        #expect(m.hadiths.count == 1)
+        #expect(m.baytCount == 2)        // repurposed as hadith count
+        #expect(m.pages.isEmpty)
+        #expect(m.subject == .hadith)
+
+        // Regression: a poem (no kind, no hadiths) still decodes as .poem.
+        let poem = """
+        {"schemaVersion":1,"id":"y","title":"ت","titleLatin":"t","author":"a",
+         "meter":"الرجز","subject":"quran","baytsPerPage":10,"pageCount":1,
+         "baytCount":1,"pages":[{"page":1,"items":[]}],"babs":[]}
+        """.data(using: .utf8)!
+        let p = try JSONDecoder().decode(Matn.self, from: poem)
+        #expect(p.kind == .poem)
+        #expect(p.hadiths.isEmpty)
+    }
 }

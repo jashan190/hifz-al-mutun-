@@ -44,6 +44,7 @@ extension Matn {
             id: "sample", title: "تحفة الأطفال",
             fullTitle: "تحفة الأطفال والغلمان",
             titleLatin: "Tuhfat al-Atfal", author: "", meter: "", subject: .quran,
+            kind: .poem, hadiths: [],
             baytsPerPage: 10, pageCount: 1, baytCount: 1,
             pages: [page],
             babs: [Bab(id: "b", title: "المقدمة", startPage: 1)],

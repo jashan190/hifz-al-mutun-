@@ -76,6 +76,8 @@ struct PageView: View {
                                     subjectColor: matn.subject.accent,
                                     reveal: reveal
                                 )
+                            case .hadith:
+                                EmptyView()   // prose rendering not yet implemented
                             }
                             // Spacers distribute items down the page. On a full
                             // page they expand so the rows fill the height; on an

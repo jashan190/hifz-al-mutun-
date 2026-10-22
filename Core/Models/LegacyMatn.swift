@@ -121,6 +121,7 @@ extension LegacyMatn {
         return Matn(
             id: id, title: title, fullTitle: fullTitle, titleLatin: titleLatin,
             author: author, meter: meter, subject: Subject.from(id: subject),
+            kind: .poem, hadiths: [],
             baytsPerPage: baytsPerPage, pageCount: pageCount, baytCount: baytCount,
             pages: pages, babs: canonicalBabs, reviewNotes: []
         )
