@@ -83,6 +83,7 @@ struct PageView: View {
                                               subjectColor: matn.subject.accent,
                                               matnID: matn.id,
                                               reveal: mode == .memorize ? reveal : nil,
+                                              memorizing: mode == .memorize,
                                               flashTarget: flashTarget)
                             }
                             // Spacers distribute items down the page. On a full
@@ -186,7 +187,7 @@ private struct LayeredText: View {
             if let fb = rendered.flashBox, width != nil {
                 let pad = size * 0.14
                 RoundedRectangle(cornerRadius: size * 0.16, style: .continuous)
-                    .strokeBorder(Theme.error, lineWidth: max(1.5, size * 0.045))
+                    .strokeBorder(Theme.errorEdge, lineWidth: 2)
                     .frame(width: fb.width + pad * 2, height: size * 1.2)
                     .offset(x: fb.lead - pad, y: 0)
             }

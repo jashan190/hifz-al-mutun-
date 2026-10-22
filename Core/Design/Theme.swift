@@ -46,6 +46,9 @@ enum Theme {
     static let accent = Color.dynamic(light: 0x1E5B3A, dark: 0x5FB585)   // Madinah green
     static let flag = Color.dynamic(light: 0xB4532A, dark: 0xE08A5F)
     static let error = Color.dynamic(light: 0xC62828, dark: 0xEF6B6B)
+    // A deeper red for the outline drawn around the tapped review mistake, so the
+    // edge reads darker than the light-red highlight fill it borders.
+    static let errorEdge = Color.dynamic(light: 0x8E1B1B, dark: 0xC65454)
     // UX.md's light amber #B7860B is 3.1:1 on the page; darkened to 4.9:1.
     static let unsure = Color.dynamic(light: 0x8C6608, dark: 0xE0B341)
 

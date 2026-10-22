@@ -17,8 +17,13 @@ struct ProsePageView: View {
     /// Fixed, comfortable reading size for prose (not auto-fitted like poems).
     var fontSize: CGFloat = proseBodyFontSize
 
-    /// Memorize mode: the live reveal (nil ⇒ plain read mode).
+    /// Memorize mode: the live reveal (nil until the first word is judged).
     var reveal: RevealState? = nil
+
+    /// True while Memorize mode is on — even before any word is revealed — so the
+    /// body blanks out the instant you switch to it. (`reveal` alone can't tell
+    /// Memorize-not-yet-started from Read mode, since both have a nil reveal.)
+    var memorizing: Bool = false
 
     /// A word to briefly flash after jumping to a mistake (read mode only).
     var flashTarget: FlagKey? = nil
@@ -29,13 +34,15 @@ struct ProsePageView: View {
     /// The `.sadr` half holds the hadith's whole body, so `revealedWords` is a
     /// prefix count over it: a word at body index `w` is shown iff `w < that`.
     private func shown(_ j: Int) -> Bool {
-        guard let reveal else { return true }   // read mode: all shown
+        guard memorizing else { return true }   // read mode: all shown
+        guard let reveal else { return false }  // memorize, nothing revealed yet → blank
         return (fragment.bodyStart + j) < reveal.revealedWords(bayt: fragment.hadithNumber, half: .sadr)
     }
     private func wordColor(_ j: Int, _ role: ProseRole) -> UIColor {
         let base = role == .matn ? UIColor(subjectColor) : UIColor(Theme.ink)
-        guard let reveal else { return base }               // read mode
+        guard memorizing else { return base }               // read mode
         guard shown(j) else { return UIColor(Theme.cover) } // not yet reached → invisible ink
+        guard let reveal else { return base }
         switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j) {
         case .wrong: return UIColor(Theme.error)            // said wrong (signal-red, not content-red)
         case .skipped, .unheard: return UIColor(Theme.ink.opacity(0.35))
@@ -45,11 +52,12 @@ struct ProsePageView: View {
     /// Unrevealed words draw their glyph in cream (invisible) but show a faint
     /// underline cue so the blank is visible; revealed words have no underline.
     private func wordUnderline(_ j: Int) -> UIColor? {
-        (reveal != nil && !shown(j)) ? UIColor(Theme.ink.opacity(0.3)) : nil
+        (memorizing && !shown(j)) ? UIColor(Theme.ink.opacity(0.3)) : nil
     }
 
     private func wordBackground(_ j: Int) -> UIColor? {
-        if let reveal {    // memorize: box the live mistakes
+        if memorizing {    // box the live mistakes
+            guard let reveal else { return nil }
             switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j) {
             case .wrong, .skipped: return UIColor(Theme.error).withAlphaComponent(0.12)
             default: return nil
@@ -64,7 +72,7 @@ struct ProsePageView: View {
     /// The character range (in the justified body string) of the tapped review
     /// word, so `JustifiedText` can outline exactly its glyphs. Read mode only.
     private func strokeRange() -> NSRange? {
-        guard reveal == nil, let target = flashTarget,
+        guard !memorizing, let target = flashTarget,
               target.bayt == fragment.hadithNumber, target.half == .sadr else { return nil }
         let j = target.wordIndex - fragment.bodyStart
         guard j >= 0, j < fragment.words.count else { return nil }
@@ -89,7 +97,7 @@ struct ProsePageView: View {
                 underline: { j in wordUnderline(j) },
                 background: { j in wordBackground(j) }),
                 strokeRange: strokeRange(),
-                strokeColor: UIColor(Theme.error))
+                strokeColor: UIColor(Theme.errorEdge))
                 .frame(maxWidth: .infinity)
                 .contextMenu {
                     let flagged = fragment.words.indices.filter {
@@ -205,6 +213,6 @@ final class StrokeLabel: UILabel {
         var rect = CGRect(x: hRect.minX, y: used.minY + dy, width: hRect.width, height: used.height)
         rect = rect.insetBy(dx: -3, dy: -1)
         strokeLayer.path = UIBezierPath(roundedRect: rect, cornerRadius: 5).cgPath
-        strokeLayer.lineWidth = 1.5
+        strokeLayer.lineWidth = 2
     }
 }
