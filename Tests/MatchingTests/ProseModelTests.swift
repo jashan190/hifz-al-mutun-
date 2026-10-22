@@ -64,4 +64,12 @@ import Foundation
         #expect(p.kind == .poem)
         #expect(p.hadiths.isEmpty)
     }
+
+    @MainActor @Test func arbaeenIsDiscoveredAsProse() throws {
+        let store = ContentStore()
+        let arbaeen = try #require(store.matns.first { $0.id == "arbaeen" })
+        #expect(arbaeen.kind == .prose)
+        #expect(arbaeen.hadiths.count == 42)
+        #expect(arbaeen.subject == .hadith)
+    }
 }

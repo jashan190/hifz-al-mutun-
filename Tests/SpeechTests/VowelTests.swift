@@ -71,7 +71,9 @@ import CoreML
     @MainActor @Test func everyMatnHasItsPhonemes() throws {
         let store = ContentStore()
         store.load()
-        for matn in store.matns {
+        // Phoneme coverage is a voice (recitation) check; voice targets the bayt
+        // poems. Prose matns have no bayt-words, so they're out of scope here.
+        for matn in store.matns where matn.kind == .poem {
             let index = RecitationIndex(matn: matn)
             let phonemes = try #require(PhonemeIndex(matnID: matn.id, index: index), "\(matn.id)")
             #expect(phonemes.words.count == index.normalizedWords.count)

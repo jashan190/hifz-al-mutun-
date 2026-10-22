@@ -177,7 +177,9 @@ import Foundation
     /// joined to the word after it).
     @MainActor @Test(arguments: [false, true])
     func perfectRecitationOfEveryMatnHasNoMistakes(whisperStyle: Bool) {
-        let matns = Self.allMatns()
+        // Recitation tracking targets the bayt poems; prose matns have no
+        // bayt-words, so they're excluded from this every-matn check.
+        let matns = Self.allMatns().filter { $0.kind == .poem }
         #expect(matns.count >= 3)   // at least the original three; more ship now
         for matn in matns {
             let index = RecitationIndex(matn: matn)
