@@ -1,5 +1,83 @@
 import SwiftUI
 
+/// The cumulative review for one matn: every flagged word, in reading order,
+/// read live from the FlagStore. Rows for the current sitting show "you said X".
+struct ReviewSheet: View {
+    let matn: Matn
+    /// Ephemeral annotations from the current sitting (empty when none).
+    var annotations: [FlagKey: ReviewSummary.Mistake] = [:]
+    let onSelect: (FlagKey) -> Void
+    let onRemove: (FlagKey) -> Void
+    let reviewAgain: () -> Void
+    let done: () -> Void
+
+    @EnvironmentObject private var flagStore: FlagStore
+
+    private var items: [ReviewItem] {
+        ReviewItems.resolve(matn: matn, flags: flagStore.flags[matn.id] ?? [])
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("المراجعة")
+                        .font(.title2.weight(.bold)).foregroundStyle(Theme.ink)
+                        .environment(\.layoutDirection, .rightToLeft)
+                    Text(items.isEmpty ? "No flagged words yet"
+                         : "\(Numerals.eastern(items.count)) flagged \(items.count == 1 ? "word" : "words")")
+                        .font(.subheadline).foregroundStyle(Theme.ink.opacity(0.7))
+                }
+                Spacer()
+                Button { done() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.ink.opacity(0.7))
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(Theme.ink.opacity(0.06)))
+                }
+                .buttonStyle(PressableStyle())
+            }
+            .padding(.horizontal, Theme.margin).padding(.top, Theme.margin).padding(.bottom, 10)
+
+            if items.isEmpty {
+                Spacer()
+                Text("Flag a word (long-press) or recite to collect your trouble spots here.")
+                    .font(.subheadline).foregroundStyle(Theme.ink.opacity(0.6))
+                    .multilineTextAlignment(.center).padding(.horizontal, 32)
+                Spacer()
+            } else {
+                List {
+                    ForEach(items) { item in
+                        MistakeCard(location: item.location, word: item.word,
+                                    mistake: annotations[item.key]) { onSelect(item.key) }
+                            .listRowInsets(EdgeInsets(top: 2, leading: Theme.margin, bottom: 2, trailing: Theme.margin))
+                            .listRowSeparator(.visible)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { onRemove(item.key) } label: {
+                                    Label("Remove", systemImage: "flag.slash")
+                                }
+                            }
+                    }
+                }
+                .listStyle(.plain)
+            }
+
+            HStack(spacing: 10) {
+                Button(action: reviewAgain) { Text("Review again").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent)
+                Button(action: done) { Text("Done").frame(maxWidth: .infinity) }
+                    .buttonStyle(.bordered)
+            }
+            .tint(matn.subject.accent)
+            .padding(Theme.margin)
+        }
+        .background(Theme.page.ignoresSafeArea())
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
 /// One review row: location + the flagged word. When a fresh sitting's mistake
 /// is supplied, it enriches the row with the differing letters marked and a
 /// "you said X" / "skipped" / "added" line.
