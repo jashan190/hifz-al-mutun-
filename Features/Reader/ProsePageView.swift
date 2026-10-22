@@ -14,8 +14,29 @@ struct ProsePageView: View {
     /// Fixed, comfortable reading size for prose (not auto-fitted like poems).
     var fontSize: CGFloat = proseBodyFontSize
 
+    /// Memorize mode: the live reveal (nil ⇒ plain read mode).
+    var reveal: RevealState? = nil
+
     /// Gap between wrapped lines; shared with the paginator's measurement.
     static func lineSpacing(for fontSize: CGFloat) -> CGFloat { fontSize * 0.5 }
+
+    /// The `.sadr` half holds the hadith's whole body, so `revealedWords` is a
+    /// prefix count over it: a word at body index `w` is shown iff `w < that`.
+    private func shown(_ j: Int) -> Bool {
+        guard let reveal else { return true }   // read mode: all shown
+        return (fragment.bodyStart + j) < reveal.revealedWords(bayt: fragment.hadithNumber, half: .sadr)
+    }
+    private func wordColor(_ j: Int, _ role: ProseRole) -> UIColor {
+        let base = role == .matn ? UIColor(subjectColor) : UIColor(Theme.ink)
+        guard let reveal else { return base }               // read mode
+        guard shown(j) else { return UIColor(Theme.cover) } // not yet reached → invisible ink
+        switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j) {
+        case .wrong: return UIColor(Theme.rumuz)            // said wrong
+        case .skipped, .unheard: return UIColor(Theme.ink.opacity(0.35))
+        default: return base                                // correct / revealed / shown
+        }
+    }
+    private func wordUnderline(_ j: Int) -> Bool { reveal != nil && !shown(j) }
 
     var body: some View {
         VStack(alignment: .center, spacing: 10) {
@@ -25,11 +46,12 @@ struct ProsePageView: View {
                     .foregroundStyle(subjectColor)
                     .multilineTextAlignment(.center)
             }
-            JustifiedText(words: fragment.words,
-                          font: PageFont.uiFont(size: fontSize),
-                          lineSpacing: Self.lineSpacing(for: fontSize),
-                          isnad: UIColor(Theme.ink),
-                          matn: UIColor(subjectColor))
+            JustifiedText(attributed: ProseText.attributed(
+                fragment.words,
+                font: PageFont.uiFont(size: fontSize),
+                lineSpacing: Self.lineSpacing(for: fontSize),
+                color: { j, role in wordColor(j, role) },
+                underline: { j in wordUnderline(j) }))
                 .frame(maxWidth: .infinity)
             if fragment.isLast && !fragment.takhrij.isEmpty {
                 // The attribution, kept small so it tucks under the text.
@@ -48,15 +70,7 @@ struct ProsePageView: View {
 /// so this wraps a `UILabel`; its reported height uses the same `boundingRect`
 /// the paginator measures with, so a page's text always fits (no scrolling).
 struct JustifiedText: UIViewRepresentable {
-    let words: [ProseWord]
-    let font: UIFont
-    let lineSpacing: CGFloat
-    let isnad: UIColor
-    let matn: UIColor
-
-    private var attributed: NSAttributedString {
-        ProseText.body(words, font: font, lineSpacing: lineSpacing, isnad: isnad, matn: matn)
-    }
+    let attributed: NSAttributedString
 
     func makeUIView(context: Context) -> UILabel {
         let label = UILabel()
