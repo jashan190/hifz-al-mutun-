@@ -35,15 +35,20 @@ import Testing
     }
 
     @Test func poemIndexUnchanged() {
+        // A bayt poem still flattens sadr-then-ajuz, page 1, with real refs. (The
+        // poem path re-normalizes word.text at runtime by design, so assert the
+        // display text + structure, not Latin normalization.)
         let bayt = Bayt(number: 1,
-                        sadr: Hemistich(text: "a b", segments: [], words: [Word(text: "a", normalized: "a"), Word(text: "b", normalized: "b")]),
-                        ajuz: Hemistich(text: "c", segments: [], words: [Word(text: "c", normalized: "c")]))
+                        sadr: Hemistich(text: "فِي النَّظْمِ", segments: [], words: [Word(text: "فِي", normalized: "في"), Word(text: "النَّظْمِ", normalized: "النظم")]),
+                        ajuz: Hemistich(text: "أَوَّلَا", segments: [], words: [Word(text: "أَوَّلَا", normalized: "اولا")]))
         let page = MatnPage(page: 1, items: [.bayt(bayt)])
         let m = Matn(id: "q", title: "t", fullTitle: nil, titleLatin: "t", author: "a",
                      meter: "الرجز", subject: .quran, kind: .poem, hadiths: [],
                      baytsPerPage: 10, pageCount: 1, baytCount: 1, pages: [page], babs: [], reviewNotes: [])
         let index = RecitationIndex(matn: m)
-        #expect(index.normalizedWords == ["a", "b", "c"])
+        #expect(index.displayWords == ["فِي", "النَّظْمِ", "أَوَّلَا"])
+        #expect(index.normalizedWords.count == 3)
         #expect(index.refs.map(\.half) == [.sadr, .sadr, .ajuz])
+        #expect(index.refs.map(\.page) == [1, 1, 1])
     }
 }

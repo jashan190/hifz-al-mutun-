@@ -50,7 +50,7 @@ struct RecitationIndex {
                     baytStart[bayt.number] = words.count
                     for (half, hemi) in [(Half.sadr, bayt.sadr), (Half.ajuz, bayt.ajuz)] {
                         for (wi, word) in hemi.words.enumerated() {
-                            words.append(word.normalized)
+                            words.append(ArabicNormalize.normalize(word.text))
                             display.append(word.text)
                             refs.append(WordRef(page: page.page, bayt: bayt.number,
                                                 half: half, wordIndex: wi))
