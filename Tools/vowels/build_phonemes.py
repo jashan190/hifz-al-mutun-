@@ -5,9 +5,24 @@
 # don't split back into its words gets null: it is left to Whisper alone.
 # Usage: build_phonemes.py matn.json...
 import json, sys, os
-from probe import phonemes
 from uthconv import uthmani
-from quran_transcript import alphabet as alph
+from quran_transcript import MoshafAttributes, alphabet as alph
+from quran_transcript.phonetics.operations import OPERATION_ORDER
+from quran_transcript.phonetics.conv_base_operation import sub_with_mapping
+
+# Phonetize the expected Uthmani text to the Quran Phonetic Script (the
+# operations only; the library's sifat step crashes on some words). Inlined from
+# probe.py so building the reference needs only quran-transcript — not the audio
+# stack (torch/librosa) that probe.py imports for transcription.
+_moshaf = MoshafAttributes(rewaya="hafs", madd_monfasel_len=2, madd_mottasel_len=4,
+                           madd_mottasel_waqf=4, madd_aared_len=2)
+
+
+def phonemes(uth):
+    text, maps = sub_with_mapping(r"\s+", alph.uthmani.space, uth)
+    for op in OPERATION_ORDER:
+        text, maps = op.apply(text, _moshaf, maps, sura_idx=0)
+    return text
 
 def words_of(path):
     m = json.load(open(path))
