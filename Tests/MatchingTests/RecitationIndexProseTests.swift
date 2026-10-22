@@ -34,6 +34,18 @@ import Testing
         #expect(index.firstWordIndex(ofBayt: 2) == 2)
     }
 
+    @Test func emptyBodyHandledGracefully() {
+        // The builder rejects empty bodies, but the index shouldn't crash on one:
+        // the hadith gets a valid (empty) start and contributes no words.
+        let h = Hadith(number: 1, title: "", body: [], takhrij: "")
+        let m = Matn(id: "p", title: "t", fullTitle: nil, titleLatin: "t", author: "a",
+                     meter: "", subject: .hadith, kind: .prose, hadiths: [h],
+                     baytsPerPage: 0, pageCount: 0, baytCount: 1, pages: [], babs: [], reviewNotes: [])
+        let index = RecitationIndex(matn: m)
+        #expect(index.normalizedWords.isEmpty)
+        #expect(index.firstWordIndex(ofBayt: 1) == 0)   // valid start, spans nothing
+    }
+
     @Test func poemIndexUnchanged() {
         // A bayt poem still flattens sadr-then-ajuz, page 1, with real refs. (The
         // poem path re-normalizes word.text at runtime by design, so assert the

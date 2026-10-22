@@ -31,14 +31,19 @@ struct RecitationIndex {
         if matn.kind == .prose {
             // Each hadith is one "bayt" unit (bayt = hadith number); all its body
             // words live in the .sadr half. The reveal/session machinery is unit-
-            // agnostic, so this reuses it unchanged. `page` is 0 here — prose pages
-            // are computed at runtime (ProsePaginator), so PageScreen maps a word's
-            // page, not this index.
+            // agnostic, so this reuses it unchanged.
+            //
+            // `page` is 0 (a sentinel): prose pages are computed at runtime by
+            // ProsePaginator, so callers that drive the UI page-turn
+            // (VoiceController.page(forCursor:)) must NOT trust this field for
+            // prose — they map a word's page via PageScreen's prosePages instead.
+            // `pageStart` likewise stays empty for prose, so firstWordIndex(onPage:)
+            // just clamps to the end (unused for prose — start uses ofBayt/hadith).
             for hadith in matn.hadiths {
                 baytStart[hadith.number] = words.count
-                for (wi, w) in hadith.body.enumerated() {
-                    words.append(ArabicNormalize.normalize(w.text))
-                    display.append(w.text)
+                for (wi, word) in hadith.body.enumerated() {
+                    words.append(ArabicNormalize.normalize(word.text))
+                    display.append(word.text)
                     refs.append(WordRef(page: 0, bayt: hadith.number, half: .sadr, wordIndex: wi))
                 }
             }
