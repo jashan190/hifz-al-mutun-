@@ -200,8 +200,16 @@ final class StrokeLabel: UILabel {
         let glyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
         guard glyphs.length > 0 else { strokeLayer.path = nil; return }
 
-        // Horizontal extent: just this word's glyphs.
-        let hRect = manager.boundingRect(forGlyphRange: glyphs, in: container)
+        // Horizontal extent: the selection-style enclosing rects hug just this
+        // word's glyphs. (boundingRect(forGlyphRange:) over-reports the width of a
+        // run in a justified RTL paragraph — it includes the stretched word-spacing
+        // — which made the outline run well past the highlight.)
+        var hx: CGRect = .null
+        manager.enumerateEnclosingRects(forGlyphRange: glyphs,
+                                        withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0),
+                                        in: container) { r, _ in hx = hx.union(r) }
+        guard !hx.isNull else { strokeLayer.path = nil; return }
+
         // Vertical extent: the USED height of the word's line fragment — the part
         // the glyphs actually occupy. The full line-fragment rect also includes the
         // inter-line spacing, which would make the box bleed into the lines above
@@ -210,8 +218,8 @@ final class StrokeLabel: UILabel {
 
         // UILabel vertically centres its text when the view is taller than the text.
         let dy = max(0, (bounds.height - manager.usedRect(for: container).height) / 2)
-        var rect = CGRect(x: hRect.minX, y: used.minY + dy, width: hRect.width, height: used.height)
-        rect = rect.insetBy(dx: -3, dy: -1)
+        var rect = CGRect(x: hx.minX, y: used.minY + dy, width: hx.width, height: used.height)
+        rect = rect.insetBy(dx: -2, dy: -1)
         strokeLayer.path = UIBezierPath(roundedRect: rect, cornerRadius: 5).cgPath
         strokeLayer.lineWidth = 2
     }
