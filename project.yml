@@ -29,7 +29,6 @@ settings:
     GENERATE_INFOPLIST_FILE: YES
     MARKETING_VERSION: "0.1"
     CURRENT_PROJECT_VERSION: "1"
-    TARGETED_DEVICE_FAMILY: "1"      # iPhone for now
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 
 targets:
@@ -60,12 +59,16 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_ID_PREFIX).hifzalmutun
+        # iPhone only. Must be set at the target level: XcodeGen injects a
+        # default of "1,2" on app targets that overrides any project-level value.
+        TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        INFOPLIST_KEY_CFBundleDisplayName: "حفظ المتون"
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Used to listen as you recite, so the app can follow along and reveal the text."
+        # Managed Info.plist (App/Info.plist) rather than GENERATE_INFOPLIST_FILE.
+        # The generator only wrote CFBundleIconName nested inside CFBundleIcons;
+        # App Store validation (error 90713) needs it at the top level, which the
+        # managed plist sets directly. All former INFOPLIST_KEY_* values live there.
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: App/Info.plist
 
   HifzAlMutunTests:
     type: bundle.unit-test
