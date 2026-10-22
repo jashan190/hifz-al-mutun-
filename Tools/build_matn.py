@@ -69,19 +69,17 @@ def parse_source(path):
                 raise ValueError(
                     f"{path}:{lineno}: bayt number is not an integer: {number_str!r}"
                 )
-            if current_bab is None:
-                raise ValueError(
-                    f"{path}:{lineno}: bayt {number} appears before any '@ bab' heading"
-                )
-            if current_bab["startBayt"] is None:
-                current_bab["startBayt"] = number
-            current_bab["endBayt"] = number
+            # A matn may have no sections at all; then bayts carry no babId.
+            if current_bab is not None:
+                if current_bab["startBayt"] is None:
+                    current_bab["startBayt"] = number
+                current_bab["endBayt"] = number
             bayts.append(
                 {
                     "number": number,
                     "sadr": sadr,
                     "ajuz": ajuz,
-                    "babId": current_bab["id"],
+                    "babId": current_bab["id"] if current_bab else None,
                 }
             )
 
@@ -194,6 +192,8 @@ def build(meta, babs, bayts):
         "titleLatin": meta.get("titleLatin", ""),
         "author": meta.get("author", ""),
         "meter": meta.get("meter", ""),
+        # Subject shelf: quran (default) | hadith | seerah | aqeedah | arabic | fiqh
+        "subject": meta.get("subject", "quran"),
         "baytsPerPage": per_page,
         "pageCount": page_count,
         "baytCount": len(out_bayts),

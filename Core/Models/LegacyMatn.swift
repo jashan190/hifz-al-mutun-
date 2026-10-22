@@ -13,6 +13,7 @@ struct LegacyMatn: Decodable {
     let titleLatin: String
     let author: String
     let meter: String
+    let subject: String?        // quran (default when absent) | hadith | seerah | …
     let baytsPerPage: Int
     let pageCount: Int
     let baytCount: Int
@@ -30,7 +31,7 @@ struct LegacyBab: Decodable {
 struct LegacyBayt: Decodable {
     let number: Int
     let page: Int
-    let babId: String
+    let babId: String?        // nil when the matn has no sections
     let sadr: String
     let ajuz: String
     let sadrWords: [LegacyWord]
@@ -119,7 +120,7 @@ extension LegacyMatn {
 
         return Matn(
             id: id, title: title, fullTitle: fullTitle, titleLatin: titleLatin,
-            author: author, meter: meter, subject: .quran,
+            author: author, meter: meter, subject: Subject.from(id: subject),
             baytsPerPage: baytsPerPage, pageCount: pageCount, baytCount: baytCount,
             pages: pages, babs: canonicalBabs, reviewNotes: []
         )
