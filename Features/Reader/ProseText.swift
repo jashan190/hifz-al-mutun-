@@ -14,9 +14,13 @@ enum ProseText {
     /// The body as a justified RTL paragraph, each word styled by closures so the
     /// same builder serves read mode, memorize (reveal) mode, and measurement
     /// (colour/underline don't affect layout, so heights match across modes).
+    /// `underline` returns the colour the word's underline should use, or nil for
+    /// none. It's a colour (not a Bool) so an "invisible ink" word — glyph drawn
+    /// in the page cream — can still show a visible underline cue (the underline
+    /// defaults to the foreground colour otherwise, which would also be cream).
     static func attributed(_ words: [ProseWord], font: UIFont, lineSpacing: CGFloat,
                            color: (_ index: Int, _ role: ProseRole) -> UIColor,
-                           underline: (_ index: Int) -> Bool) -> NSAttributedString {
+                           underline: (_ index: Int) -> UIColor?) -> NSAttributedString {
         let para = NSMutableParagraphStyle()
         para.alignment = .justified
         para.lineSpacing = lineSpacing
@@ -29,7 +33,10 @@ enum ProseText {
             }
             var attrs: [NSAttributedString.Key: Any] =
                 [.font: font, .foregroundColor: color(i, w.role), .paragraphStyle: para]
-            if underline(i) { attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue }
+            if let underlineColor = underline(i) {
+                attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
+                attrs[.underlineColor] = underlineColor
+            }
             out.append(NSAttributedString(string: w.text, attributes: attrs))
         }
         return out
@@ -43,6 +50,6 @@ enum ProseText {
                      isnad: UIColor, matn: UIColor) -> NSAttributedString {
         attributed(words, font: font, lineSpacing: lineSpacing,
                    color: { _, role in role == .matn ? matn : isnad },
-                   underline: { _ in false })
+                   underline: { _ in nil })
     }
 }

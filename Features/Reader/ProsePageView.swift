@@ -36,7 +36,11 @@ struct ProsePageView: View {
         default: return base                                // correct / revealed / shown
         }
     }
-    private func wordUnderline(_ j: Int) -> Bool { reveal != nil && !shown(j) }
+    /// Unrevealed words draw their glyph in cream (invisible) but show a faint
+    /// underline cue so the blank is visible; revealed words have no underline.
+    private func wordUnderline(_ j: Int) -> UIColor? {
+        (reveal != nil && !shown(j)) ? UIColor(Theme.ink.opacity(0.3)) : nil
+    }
 
     var body: some View {
         VStack(alignment: .center, spacing: 10) {
