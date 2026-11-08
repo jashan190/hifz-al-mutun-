@@ -6,6 +6,8 @@ import SwiftUI
 struct PageScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @EnvironmentObject private var flagStore: FlagStore
 
     let matn: Matn
@@ -35,6 +37,22 @@ struct PageScreen: View {
     private var displayPageCount: Int { displayPages.count }
     private var displayBabs: [Bab] { matn.kind == .prose ? proseBabs : matn.babs }
 
+    /// Two pages side by side (the open iPhone Duo on its side).
+    private func showsTwoPages(_ size: CGSize) -> Bool {
+        size.width > size.height
+            && BookSpread.isInnerScreen(phone: UIDevice.current.userInterfaceIdiom == .phone,
+                                        regularWidth: horizontalSizeClass == .regular,
+                                        regularHeight: verticalSizeClass == .regular)
+    }
+
+    /// The spread on screen, as the pager's selection. Turning it moves to the
+    /// spread's first page; the page itself stays put while it's in view, so
+    /// opening or closing the book keeps the reader where they were.
+    private var spreadSelection: Binding<Int> {
+        Binding(get: { BookSpread.first(of: currentPage) },
+                set: { if BookSpread.first(of: currentPage) != $0 { currentPage = $0 } })
+    }
+
     init(matn: Matn, startOnCover: Bool = false) {
         self.matn = matn
         // Opening from a shelf cover lands on the title page (page 0). Resuming
@@ -51,26 +69,41 @@ struct PageScreen: View {
       // Outer GeometryReader gives the screen size so prose can be paginated at
       // runtime; poems ignore it (behaviour unchanged).
       GeometryReader { geo in
-        TabView(selection: $currentPage) {
-            // Page 0: the matn's title page — the same cover, filling the page.
-            MatnCover(matn: matn, style: .page)
-                .tag(0)
-                .contentShape(Rectangle())
-                .onTapGesture { toggleBars() }
-            ForEach(displayPages, id: \.page) { pageModel in
-                PageView(matn: matn, pageModel: pageModel, mode: mode,
-                         reveal: mode == .memorize ? voice.reveal : nil,
-                         flashTarget: flashTarget)
-                    .tag(pageModel.page)
-                    .contentShape(Rectangle())
-                    .onTapGesture { toggleBars() }
+        let twoPages = showsTwoPages(geo.size)
+        Group {
+            if twoPages {
+                TabView(selection: spreadSelection) {
+                    ForEach(BookSpread.spreads(pageCount: displayPageCount), id: \.self) { first in
+                        // Right to left, as the layout runs: the odd page on the right.
+                        HStack(spacing: 0) {
+                            ForEach(Array(BookSpread.pages(of: first, pageCount: displayPageCount).enumerated()),
+                                    id: \.offset) { k, page in
+                                if k > 0 { Rectangle().fill(Theme.ink.opacity(0.12)).frame(width: 1) }
+                                if let page { pageView(page) } else { Color.clear }
+                            }
+                        }
+                        .tag(first)
+                    }
+                }
+            } else {
+                TabView(selection: $currentPage) {
+                    pageView(0)
+                    ForEach(displayPages, id: \.page) { pageView($0.page) }
+                }
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        // The phone folded or opened: landscape is only for the inner screen.
+        .onChange(of: horizontalSizeClass) { AppDelegate.screenChanged() }
+        .onChange(of: verticalSizeClass) { AppDelegate.screenChanged() }
         .task(id: geo.size) {
             guard matn.kind == .prose, geo.size.width > 0, geo.size.height > 0 else { return }
             let hadiths = matn.hadiths
-            let size = geo.size
+            // Two pages share the width.
+            let size = CGSize(width: twoPages ? geo.size.width / 2 : geo.size.width, height: geo.size.height)
+            // Where the reader is, kept across the new pages (they hold more or
+            // fewer words): the hadith and word the current page starts with.
+            let place = ProsePaginator.place(onPage: currentPage, in: prosePages)
             let result = await Task.detached(priority: .userInitiated) {
                 let fontSize = proseBodyFontSize
                 let lineSpacing = ProsePageView.lineSpacing(for: fontSize)
@@ -95,7 +128,13 @@ struct PageScreen: View {
             proseBabs = hadiths.map {
                 Bab(id: "h\($0.number)", title: $0.title, startPage: result.firstPageOf[$0.number] ?? 1)
             }
-            if currentPage > result.pages.count { currentPage = max(1, result.pages.count) }
+            if let place, let page = ProsePaginator.page(holding: place.hadith, wordInBody: place.wordInBody,
+                                                         in: result.pages), page != currentPage {
+                autoTurnTarget = page      // not a turn by hand: tracking carries on
+                currentPage = page
+            } else if currentPage > result.pages.count {
+                currentPage = max(1, result.pages.count)
+            }
         }
         .onAppear { ReadingPosition.recordOpened(matn.id) }
         .environment(\.readerActions, actions)
@@ -237,15 +276,25 @@ struct PageScreen: View {
 
     /// The runtime prose page that holds this hadith's `wordInBody`, or nil.
     private func prosePage(hadith: Int, wordInBody: Int) -> Int? {
-        for page in prosePages {
-            for item in page.items {
-                guard case .hadith(let f) = item, f.hadithNumber == hadith else { continue }
-                if f.bodyStart <= wordInBody && wordInBody < f.bodyStart + f.words.count {
-                    return page.page
-                }
-            }
+        ProsePaginator.page(holding: hadith, wordInBody: wordInBody, in: prosePages)
+    }
+
+    /// One page: the title page (0) or a page of the text.
+    @ViewBuilder private func pageView(_ page: Int) -> some View {
+        if page == 0 {
+            // Page 0: the matn's title page — the same cover, filling the page.
+            MatnCover(matn: matn, style: .page)
+                .tag(0)
+                .contentShape(Rectangle())
+                .onTapGesture { toggleBars() }
+        } else if let pageModel = displayPages.first(where: { $0.page == page }) {
+            PageView(matn: matn, pageModel: pageModel, mode: mode,
+                     reveal: mode == .memorize ? voice.reveal : nil,
+                     flashTarget: flashTarget)
+                .tag(pageModel.page)
+                .contentShape(Rectangle())
+                .onTapGesture { toggleBars() }
         }
-        return nil
     }
 
     /// Jump to a flagged/mistaken word and flash it.
