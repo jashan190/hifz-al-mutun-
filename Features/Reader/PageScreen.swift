@@ -70,71 +70,11 @@ struct PageScreen: View {
       // runtime; poems ignore it (behaviour unchanged).
       GeometryReader { geo in
         let twoPages = showsTwoPages(geo.size)
-        Group {
-            if twoPages {
-                TabView(selection: spreadSelection) {
-                    ForEach(BookSpread.spreads(pageCount: displayPageCount), id: \.self) { first in
-                        // Right to left, as the layout runs: the odd page on the right.
-                        HStack(spacing: 0) {
-                            ForEach(Array(BookSpread.pages(of: first, pageCount: displayPageCount).enumerated()),
-                                    id: \.offset) { k, page in
-                                if k > 0 { Rectangle().fill(Theme.ink.opacity(0.12)).frame(width: 1) }
-                                if let page { pageView(page) } else { Color.clear }
-                            }
-                        }
-                        .tag(first)
-                    }
-                }
-            } else {
-                TabView(selection: $currentPage) {
-                    pageView(0)
-                    ForEach(displayPages, id: \.page) { pageView($0.page) }
-                }
-            }
-        }
-        .tabViewStyle(.page(indexDisplayMode: .never))
-        // The phone folded or opened: landscape is only for the inner screen.
-        .onChange(of: horizontalSizeClass) { AppDelegate.screenChanged() }
-        .onChange(of: verticalSizeClass) { AppDelegate.screenChanged() }
+        pager(twoPages: twoPages)
         .task(id: geo.size) {
-            guard matn.kind == .prose, geo.size.width > 0, geo.size.height > 0 else { return }
-            let hadiths = matn.hadiths
             // Two pages share the width.
-            let size = CGSize(width: twoPages ? geo.size.width / 2 : geo.size.width, height: geo.size.height)
-            // Where the reader is, kept across the new pages (they hold more or
-            // fewer words): the hadith and word the current page starts with.
-            let place = ProsePaginator.place(onPage: currentPage, in: prosePages)
-            let result = await Task.detached(priority: .userInitiated) {
-                let fontSize = proseBodyFontSize
-                let lineSpacing = ProsePageView.lineSpacing(for: fontSize)
-                let contentWidth = size.width - Theme.margin * 2
-                // Reserve the folio, margins, and slack for the title/takhrīj
-                // blocks + inter-block spacing so a page never overflows — it
-                // page-turns when full instead of scrolling.
-                let bodyHeight = size.height - PageView.folioHeight - Theme.margin * 2 - 48
-                let font = PageFont.uiFont(size: fontSize)
-                return ProsePaginator.paginate(
-                    hadiths,
-                    bodyHeight: bodyHeight,
-                    headingHeight: fontSize * 1.8,
-                    takhrijHeight: 0,
-                    measureBody: { ProsePaginator.bodyHeight($0, width: contentWidth,
-                                                              font: font, lineSpacing: lineSpacing) })
-            }.value
-            // A newer geometry may have superseded this run while it was off the
-            // main actor; don't clobber the current result with a stale one.
-            guard !Task.isCancelled else { return }
-            prosePages = result.pages
-            proseBabs = hadiths.map {
-                Bab(id: "h\($0.number)", title: $0.title, startPage: result.firstPageOf[$0.number] ?? 1)
-            }
-            if let place, let page = ProsePaginator.page(holding: place.hadith, wordInBody: place.wordInBody,
-                                                         in: result.pages), page != currentPage {
-                autoTurnTarget = page      // not a turn by hand: tracking carries on
-                currentPage = page
-            } else if currentPage > result.pages.count {
-                currentPage = max(1, result.pages.count)
-            }
+            await paginateProse(CGSize(width: twoPages ? geo.size.width / 2 : geo.size.width,
+                                       height: geo.size.height))
         }
         .onAppear { ReadingPosition.recordOpened(matn.id) }
         .environment(\.readerActions, actions)
@@ -277,6 +217,77 @@ struct PageScreen: View {
     /// The runtime prose page that holds this hadith's `wordInBody`, or nil.
     private func prosePage(hadith: Int, wordInBody: Int) -> Int? {
         ProsePaginator.page(holding: hadith, wordInBody: wordInBody, in: prosePages)
+    }
+
+    /// The pages, one at a time or two side by side. Kept out of `body`, whose
+    /// modifier chain is already long enough to slow the type checker.
+    private func pager(twoPages: Bool) -> some View {
+        Group {
+            if twoPages {
+                TabView(selection: spreadSelection) {
+                    ForEach(BookSpread.spreads(pageCount: displayPageCount), id: \.self) { first in
+                        // Right to left, as the layout runs: the odd page on the right.
+                        HStack(spacing: 0) {
+                            ForEach(Array(BookSpread.pages(of: first, pageCount: displayPageCount).enumerated()),
+                                    id: \.offset) { k, page in
+                                if k > 0 { Rectangle().fill(Theme.ink.opacity(0.12)).frame(width: 1) }
+                                if let page { pageView(page) } else { Color.clear }
+                            }
+                        }
+                        .tag(first)
+                    }
+                }
+            } else {
+                TabView(selection: $currentPage) {
+                    pageView(0)
+                    ForEach(displayPages, id: \.page) { pageView($0.page) }
+                }
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        // The phone folded or opened: landscape is only for the inner screen.
+        .onChange(of: horizontalSizeClass) { AppDelegate.screenChanged() }
+        .onChange(of: verticalSizeClass) { AppDelegate.screenChanged() }
+    }
+
+    /// Cuts the prose into pages that fit `size`, keeping the reader's place.
+    private func paginateProse(_ size: CGSize) async {
+        guard matn.kind == .prose, size.width > 0, size.height > 0 else { return }
+        let hadiths = matn.hadiths
+        // Where the reader is, kept across the new pages (they hold more or
+        // fewer words): the hadith and word the current page starts with.
+        let place = ProsePaginator.place(onPage: currentPage, in: prosePages)
+        let result = await Task.detached(priority: .userInitiated) {
+            let fontSize = proseBodyFontSize
+            let lineSpacing = ProsePageView.lineSpacing(for: fontSize)
+            let contentWidth = size.width - Theme.margin * 2
+            // Reserve the folio, margins, and slack for the title/takhrīj
+            // blocks + inter-block spacing so a page never overflows — it
+            // page-turns when full instead of scrolling.
+            let bodyHeight = size.height - PageView.folioHeight - Theme.margin * 2 - 48
+            let font = PageFont.uiFont(size: fontSize)
+            return ProsePaginator.paginate(
+                hadiths,
+                bodyHeight: bodyHeight,
+                headingHeight: fontSize * 1.8,
+                takhrijHeight: 0,
+                measureBody: { ProsePaginator.bodyHeight($0, width: contentWidth,
+                                                          font: font, lineSpacing: lineSpacing) })
+        }.value
+        // A newer geometry may have superseded this run while it was off the
+        // main actor; don't clobber the current result with a stale one.
+        guard !Task.isCancelled else { return }
+        prosePages = result.pages
+        proseBabs = hadiths.map {
+            Bab(id: "h\($0.number)", title: $0.title, startPage: result.firstPageOf[$0.number] ?? 1)
+        }
+        if let place, let page = ProsePaginator.page(holding: place.hadith, wordInBody: place.wordInBody,
+                                                     in: result.pages), page != currentPage {
+            autoTurnTarget = page      // not a turn by hand: tracking carries on
+            currentPage = page
+        } else if currentPage > result.pages.count {
+            currentPage = max(1, result.pages.count)
+        }
     }
 
     /// One page: the title page (0) or a page of the text.
