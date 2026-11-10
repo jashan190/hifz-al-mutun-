@@ -2,7 +2,7 @@
 // written by `WhisperTests.aRecordingFromDisk`) into the tracker on the Mac,
 // in a second instead of an Xcode test run, and prints what showed red.
 //
-//   swiftc -O -o /tmp/replay Core/Models/{Matn,LegacyMatn,Subject}.swift Core/Matching/*.swift Tools/replay/{main,Shims}.swift
+//   swiftc -O -o /tmp/replay Core/Models/{Matn,LegacyMatn,Subject,Hadith}.swift Core/Matching/*.swift Tools/replay/{main,Shims}.swift
 //   /tmp/replay Tests/SpeechTests/Fixtures Resources/Content
 import Foundation
 
@@ -17,7 +17,7 @@ for name in ["clip", "skips", "r95", "r96", "r97"] {
     let file = try JSONDecoder().decode(File.self, from: data)
     let matn = try JSONDecoder().decode(Matn.self, from: Data(contentsOf: content.appendingPathComponent("\(file.matn).json")))
     let index = RecitationIndex(matn: matn)
-    let tracker = RecitationTracker(words: index.normalizedWords, startIndex: 0)
+    let tracker = RecitationTracker(words: index.normalizedWords, startIndex: 0, bayts: index.refs.map(\.bayt), idgham: index.idgham)
     var everRed: Set<Int> = []
     var everAdded: Set<Int> = []
     for f in file.fragments {

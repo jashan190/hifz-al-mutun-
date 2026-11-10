@@ -18,6 +18,8 @@ struct RecitationIndex {
     /// The words as written (with harakat), parallel to `normalizedWords`.
     let displayWords: [String]
     let refs: [WordRef]
+    /// How words that can merge into the next one may be spelled (`Idgham`).
+    let idgham: [Int: [String]]
     private let pageStart: [Int: Int]   // page number → first flat word index
     private let baytStart: [Int: Int]   // bayt number → first flat word index
 
@@ -68,6 +70,7 @@ struct RecitationIndex {
         self.normalizedWords = words
         self.displayWords = display
         self.refs = refs
+        self.idgham = Idgham.spellings(written: display, words: words)
         self.pageStart = pageStart
         self.baytStart = baytStart
     }

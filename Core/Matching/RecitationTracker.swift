@@ -197,11 +197,17 @@ final class RecitationTracker {
     private let baytOfWord: [Int]?
     private let baytStart: [Int: Int]
 
+    /// How words that can merge into the next one may be spelled (`Idgham`).
+    private let idgham: [Int: [String]]
+
     /// `bayts` is each word's bayt number; without it, going back is searched
-    /// for over everything recited since the start or last jump.
-    init(words: [String], startIndex: Int = 0, bayts: [Int]? = nil, tuning: MatchTuning = MatchTuning()) {
+    /// for over everything recited since the start or last jump. `idgham` is
+    /// from `Idgham.spellings`.
+    init(words: [String], startIndex: Int = 0, bayts: [Int]? = nil, idgham: [Int: [String]] = [:],
+         tuning: MatchTuning = MatchTuning()) {
         self.words = words
         self.tuning = tuning
+        self.idgham = idgham
         baytOfWord = bayts
         var starts: [Int: Int] = [:]
         for (i, b) in (bayts ?? []).enumerated() where starts[b] == nil { starts[b] = i }
@@ -481,7 +487,7 @@ final class RecitationTracker {
         guard passed.count >= n else { return false }
         for start in stride(from: passed.count - n, through: 0, by: -1) {
             let run = passed[start..<start + n]
-            let exact = zip(said, run).map { isMatch($0.norm, words[$1]) }
+            let exact = zip(said, run).map { matches($0.norm, at: $1) }
             guard exact.allSatisfy({ $0 != nil }) else { continue }
             // A word called wrong on the way (the first words of going back
             // heard as what was said for it) keeps only what was said for it.
@@ -600,6 +606,10 @@ final class RecitationTracker {
             }
             // Any extra heard tokens beyond the gap belong to its last slot.
             let heard = k == gap.count - 1 ? pending[k...] : pending[k...k]
+            if heard.count == 1, spelled(heard[heard.startIndex].norm, at: w) {
+                s.outcomes[w] = Self.saidRight(after: s.outcomes[w], exact: true); s.heard[w] = nil
+                continue
+            }
             let rawHeard = heard.map(\.raw).joined(separator: " ")
             let near = heard.contains {
                 levenshtein($0.norm, words[w]) <= tuning.nearMissThreshold($0.norm, words[w])
@@ -616,7 +626,7 @@ final class RecitationTracker {
         if words[hit].count >= tuning.resyncMinLength { return true }
         let after = Self.firstNonEmpty(from: hit + 1, in: words)
         guard i + 1 < tokens.count, after < words.count else { return false }
-        return isMatch(tokens[i + 1].norm, words[after]) != nil
+        return matches(tokens[i + 1].norm, at: after) != nil
     }
 
     /// The token heard as several expected words run together, starting at
@@ -624,6 +634,7 @@ final class RecitationTracker {
     /// words before the last are short (a prefix or particle written apart),
     /// so a long skipped word is never absorbed.
     private func matchJoined(_ token: String, in range: Range<Int>) -> (end: Int, exact: Bool)? {
+        if let merged = matchMerged(token, in: range) { return merged }
         var joined = ""
         var count = 0
         var lastLength = 0
@@ -637,10 +648,26 @@ final class RecitationTracker {
         return nil
     }
 
-    /// First position in `range` the token matches, and whether exactly.
+    /// The token heard as the first word in `range` run into the next through
+    /// idgham (مَنْ يَقُولُ heard as ميقول), the ending kept or merged away
+    /// and the next word's first letter single or doubled. A misheard letter
+    /// makes it near, not exact, if there are enough letters to tell.
+    private func matchMerged(_ token: String, in range: Range<Int>) -> (end: Int, exact: Bool)? {
+        guard let first = range.first(where: { !words[$0].isEmpty }), let forms = idgham[first],
+              let next = range.first(where: { $0 > first && !words[$0].isEmpty }),
+              let letter = words[next].first else { return nil }
+        let said = forms.flatMap { [$0 + words[next], $0 + String(letter) + words[next]] }
+        if said.contains(token) { return (next, true) }
+        return token.count >= 5 && said.contains { levenshtein(token, $0) <= 1 } ? (next, false) : nil
+    }
+
+    /// First position in `range` the token matches, and whether exactly. A
+    /// spelling of one letter (مَنْ as م) counts only with the next word
+    /// after it (`judgeGap`): alone, it's as likely a stray letter.
     private func match(_ token: String, in range: Range<Int>) -> (Int, Bool)? {
         for i in range where !words[i].isEmpty {
-            if let exact = isMatch(token, words[i]) { return (i, exact) }
+            if token.count < 2, token != words[i] { continue }
+            if let exact = matches(token, at: i) { return (i, exact) }
         }
         return nil
     }
@@ -652,11 +679,26 @@ final class RecitationTracker {
         guard let first = match(token, in: range), !first.1 else { return match(token, in: range) }
         var between = 0
         for i in range where !words[i].isEmpty {
-            if i > first.0, token == words[i] { return (i, true) }
+            if i > first.0, token == words[i] || spelled(token, at: i) { return (i, true) }
             between += 1
             if between > unmatched { break }
         }
         return first
+    }
+
+    /// How the token matches the word at `i`, taking idgham into account.
+    private func matches(_ token: String, at i: Int) -> Bool? {
+        spelled(token, at: i) ? true : isMatch(token, words[i])
+    }
+
+    /// The token is this word as said with or without idgham: the word's own
+    /// ending (صغير or صغيرن for صَغِيرًا), or, after a word that merges into
+    /// it, its first letter doubled or the noon of the word before (ييا, نيا).
+    private func spelled(_ token: String, at i: Int) -> Bool {
+        if idgham[i]?.contains(token) == true { return true }
+        guard words[i].count >= 2, let letter = words[i].first,
+              let before = words[..<i].lastIndex(where: { !$0.isEmpty }), idgham[before] != nil else { return false }
+        return token == String(letter) + words[i] || token == "ن" + words[i]
     }
 
     /// nil if no match; true if exact, false if within the fuzzy threshold
