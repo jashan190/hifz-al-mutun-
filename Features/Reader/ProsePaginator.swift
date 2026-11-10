@@ -47,6 +47,25 @@ enum ProsePaginator {
         return (pages, firstPageOf)
     }
 
+    /// Where a page starts: its hadith and the body index of its first word.
+    static func place(onPage page: Int, in pages: [MatnPage]) -> (hadith: Int, wordInBody: Int)? {
+        for item in pages.first(where: { $0.page == page })?.items ?? [] {
+            if case .hadith(let f) = item { return (f.hadithNumber, f.bodyStart) }
+        }
+        return nil
+    }
+
+    /// The page that holds this word of this hadith, or nil.
+    static func page(holding hadith: Int, wordInBody: Int, in pages: [MatnPage]) -> Int? {
+        for page in pages {
+            for item in page.items {
+                guard case .hadith(let f) = item, f.hadithNumber == hadith else { continue }
+                if f.bodyStart <= wordInBody && wordInBody < f.bodyStart + f.words.count { return page.page }
+            }
+        }
+        return nil
+    }
+
     /// Largest prefix count whose measured height is ≤ cap (at least 0; the
     /// caller guarantees ≥1 word is taken). Binary search over prefix length.
     private static func fit(_ words: [ProseWord], cap: CGFloat,

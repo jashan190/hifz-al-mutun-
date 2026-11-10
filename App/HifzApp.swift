@@ -4,6 +4,7 @@ import UIKit
 
 @main
 struct HifzApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var content = ContentStore()
     /// The user's flags, stored on device with SwiftData.
     @StateObject private var flags = FlagStore(container: HifzApp.makeContainer())
