@@ -254,9 +254,6 @@ struct PageScreen: View {
     private func paginateProse(_ size: CGSize) async {
         guard matn.kind == .prose, size.width > 0, size.height > 0 else { return }
         let hadiths = matn.hadiths
-        // Where the reader is, kept across the new pages (they hold more or
-        // fewer words): the hadith and word the current page starts with.
-        let place = ProsePaginator.place(onPage: currentPage, in: prosePages)
         let result = await Task.detached(priority: .userInitiated) {
             let fontSize = proseBodyFontSize
             let lineSpacing = ProsePageView.lineSpacing(for: fontSize)
@@ -277,6 +274,10 @@ struct PageScreen: View {
         // A newer geometry may have superseded this run while it was off the
         // main actor; don't clobber the current result with a stale one.
         guard !Task.isCancelled else { return }
+        // Where the reader is, kept across the new pages (they hold more or
+        // fewer words): the hadith and word the current page starts with.
+        // Taken now, not before the await, in case they turned the page meanwhile.
+        let place = ProsePaginator.place(onPage: currentPage, in: prosePages)
         prosePages = result.pages
         proseBabs = hadiths.map {
             Bab(id: "h\($0.number)", title: $0.title, startPage: result.firstPageOf[$0.number] ?? 1)
@@ -286,7 +287,9 @@ struct PageScreen: View {
             autoTurnTarget = page      // not a turn by hand: tracking carries on
             currentPage = page
         } else if currentPage > result.pages.count {
-            currentPage = max(1, result.pages.count)
+            let last = max(1, result.pages.count)
+            autoTurnTarget = last      // not a turn by hand either
+            currentPage = last
         }
     }
 
