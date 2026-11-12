@@ -206,6 +206,46 @@ import Foundation
         #expect(store.isFlagged("t", hamd))
     }
 
+    /// The Arbaeen, cut 20 words to a page.
+    private func arbaeen() throws -> (Matn, [MatnPage]) {
+        let url = try #require(Bundle.main.url(forResource: "arbaeen", withExtension: "json"))
+        let matn = try JSONDecoder().decode(Matn.self, from: Data(contentsOf: url))
+        let pages = ProsePaginator.paginate(matn.hadiths, bodyHeight: 20, headingHeight: 0, takhrijHeight: 0,
+                                            measureBody: { CGFloat($0.count) }).pages
+        return (matn, pages)
+    }
+
+    // A prose page by hand (or the page a sitting starts on) is its first word,
+    // not the end of the book.
+    @Test func aProsePageStartsAtItsFirstWord() async throws {
+        let (matn, pages) = try arbaeen()
+        let index = RecitationIndex(matn: matn)
+        let place = try #require(ProsePaginator.place(onPage: 3, in: pages))
+        let word = try #require(index.wordIndex(hadith: place.hadith, wordInBody: place.wordInBody))
+        #expect(place.wordInBody > 0)   // page 3 is part way into a hadith
+        let voice = VoiceController()
+        voice.prosePages = pages
+        UserDefaults.standard.set("", forKey: "debugRecite")
+        defer { UserDefaults.standard.removeObject(forKey: "debugRecite") }
+        voice.start(matn: matn, fromPage: 3, flags: nil)
+        await settle()
+        #expect(voice.cursor == word)
+        voice.start(matn: matn, fromPage: 1, flags: nil)
+        await settle()
+        voice.jump(toPage: 3)
+        #expect(voice.cursor == word)
+    }
+
+    @Test func theLastWordEndsTheSitting() async throws {
+        let voice = VoiceController()
+        UserDefaults.standard.set("قادر محمد الحمد لله", forKey: "debugRecite")
+        defer { UserDefaults.standard.removeObject(forKey: "debugRecite") }
+        voice.start(matn: matn(), fromPage: 2, flags: nil)
+        await settle()
+        #expect(!voice.isActive)
+        #expect(voice.summary != nil)
+    }
+
     @Test func voiceFailureFallsBackToTapKeepingTheReason() async {
         let voice = VoiceController()
         UserDefaults.standard.set("mic", forKey: "debugVoiceFail")
