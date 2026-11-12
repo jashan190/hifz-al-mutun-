@@ -43,6 +43,8 @@ final class RecitationSession: ObservableObject {
     @Published private(set) var outcomes: [Int: WordOutcome] = [:]
     /// Words said that the text doesn't have, by the word they followed.
     @Published private(set) var added: [Int: String] = [:]
+    /// Words whose judgment going back undid (see `RecitationTracker.withdrawn`).
+    var withdrawn: Set<Int> { tracker.withdrawn }
 
     /// Reveal the next word after this long without progress. Off (nil):
     /// nothing is revealed unasked, only by a tap (UX.md "Stuck").

@@ -72,9 +72,10 @@ struct MatchTuning {
     /// Consecutive unmatched final tokens before a locked tracker counts as lost.
     var lostAfterUnmatched = 4
     /// Words in a row that must match text already passed (from a bayt back)
-    /// before the reciter is taken to have gone back: as many as it takes to
-    /// call the word due wrong, so neither decides on less evidence.
-    var goBackAfter: Int { lostAfterUnmatched }
+    /// before the reciter is taken to have gone back. Fewer than
+    /// `lostAfterUnmatched`, so a short repeat is followed before the word due
+    /// is called wrong; one that isn't is undone by `goBack`.
+    var goBackAfter = 3
     /// Words shorter than this (e.g. و ف ب ل في من) must match exactly.
     var exactBelowLength = 3
     /// While lost, a single matching word re-locks only if it is at least this
@@ -140,6 +141,10 @@ final class RecitationTracker {
         committed.added.merging(stableAdded) { kept, _ in kept }.filter { !dismissedAdded.contains($0.key) }
     }
 
+    /// Words whose judgment going back undid (finalized results only), so a
+    /// flag set for one can be taken off again.
+    var withdrawn: Set<Int> { committed.withdrawn }
+
     /// "Not a mistake" on added words.
     func dismissAdded(after index: Int) { dismissedAdded.insert(index) }
 
@@ -155,10 +160,18 @@ final class RecitationTracker {
         /// Final tokens heard since the last match, as (raw, normalized).
         var pending: [(raw: String, norm: String)] = []
         var unmatchedRun = 0
-        /// The last few unmatched tokens, kept even once lost, for the side
-        /// tracker (`goBack`): a wrong word then going back loses the place
-        /// before the repeated words are all heard.
-        var recentUnmatched: [(raw: String, norm: String)] = []
+        /// The tokens heard since the last match, kept even once lost, for the
+        /// side tracker (`goBack`): a wrong word then going back loses the
+        /// place before the repeated words are all heard. With where the
+        /// cursor and `reach` were when they began.
+        var sinceMatch: [(raw: String, norm: String)] = []
+        var runFrom: (cursor: Int, reach: Int)?
+        /// The furthest the cursor has been: the words before it were judged
+        /// on the reciter's first try, and a repeat doesn't change them.
+        var reach = 0
+        /// Words whose judgment was undone, once going back showed the words
+        /// judged against them were the start of a repeat.
+        var withdrawn: Set<Int> = []
         var lastRight: Int?
         /// Lost only because of a pause (not because what was heard didn't fit):
         /// the place is still known, so nearby matches are judged as if locked.
@@ -269,6 +282,9 @@ final class RecitationTracker {
         committed.lostBySilence = false
         committed.pending = []
         committed.unmatchedRun = 0
+        committed.sinceMatch = []
+        committed.runFrom = nil
+        committed.reach = max(committed.reach, committed.cursor)
         current = committed                // any volatile guess is superseded
         clearTentative()
         lastProgress = time
@@ -429,26 +445,27 @@ final class RecitationTracker {
                 if let from = joinedFrom {
                     noteAdded(before: from, in: &s)
                     for w in from..<found.hit where !words[w].isEmpty {
-                        s.outcomes[w] = Self.saidRight(after: s.outcomes[w], exact: found.exact)
-                        s.heard[w] = nil
+                        judge(w, Self.saidRight(after: s.outcomes[w], exact: found.exact), heard: nil, in: &s)
                     }
                 } else {
                     if !found.uncertainGap { noteAdded(before: found.hit, in: &s) }
                     judgeGap(upTo: found.hit, in: &s, lost: found.uncertainGap, glued: remnant)
                 }
-                s.outcomes[found.hit] = Self.saidRight(after: s.outcomes[found.hit], exact: found.exact)
-                s.heard[found.hit] = found.exact || joinedFrom != nil ? nil : found.heard
+                judge(found.hit, Self.saidRight(after: s.outcomes[found.hit], exact: found.exact),
+                      heard: found.exact || joinedFrom != nil ? nil : found.heard, in: &s)
                 s.cursor = Self.firstNonEmpty(from: found.hit + 1, in: words)
                 s.lastRight = found.hit
                 s.lock = .locked
                 s.lostBySilence = false
                 s.pending = []
                 s.unmatchedRun = 0
-                s.recentUnmatched = []
+                s.sinceMatch = []
+                s.runFrom = nil
             } else if s.lock != .idle {
                 s.pending.append(token)
                 s.unmatchedRun += 1
-                s.recentUnmatched = Array((s.recentUnmatched + [token]).suffix(tuning.goBackAfter))
+                if s.sinceMatch.isEmpty { s.runFrom = (s.cursor, s.reach) }
+                s.sinceMatch = Array((s.sinceMatch + [token]).suffix(Self.sinceMatchLimit))
                 // The side tracker first, so going back isn't also the word
                 // due called wrong.
                 if goBack(in: &s) {
@@ -462,8 +479,7 @@ final class RecitationTracker {
                         // red at once with what was, and stays red if the
                         // reciter then says it after all, as in Tarteel.
                         let heard = s.pending.map(\.raw).joined(separator: " ")
-                        s.outcomes[s.cursor] = .wrong(heard: heard)
-                        s.heard[s.cursor] = heard
+                        judge(s.cursor, .wrong(heard: heard), heard: heard, in: &s)
                         s.cursor = Self.firstNonEmpty(from: s.cursor + 1, in: words)
                     }
                     s.lock = .lost
@@ -471,34 +487,42 @@ final class RecitationTracker {
                     s.pending = []   // can't pair these with a slot once lost
                 }
             }
+            s.reach = max(s.reach, s.cursor)
             i += 1
         }
     }
 
+    /// Tokens kept since the last match: enough for what was said in place
+    /// of the word due, without growing while lost in another poem.
+    private static let sinceMatchLimit = 24
+
+    /// Judge word `w`. The first try counts: once judged, a word changes only
+    /// from a mistake to fixed (said right on going back), or from not heard.
+    private func judge(_ w: Int, _ outcome: WordOutcome, heard: String?, in s: inout State) {
+        if let old = s.outcomes[w], old != .unheard, !(old.isMistake && outcome.isFixed) { return }
+        s.outcomes[w] = outcome
+        s.heard[w] = heard
+    }
+
     /// The side tracker: the last `goBackAfter` unmatched tokens are words
     /// already passed, in order, from up to a bayt back. The reciter went back
-    /// to say them again: the place moves there (nearest match first) without
-    /// forgetting earlier judgments, and a mistake now said right is `.fixed`.
+    /// to say them again: the place moves there (nearest match first). Words
+    /// already judged keep their judgment (`judge`): only a mistake now said
+    /// right changes, to `.fixed`.
     private func goBack(in s: inout State) -> Bool {
         let n = tuning.goBackAfter
-        guard s.recentUnmatched.count >= n else { return false }
-        let said = s.recentUnmatched.suffix(n)
+        guard s.sinceMatch.count >= n else { return false }
+        let said = s.sinceMatch.suffix(n)
         let passed = (backLimit(from: s)..<min(s.cursor, words.count)).filter { !words[$0].isEmpty }
         guard passed.count >= n else { return false }
         for start in stride(from: passed.count - n, through: 0, by: -1) {
             let run = passed[start..<start + n]
             let exact = zip(said, run).map { matches($0.norm, at: $1) }
             guard exact.allSatisfy({ $0 != nil }) else { continue }
-            // A word called wrong on the way (the first words of going back
-            // heard as what was said for it) keeps only what was said for it.
-            for w in passed {
-                guard case .wrong(let heard)? = s.outcomes[w] else { continue }
-                let trimmed = Self.dropping(said.map(\.raw), from: heard)
-                s.outcomes[w] = .wrong(heard: trimmed); s.heard[w] = trimmed
-            }
+            undoRepeatStart(wordsBefore: start, in: &s)
             for ((token, w), e) in zip(zip(said, run), exact) {
-                s.outcomes[w] = Self.saidRight(after: s.outcomes[w], exact: e == true)
-                s.heard[w] = e == true ? nil : token.raw
+                judge(w, Self.saidRight(after: s.outcomes[w], exact: e == true),
+                      heard: e == true ? nil : token.raw, in: &s)
             }
             s.cursor = Self.firstNonEmpty(from: run.last! + 1, in: words)
             s.lastRight = run.last!
@@ -506,10 +530,36 @@ final class RecitationTracker {
             s.lostBySilence = false
             s.pending = []
             s.unmatchedRun = 0
-            s.recentUnmatched = []
+            s.sinceMatch = []
+            s.runFrom = nil
             return true
         }
         return false
+    }
+
+    /// Going back is only clear a few words in, and by then those words may
+    /// have been judged against the text due. Undo that: each token just
+    /// before the repeated run is taken as the repeat's start (one per word
+    /// before the run, however heard), and only what was said before those
+    /// counts against the word due.
+    private func undoRepeatStart(wordsBefore: Int, in s: inout State) {
+        guard let from = s.runFrom else { return }
+        // Past `from.reach`, nothing was judged before this run began.
+        for w in from.reach..<max(from.reach, s.cursor) where s.outcomes[w] != nil {
+            s.outcomes[w] = nil
+            s.heard[w] = nil
+            s.withdrawn.insert(w)
+        }
+        s.reach = from.reach
+        let before = s.sinceMatch.dropLast(tuning.goBackAfter)
+        let instead = before.dropLast(min(before.count, wordsBefore))
+        let due = from.cursor
+        guard !instead.isEmpty, due < words.count, s.outcomes[due] == nil else { return }
+        let heard = instead.map(\.raw).joined(separator: " ")
+        s.outcomes[due] = .wrong(heard: heard)
+        s.heard[due] = heard
+        s.withdrawn.remove(due)
+        s.reach = max(s.reach, Self.firstNonEmpty(from: due + 1, in: words))
     }
 
     /// How far back the side tracker looks: the start of the bayt before the
@@ -519,17 +569,6 @@ final class RecitationTracker {
         let at = bayts[min(max(s.anchor, s.cursor - 1), bayts.count - 1)]
         let start = baytStart[at - 1] ?? baytStart[at] ?? s.anchor
         return max(s.anchor, start)
-    }
-
-    /// `heard` without a trailing run of `said`'s first tokens.
-    private static func dropping(_ said: [String], from heard: String) -> String {
-        var tokens = heard.split(separator: " ").map(String.init)
-        for k in stride(from: min(said.count, tokens.count - 1), through: 1, by: -1)
-            where Array(tokens.suffix(k)) == Array(said.prefix(k)) {
-            tokens.removeLast(k)
-            break
-        }
-        return tokens.joined(separator: " ")
     }
 
     /// A word said right: correct (or near), or fixed if it was a mistake.
@@ -546,8 +585,9 @@ final class RecitationTracker {
     /// on top of the text: added after the word before. A repeat of the last
     /// few words (the reciter going back over them) isn't, nor a stray letter
     /// or fragment: under three letters, only a whole short word (في) counts.
+    /// Nor is anything said while repeating text already judged (`reach`).
     private func noteAdded(before hit: Int, in s: inout State) {
-        guard !s.pending.isEmpty, (s.cursor..<hit).allSatisfy({ words[$0].isEmpty }),
+        guard !s.pending.isEmpty, hit >= s.reach, (s.cursor..<hit).allSatisfy({ words[$0].isEmpty }),
               let before = (s.anchor..<hit).last(where: { !words[$0].isEmpty }) else { return }
         let recent = (max(s.anchor, before - 2)...hit).map { words[$0] }.filter { !$0.isEmpty }
         let extra = s.pending.filter { token in recent.allSatisfy { isMatch(token.norm, $0) == nil } }
@@ -564,7 +604,7 @@ final class RecitationTracker {
         let gap = (s.cursor..<hit).filter { !words[$0].isEmpty }
         guard !gap.isEmpty else { return }   // tokens before an in-place match are extra words
         if lost {
-            for w in gap { s.outcomes[w] = .unheard; s.heard[w] = nil }
+            for w in gap { judge(w, .unheard, heard: nil, in: &s) }
             return
         }
         // One token short, the last ending in the last word whole (عفو رب
@@ -588,34 +628,32 @@ final class RecitationTracker {
         }
         for (k, w) in gap.enumerated() {
             if let glued, k > glued {
-                s.outcomes[w] = Self.saidRight(after: s.outcomes[w], exact: true); s.heard[w] = nil
+                judge(w, Self.saidRight(after: s.outcomes[w], exact: true), heard: nil, in: &s)
                 continue
             }
             if k == glued {
                 let remnant = pending[k].norm
-                s.outcomes[w] = Self.saidRight(after: s.outcomes[w], exact: remnant == words[w])
-                s.heard[w] = remnant == words[w] ? nil : remnant
+                judge(w, Self.saidRight(after: s.outcomes[w], exact: remnant == words[w]),
+                      heard: remnant == words[w] ? nil : remnant, in: &s)
                 continue
             }
             guard k < pending.count else {
                 // A lone letter (a prefix written apart) is hard to hear and
                 // easily dropped by the recognizer: check it, don't call it wrong.
-                s.outcomes[w] = words[w].count == 1 ? .unsure : .skipped
-                s.heard[w] = nil
+                judge(w, words[w].count == 1 ? .unsure : .skipped, heard: nil, in: &s)
                 continue
             }
             // Any extra heard tokens beyond the gap belong to its last slot.
             let heard = k == gap.count - 1 ? pending[k...] : pending[k...k]
             if heard.count == 1, spelled(heard[heard.startIndex].norm, at: w) {
-                s.outcomes[w] = Self.saidRight(after: s.outcomes[w], exact: true); s.heard[w] = nil
+                judge(w, Self.saidRight(after: s.outcomes[w], exact: true), heard: nil, in: &s)
                 continue
             }
             let rawHeard = heard.map(\.raw).joined(separator: " ")
             let near = heard.contains {
                 levenshtein($0.norm, words[w]) <= tuning.nearMissThreshold($0.norm, words[w])
             }
-            s.outcomes[w] = near ? .unsure : .wrong(heard: rawHeard)
-            s.heard[w] = rawHeard
+            judge(w, near ? .unsure : .wrong(heard: rawHeard), heard: rawHeard, in: &s)
         }
     }
 

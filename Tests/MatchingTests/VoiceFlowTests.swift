@@ -178,6 +178,34 @@ import Foundation
         #expect(voice.reveal?.isCurrent(bayt: 2, half: .sadr, wordIndex: 1) == true)
     }
 
+    // الحمد is called wrong for the start of a repeat (راجي misheard), in one
+    // result; the next shows it was a repeat: the red and its flag go, even
+    // though the sitting stops before الحمد is said again.
+    @Test func aMistakeUndoneByARepeatLosesItsFlag() async {
+        let store = FlagStore.inMemory()
+        let voice = VoiceController()
+        UserDefaults.standard.set("يقول راجي عفو رب قادر محمد|يقول ماجد عفو رب|قادر محمد",
+                                  forKey: "debugRecite")
+        defer { UserDefaults.standard.removeObject(forKey: "debugRecite") }
+        voice.start(matn: matn(), fromPage: 1, flags: store)
+        await settle()
+        #expect(store.count(for: "t") == 0)
+        #expect(voice.mistakeCount == 0)
+    }
+
+    @Test func aFlagFromBeforeTheSittingIsKept() async {
+        let store = FlagStore.inMemory()
+        let hamd = FlagKey(bayt: 2, half: .ajuz, wordIndex: 0)
+        store.setFlag(true, matnID: "t", hamd)
+        let voice = VoiceController()
+        UserDefaults.standard.set("يقول راجي عفو رب قادر محمد|يقول ماجد عفو رب|قادر محمد",
+                                  forKey: "debugRecite")
+        defer { UserDefaults.standard.removeObject(forKey: "debugRecite") }
+        voice.start(matn: matn(), fromPage: 1, flags: store)
+        await settle()
+        #expect(store.isFlagged("t", hamd))
+    }
+
     @Test func voiceFailureFallsBackToTapKeepingTheReason() async {
         let voice = VoiceController()
         UserDefaults.standard.set("mic", forKey: "debugVoiceFail")

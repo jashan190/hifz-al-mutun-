@@ -121,7 +121,9 @@ struct MistakeCard: View {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Text(m.fixed ? (m.heard == nil ? "Fixed" : "Fixed · you first said")
                                  : m.added ? "You added" : m.heard == nil ? "Skipped" : "You said")
-                                .font(.caption).foregroundStyle(m.fixed ? Theme.accent : Theme.error.opacity(0.85))
+                                .font(.caption).foregroundStyle(m.fixed ? Theme.ink : Theme.error.opacity(0.85))
+                                .padding(.horizontal, m.fixed ? 4 : 0)
+                                .background(m.fixed ? Theme.fixedHighlight : .clear, in: .rect(cornerRadius: 3))
                             if let heard = m.heard {
                                 Text(heard).font(PageFont.font(size: 24))
                                     .foregroundStyle(m.fixed ? Theme.ink.opacity(0.7) : Theme.error)

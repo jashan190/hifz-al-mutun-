@@ -57,6 +57,7 @@ final class VoiceController: ObservableObject {
     private var matnID: String?
     private var flags: FlagStore?
     private var applied: [Int: WordOutcome] = [:]   // outcomes already synced to flags
+    private var flaggedHere: Set<Int> = []          // words this sitting flagged (not flagged before)
     private var cancellables: Set<AnyCancellable> = []
 
     var hasSession: Bool { session != nil }
@@ -179,6 +180,7 @@ final class VoiceController: ObservableObject {
         session = nil
         index = nil
         applied = [:]
+        flaggedHere = []
         cancellables.removeAll()
         lockState = .idle
         reveal = nil
@@ -242,17 +244,25 @@ final class VoiceController: ObservableObject {
     // MARK: - Flags
 
     /// Mistakes and revealed words gain a flag; a flagged word recited
-    /// correctly (or dismissed as "Not a mistake") loses it.
+    /// correctly (or dismissed as "Not a mistake") loses it, as does a
+    /// mistake going back undid, if this sitting flagged it.
     private func syncFlags(_ outcomes: [Int: WordOutcome]) {
         guard let flags, let index, let matnID else { return }
-        for (i, outcome) in outcomes where applied[i] != outcome {
+        func key(_ i: Int) -> FlagKey {
             let ref = index.refs[i]
-            let key = FlagKey(bayt: ref.bayt, half: ref.half, wordIndex: ref.wordIndex)
+            return FlagKey(bayt: ref.bayt, half: ref.half, wordIndex: ref.wordIndex)
+        }
+        for (i, outcome) in outcomes where applied[i] != outcome {
             if outcome.flagsWord {
-                flags.setFlag(true, matnID: matnID, key)
+                if !flags.isFlagged(matnID, key(i)) { flaggedHere.insert(i) }
+                flags.setFlag(true, matnID: matnID, key(i))
             } else if outcome == .correct {
-                flags.setFlag(false, matnID: matnID, key)
+                flags.setFlag(false, matnID: matnID, key(i))
             }
+        }
+        for i in session?.withdrawn ?? [] where outcomes[i] == nil && flaggedHere.contains(i) {
+            flags.setFlag(false, matnID: matnID, key(i))
+            flaggedHere.remove(i)
         }
         applied = outcomes
     }

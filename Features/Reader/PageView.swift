@@ -274,7 +274,8 @@ private struct MemorizeHalf: View {
 // The highlight keeps a mistake distinct from words the book itself prints red.
 //  - unheard (jumped while re-finding the place): secondary ink
 //  - revealed (shown as help when stuck): secondary ink, and flagged
-//  - fixed (a mistake said right after going back): as correct, still flagged
+//  - fixed (a mistake said right after going back): on a bright yellow
+//    highlight, still flagged
 // A flagged word carries the flag underline in every state. The last word said
 // right (where the reciter is) has a soft green glow behind it.
 private struct MemorizeWord: View {
@@ -313,6 +314,11 @@ private struct MemorizeWord: View {
                 RoundedRectangle(cornerRadius: fontSize * 0.18, style: .continuous)
                     .fill(outcome == .unsure ? Theme.unsure.opacity(0.12)
                           : Theme.error.opacity(0.10))   // keeps error text ≥4.5:1
+                    .padding(.horizontal, -fontSize * 0.1)
+                    .padding(.vertical, fontSize * 0.12)
+            } else if outcome?.isFixed == true {
+                RoundedRectangle(cornerRadius: fontSize * 0.18, style: .continuous)
+                    .fill(Theme.fixedHighlight)
                     .padding(.horizontal, -fontSize * 0.1)
                     .padding(.vertical, fontSize * 0.12)
             } else if isCurrent {

@@ -51,6 +51,11 @@ enum Theme {
     static let errorEdge = Color.dynamic(light: 0x8E1B1B, dark: 0xC65454)
     // UX.md's light amber #B7860B is 3.1:1 on the page; darkened to 4.9:1.
     static let unsure = Color.dynamic(light: 0x8C6608, dark: 0xE0B341)
+    // A mistake said right on going back: a bright yellow highlighter behind
+    // ink text (yellow text would be unreadable on the page), set apart from
+    // unsure's gold letters.
+    static let fixed = Color.dynamic(light: 0xFFD60A, dark: 0xFFD60A)
+    static let fixedHighlight = fixed.opacity(0.45)
 
     // Chrome — the original Madinah-green "covers" (header/footer). Solid, the
     // green first chosen for the app; kept deep in dark mode so cream text reads.

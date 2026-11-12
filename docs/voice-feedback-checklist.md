@@ -12,10 +12,10 @@ Branch: `going-back`, rebased onto `main`.
 ## Feedback
 
 - [x] **1. The tracker follows going back.** If the reciter pauses and goes back, the place moves back with them. Checked on Tuhfa's real text with a 3-second pause.
-- [ ] **2. Repeating isn't a mistake.** Repeating the first part of a bayt must not show as a mistake under the second part. Deferred at the user's request: idgham comes first. Reproduced on real text:
-  - Words already said right turn red as skipped when the reciter resumes after a repeat.
-  - A repeat of 2 or 3 words from further back shows as added words.
-  - One misheard word in a repeat flags the next word as fixed, and the phone buzzes.
+- [x] **2. Repeating isn't a mistake.** Repeating the first part of a bayt must not show as a mistake under the second part. The first try counts: a repeat moves the place but never changes a judged word, except a mistake now said right, which becomes fixed (bright yellow highlight; unsure stays gold). A repeat is recognised after 3 words, down from 4. Checked on Tuhfa's real text with scripted repeats; replays unchanged. Each case from before, now:
+  - Words already said right stay right when the reciter resumes after a repeat.
+  - A repeat of 3 words from further back is a repeat, not added words. A 2-word repeat from further back still shows as added.
+  - A misheard word in a repeat isn't a mistake. The phone may still buzz once before the repeat is recognised.
 - [ ] **3. Live tracker always shown.** The highlight box stays on the reciter's current word and follows them, in both the poem and prose readers.
 - [x] **4. Idgham.** Tanween or noon sakina into ي ر م ل و ن is correct with and without idgham, whichever way Whisper spells it (`Core/Matching/Idgham.swift`). Tested with made-up spellings, not real audio. Needs a real recitation check on a device.
 - [ ] **5. Other voice recognition improvements.** Find what else is worth adding, add it, and list each one here.

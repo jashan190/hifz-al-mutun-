@@ -60,6 +60,7 @@ struct ProsePageView: View {
             guard let reveal else { return nil }
             switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j) {
             case .wrong, .skipped: return UIColor(Theme.error).withAlphaComponent(0.12)
+            case .fixed: return UIColor(Theme.fixedHighlight)
             default: return nil
             }
         }
