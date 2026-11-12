@@ -19,6 +19,7 @@ Branch: `going-back`, rebased onto `main`.
 - [ ] **3. Live tracker always shown.** The highlight box stays on the reciter's current word and follows them, in both the poem and prose readers.
 - [x] **4. Idgham.** Tanween or noon sakina into ي ر م ل و ن is correct with and without idgham, whichever way Whisper spells it (`Core/Matching/Idgham.swift`). Tested with made-up spellings, not real audio. Needs a real recitation check on a device.
 - [ ] **5. Other voice recognition improvements.** Find what else is worth adding, add it, and list each one here.
+  - Candidate (from CodeRabbit on #22): a vowel slip said right on a repeat stays a mistake instead of becoming fixed, because repeated words aren't checked for vowels again. It needs the vowel model, which crashes in the Simulator, so it has to be checked on a device.
 - [ ] **7. iPhone Duo (foldable).** Built, not yet checked on a Duo:
   - On the open inner screen held sideways, the reader shows two pages in fixed pairs (1–2, 3–4), like a book. Held upright, it shows one page.
   - Landscape only on the Duo, detected by its inner screen being regular in both directions.

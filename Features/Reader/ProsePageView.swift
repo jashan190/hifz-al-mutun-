@@ -46,7 +46,8 @@ struct ProsePageView: View {
         switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j) {
         case .wrong: return UIColor(Theme.error)            // said wrong (signal-red, not content-red)
         case .skipped, .unheard: return UIColor(Theme.ink.opacity(0.35))
-        default: return base                                // correct / revealed / shown
+        case .fixed: return UIColor(Theme.onFixed(Color(base)))
+        default: return base                               // correct / revealed / shown
         }
     }
     /// Unrevealed words draw their glyph in cream (invisible) but show a faint

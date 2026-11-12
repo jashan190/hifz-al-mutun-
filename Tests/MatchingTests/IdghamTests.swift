@@ -86,6 +86,31 @@ import Foundation
         #expect(t.lastRight == 1)
     }
 
+    @Test func aOneLetterSpellingNeedsTheNextWord() {
+        // م then كتابه, يقول not said: مِنْ isn't shown right on a lone letter.
+        let shown = ["سميته", "مِنْ", "يَقُولُ", "كِتَابَهُ"]
+        let words = shown.map(ArabicNormalize.normalize)
+        let t = RecitationTracker(words: words, idgham: Idgham.spellings(written: shown, words: words))
+        t.consume(.init(text: "سميته م كتابه", isFinal: true), at: 1)
+        #expect(t.outcomes[1] == .unsure)
+        #expect(t.outcomes[2] == .skipped)
+        #expect(t.outcomes[3] == .correct)
+    }
+
+    @Test func aMergedPairRefindsALostPlace() {
+        let shown = ["سميته", "بتحفه", "الاطفال", "مِنْ", "يَقُولُ", "كِتَابَهُ"]
+        let words = shown.map(ArabicNormalize.normalize)
+        let t = RecitationTracker(words: words, idgham: Idgham.spellings(written: shown, words: words))
+        t.consume(.init(text: "سميته شيء غريب جدا هنا", isFinal: true), at: 1)
+        #expect(t.lockState == .lost)
+        t.consume(.init(text: "ميقول", isFinal: true), at: 2)
+        #expect(t.lockState == .locked)
+        #expect(t.outcomes[2] == .unheard)
+        #expect(t.outcomes[3] == .correct)
+        #expect(t.outcomes[4] == .correct)
+        #expect(t.cursor == 5)
+    }
+
     @Test func wordsThatDontMergeArentLoosened() {
         // ب isn't an idgham letter, and قَالَ doesn't end in noon or tanween.
         let notBefore = outcomes(("صَغِيرًا", "بَعْدُ"), heard: ["صغير", "بعد"])

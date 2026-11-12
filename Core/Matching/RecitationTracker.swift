@@ -437,13 +437,21 @@ final class RecitationTracker {
                 // unmatched token and this one together.
                 s.pending.removeLast()
                 found = (hit, exact, false, last.raw + token.raw)
+            } else if s.lock == .lost, let pair = matchMergedPair(token.norm, in: wide) {
+                // A merged idgham pair (ميقول) is two words: evidence enough.
+                found = (pair.end, true, true, token.raw)
+                joinedFrom = pair.start
             } else if s.lock == .lost, let (hit, exact) = match(token.norm, in: wide),
                       resyncAccepted(hit, tokens: tokens, at: i) {
                 found = (hit, exact, true, token.raw)
             }
             if let found {
                 if let from = joinedFrom {
-                    noteAdded(before: from, in: &s)
+                    if found.uncertainGap {
+                        judgeGap(upTo: from, in: &s, lost: true)
+                    } else {
+                        noteAdded(before: from, in: &s)
+                    }
                     for w in from..<found.hit where !words[w].isEmpty {
                         judge(w, Self.saidRight(after: s.outcomes[w], exact: found.exact), heard: nil, in: &s)
                     }
@@ -645,8 +653,14 @@ final class RecitationTracker {
             }
             // Any extra heard tokens beyond the gap belong to its last slot.
             let heard = k == gap.count - 1 ? pending[k...] : pending[k...k]
-            if heard.count == 1, spelled(heard[heard.startIndex].norm, at: w) {
-                judge(w, Self.saidRight(after: s.outcomes[w], exact: true), heard: nil, in: &s)
+            if heard.count == 1, case let token = heard[heard.startIndex].norm, spelled(token, at: w) {
+                // A one-letter spelling (مِنْ as م) counts only with the next
+                // word heard after it; alone, it's as likely a stray letter.
+                let nextHeard = k == gap.count - 1
+                    || (k + 1 < pending.count && matches(pending[k + 1].norm, at: gap[k + 1]) != nil)
+                let outcome = token.count > 1 || nextHeard
+                    ? Self.saidRight(after: s.outcomes[w], exact: true) : .unsure
+                judge(w, outcome, heard: nil, in: &s)
                 continue
             }
             let rawHeard = heard.map(\.raw).joined(separator: " ")
@@ -697,6 +711,15 @@ final class RecitationTracker {
         let said = forms.flatMap { [$0 + words[next], $0 + String(letter) + words[next]] }
         if said.contains(token) { return (next, true) }
         return token.count >= 5 && said.contains { levenshtein(token, $0) <= 1 } ? (next, false) : nil
+    }
+
+    /// While lost: the token heard exactly as a merged idgham pair starting
+    /// anywhere in `range`.
+    private func matchMergedPair(_ token: String, in range: Range<Int>) -> (start: Int, end: Int)? {
+        for i in range where idgham[i] != nil {
+            if let merged = matchMerged(token, in: i..<range.upperBound), merged.exact { return (i, merged.end) }
+        }
+        return nil
     }
 
     /// First position in `range` the token matches, and whether exactly. A
