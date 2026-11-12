@@ -60,6 +60,16 @@ import Foundation
         #expect(t.outcomes[6] == .fixed(was: "كتاب"))
     }
 
+    @Test func aWrongWordJustBeforeARepeatIsStillAMistake() {
+        // كتاب for وصلي, then back to سامع: كتاب isn't close to عفو, so it
+        // isn't the repeat's start. Said right afterwards, وصلي is fixed.
+        let t = tracker()
+        say(t, "يقول راجي عفو سامع الحمد لله", "كتاب سامع الحمد لله")
+        #expect(t.outcomes[6] == .wrong(heard: "كتاب"))
+        say(t, "وصلي علي")
+        #expect(t.outcomes[6] == .fixed(was: "كتاب"))
+    }
+
     @Test func aMistakeStaysAMistakeIfTheRepeatGetsItWrongToo() {
         let t = tracker()
         say(t, "يقول راجي كتاب سامع الحمد لله", "يقول راجي قلم سامع الحمد لله")

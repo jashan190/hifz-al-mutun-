@@ -58,6 +58,17 @@ import Foundation
         #expect(r.tracker.cursor == 6)
     }
 
+    @Test func aNearPairThatReadsAsTheFirstWordDoesntPassTheNext() {
+        // محمدب: near محمدو (the pair) and near محمد alone. وَ wasn't heard.
+        let shown = ["سميته", "مُحَمَّدٍ", "وَ", "آلِهِ"]
+        let words = shown.map(ArabicNormalize.normalize)
+        let t = RecitationTracker(words: words, idgham: Idgham.spellings(written: shown, words: words))
+        t.consume(.init(text: "سميته محمدب", isFinal: true), at: 1)
+        #expect(t.outcomes[1] == .unsure)
+        #expect(t.outcomes[2] == nil)
+        #expect(t.cursor == 2)
+    }
+
     @Test func aWrongWordIsStillWrong() {
         let r = outcomes(("صَغِيرًا", "يَا"), heard: ["كتاب", "يا"])
         #expect(r.first == .wrong(heard: "كتاب"))

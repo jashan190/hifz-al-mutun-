@@ -527,7 +527,7 @@ final class RecitationTracker {
             let run = passed[start..<start + n]
             let exact = zip(said, run).map { matches($0.norm, at: $1) }
             guard exact.allSatisfy({ $0 != nil }) else { continue }
-            undoRepeatStart(wordsBefore: start, in: &s)
+            undoRepeatStart(wordsBefore: passed[..<start], in: &s)
             for ((token, w), e) in zip(zip(said, run), exact) {
                 judge(w, Self.saidRight(after: s.outcomes[w], exact: e == true),
                       heard: e == true ? nil : token.raw, in: &s)
@@ -547,10 +547,10 @@ final class RecitationTracker {
 
     /// Going back is only clear a few words in, and by then those words may
     /// have been judged against the text due. Undo that: each token just
-    /// before the repeated run is taken as the repeat's start (one per word
-    /// before the run, however heard), and only what was said before those
-    /// counts against the word due.
-    private func undoRepeatStart(wordsBefore: Int, in s: inout State) {
+    /// before the repeated run that is close to the word before it there
+    /// (ماجد for راجي) is taken as the repeat's start, and only what was said
+    /// before those (كتاب for وصلي) counts against the word due.
+    private func undoRepeatStart(wordsBefore: ArraySlice<Int>, in s: inout State) {
         guard let from = s.runFrom else { return }
         // Past `from.reach`, nothing was judged before this run began.
         for w in from.reach..<max(from.reach, s.cursor) where s.outcomes[w] != nil {
@@ -560,7 +560,13 @@ final class RecitationTracker {
         }
         s.reach = from.reach
         let before = s.sinceMatch.dropLast(tuning.goBackAfter)
-        let instead = before.dropLast(min(before.count, wordsBefore))
+        var instead = before
+        for w in wordsBefore.reversed() {
+            guard let token = instead.last, matches(token.norm, at: w) != nil
+                    || levenshtein(token.norm, words[w]) <= tuning.nearMissThreshold(token.norm, words[w])
+            else { break }
+            instead.removeLast()
+        }
         let due = from.cursor
         guard !instead.isEmpty, due < words.count, s.outcomes[due] == nil else { return }
         let heard = instead.map(\.raw).joined(separator: " ")
@@ -710,7 +716,10 @@ final class RecitationTracker {
               let letter = words[next].first else { return nil }
         let said = forms.flatMap { [$0 + words[next], $0 + String(letter) + words[next]] }
         if said.contains(token) { return (next, true) }
-        return token.count >= 5 && said.contains { levenshtein(token, $0) <= 1 } ? (next, false) : nil
+        // Near, it must not also read as the first word alone (محمدب is one
+        // letter from محمدو and from محمد): nothing then shows the next was said.
+        guard token.count >= 5, isMatch(token, words[first]) == nil else { return nil }
+        return said.contains { levenshtein(token, $0) <= 1 } ? (next, false) : nil
     }
 
     /// While lost: the token heard exactly as a merged idgham pair starting
