@@ -178,7 +178,11 @@ struct PageScreen: View {
             if d.string(forKey: "debugRecite") != nil || d.string(forKey: "debugVoiceFail") != nil
                 || d.bool(forKey: "debugListen") {
                 mode = .memorize
-                startVoice()
+                // Prose: wait for its pages, so the sitting knows the hadith.
+                Task {
+                    while matn.kind == .prose, prosePages.isEmpty { try? await Task.sleep(for: .milliseconds(100)) }
+                    startVoice()
+                }
             }
             // `-debugStopAfter 5` stops the sitting after 5 s (shows the summary).
             let stopAfter = d.double(forKey: "debugStopAfter")

@@ -16,7 +16,7 @@ Branch: `going-back`, rebased onto `main`.
   - Words already said right stay right when the reciter resumes after a repeat.
   - A repeat of 3 words from further back is a repeat, not added words. A 2-word repeat from further back still shows as added.
   - A misheard word in a repeat isn't a mistake. The phone may still buzz once before the repeat is recognised.
-- [ ] **3. Live tracker always shown.** The highlight box stays on the reciter's current word and follows them, in both the poem and prose readers.
+- [x] **3. Live tracker always shown.** The highlight marks the last word said right and follows the reciter, now in the prose reader too (a flat green tint; red and yellow win over it). Nothing shows before the first right word, and after a page turn the new page shows nothing until a word on it is right. Checked on a hadith page in light and dark.
 - [x] **4. Idgham.** Tanween or noon sakina into ي ر م ل و ن is correct with and without idgham, whichever way Whisper spells it (`Core/Matching/Idgham.swift`). Tested with made-up spellings, not real audio. Needs a real recitation check on a device.
 - [ ] **5. Other voice recognition improvements.** Find what else is worth adding, add it, and list each one here.
   - Candidate (from CodeRabbit on #22): a vowel slip said right on a repeat stays a mistake instead of becoming fixed, because repeated words aren't checked for vowels again. It needs the vowel model, which crashes in the Simulator, so it has to be checked on a device.

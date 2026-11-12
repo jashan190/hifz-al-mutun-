@@ -59,10 +59,14 @@ struct ProsePageView: View {
     private func wordBackground(_ j: Int) -> UIColor? {
         if memorizing {    // box the live mistakes
             guard let reveal else { return nil }
-            switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j) {
+            let w = fragment.bodyStart + j
+            switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: w) {
             case .wrong, .skipped: return UIColor(Theme.error).withAlphaComponent(0.12)
             case .fixed: return UIColor(Theme.fixedHighlight)
-            default: return nil
+            default:
+                // Where the reciter is: the last word said right, as the poem's glow.
+                return reveal.isCurrent(bayt: fragment.hadithNumber, half: .sadr, wordIndex: w)
+                    ? UIColor(Theme.accent).withAlphaComponent(0.15) : nil
             }
         }
         // read mode: box flagged words (the tapped one also gets a stroke outline).
