@@ -92,7 +92,7 @@ struct MistakeCard: View {
     private var wordText: AttributedString {
         var text = AttributedString(word)
         text.foregroundColor = Theme.ink
-        guard let m = mistake, let heard = m.heard, !m.added else { return text }
+        guard let m = mistake, let heard = m.heard, !m.added, !m.fixed else { return text }
         let scalars = word.unicodeScalars
         for r in LetterEmphasis.ranges(written: word, heard: heard) {
             let lo = scalars.index(scalars.startIndex, offsetBy: r.lowerBound)
@@ -119,10 +119,14 @@ struct MistakeCard: View {
                             Text(wordText).font(PageFont.font(size: 24))
                         }
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(m.added ? "You added" : m.heard == nil ? "Skipped" : "You said")
-                                .font(.caption).foregroundStyle(Theme.error.opacity(0.85))
+                            Text(m.fixed ? (m.heard == nil ? "Fixed" : "Fixed · you first said")
+                                 : m.added ? "You added" : m.heard == nil ? "Skipped" : "You said")
+                                .font(.caption).foregroundStyle(m.fixed ? Theme.onFixed(Theme.ink) : Theme.error.opacity(0.85))
+                                .padding(.horizontal, m.fixed ? 4 : 0)
+                                .background(m.fixed ? Theme.fixedHighlight : .clear, in: .rect(cornerRadius: 3))
                             if let heard = m.heard {
-                                Text(heard).font(PageFont.font(size: 24)).foregroundStyle(Theme.error)
+                                Text(heard).font(PageFont.font(size: 24))
+                                    .foregroundStyle(m.fixed ? Theme.ink.opacity(0.7) : Theme.error)
                             }
                         }
                         .lineLimit(1).minimumScaleFactor(0.6)
@@ -141,7 +145,8 @@ struct MistakeCard: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(mistake.map {
-            $0.added ? "\(location). After \(word), you added \($0.heard ?? "")."
+            $0.fixed ? "\(location). \(word), fixed." + ($0.heard.map { " You first said \($0)." } ?? "")
+                     : $0.added ? "\(location). After \(word), you added \($0.heard ?? "")."
                      : "\(location). Should be \(word)." + ($0.heard.map { " You said \($0)." } ?? " You skipped it.")
         } ?? "\(location). Flagged word \(word).")
         .accessibilityHint("Shows this word on the page")

@@ -46,7 +46,8 @@ struct ProsePageView: View {
         switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j) {
         case .wrong: return UIColor(Theme.error)            // said wrong (signal-red, not content-red)
         case .skipped, .unheard: return UIColor(Theme.ink.opacity(0.35))
-        default: return base                                // correct / revealed / shown
+        case .fixed: return UIColor(Theme.onFixed(Color(base)))
+        default: return base                               // correct / revealed / shown
         }
     }
     /// Unrevealed words draw their glyph in cream (invisible) but show a faint
@@ -58,9 +59,14 @@ struct ProsePageView: View {
     private func wordBackground(_ j: Int) -> UIColor? {
         if memorizing {    // box the live mistakes
             guard let reveal else { return nil }
-            switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j) {
+            let w = fragment.bodyStart + j
+            switch reveal.outcome(bayt: fragment.hadithNumber, half: .sadr, wordIndex: w) {
             case .wrong, .skipped: return UIColor(Theme.error).withAlphaComponent(0.12)
-            default: return nil
+            case .fixed: return UIColor(Theme.fixedHighlight)
+            default:
+                // Where the reciter is: the last word said right, as the poem's glow.
+                return reveal.isCurrent(bayt: fragment.hadithNumber, half: .sadr, wordIndex: w)
+                    ? UIColor(Theme.accent).withAlphaComponent(0.15) : nil
             }
         }
         // read mode: box flagged words (the tapped one also gets a stroke outline).

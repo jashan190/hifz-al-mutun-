@@ -22,6 +22,13 @@ import Testing
         #expect(r.revealedWords(bayt: 1, half: .ajuz) == 1)  // only "c"
     }
 
+    @Test func theLastWordSaidRightIsCurrent() {
+        let r = RevealState(index: index(), cursor: 3, lastRight: 2)
+        #expect(r.isCurrent(bayt: 1, half: .ajuz, wordIndex: 0))
+        #expect(!r.isCurrent(bayt: 1, half: .sadr, wordIndex: 1))
+        #expect(!RevealState(index: index(), cursor: 0).isCurrent(bayt: 1, half: .sadr, wordIndex: 0))
+    }
+
     @Test func zeroCursorRevealsNothing() {
         let r = RevealState(index: index(), cursor: 0)
         #expect(r.revealedWords(bayt: 1, half: .sadr) == 0)

@@ -43,6 +43,8 @@ final class RecitationSession: ObservableObject {
     @Published private(set) var outcomes: [Int: WordOutcome] = [:]
     /// Words said that the text doesn't have, by the word they followed.
     @Published private(set) var added: [Int: String] = [:]
+    /// Words whose judgment going back undid (see `RecitationTracker.withdrawn`).
+    var withdrawn: Set<Int> { tracker.withdrawn }
 
     /// Reveal the next word after this long without progress. Off (nil):
     /// nothing is revealed unasked, only by a tap (UX.md "Stuck").
@@ -58,6 +60,7 @@ final class RecitationSession: ObservableObject {
     private var anchor: Int
     private var shown: [Int: WordOutcome] = [:]
     private var heard: [Int: String] = [:]
+    private var lastRight: Int?
     /// Set by stop(): late events from the source (a download still finishing,
     /// a "listening" that crossed paths with the stop) must not revive it.
     private var stopped = false
@@ -81,7 +84,8 @@ final class RecitationSession: ObservableObject {
 
     init(index: RecitationIndex, source: SpeechSource, startWordIndex: Int) {
         let layout = RevealLayout(index: index)
-        let tracker = RecitationTracker(words: index.normalizedWords, startIndex: startWordIndex)
+        let tracker = RecitationTracker(words: index.normalizedWords, startIndex: startWordIndex,
+                                        bayts: index.refs.map(\.bayt), idgham: index.idgham)
         self.layout = layout
         self.source = source
         self.tracker = tracker
@@ -248,7 +252,9 @@ final class RecitationSession: ObservableObject {
         let nowAdded = tracker.added
         guard tracker.cursor != cursor || tracker.anchor != anchor || latest != outcomes
                 || nowShown != shown || nowHeard != heard || nowAdded != added
+                || tracker.lastRight != lastRight
         else { return }
+        lastRight = tracker.lastRight
         cursor = tracker.cursor
         anchor = tracker.anchor
         if latest != outcomes { outcomes = latest }
@@ -256,7 +262,7 @@ final class RecitationSession: ObservableObject {
         heard = nowHeard
         if nowAdded != added { added = nowAdded }
         reveal = RevealState(layout: layout, anchor: anchor, cursor: cursor, outcomes: nowShown, heard: nowHeard,
-                             added: nowAdded)
+                             added: nowAdded, lastRight: lastRight)
         let mistakes = nowShown.values.filter(\.isMistake).count + nowAdded.count
         if mistakes != mistakeCount { mistakeCount = mistakes }
     }

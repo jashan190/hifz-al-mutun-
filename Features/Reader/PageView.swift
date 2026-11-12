@@ -216,6 +216,7 @@ private struct MemorizeHalf: View {
     var heard: (Int) -> String? = { _ in nil }
     var added: (Int) -> String? = { _ in nil }
     var flagged: (Int) -> Bool = { _ in false }
+    var isCurrent: (Int) -> Bool = { _ in false }
     var onDismiss: (Int) -> Void = { _ in }
     var onDismissAdded: (Int) -> Void = { _ in }
     var onToggleFlag: (Int) -> Void = { _ in }
@@ -231,7 +232,8 @@ private struct MemorizeHalf: View {
             HStack(spacing: PageFont.width(" ", size: fontSize)) {
                 ForEach(0..<revealed, id: \.self) { k in
                     MemorizeWord(segments: HemistichReveal.span(half, words: k..<(k + 1)),
-                                 outcome: outcome(k), heard: heard(k), flagged: flagged(k), fontSize: fontSize,
+                                 outcome: outcome(k), heard: heard(k), flagged: flagged(k), isCurrent: isCurrent(k),
+                                 fontSize: fontSize,
                                  onDismiss: { onDismiss(k) }, onToggleFlag: { onToggleFlag(k) })
                     if let words = added(k) {
                         AddedMark(words: words, fontSize: fontSize) { onDismissAdded(k) }
@@ -272,7 +274,10 @@ private struct MemorizeHalf: View {
 // The highlight keeps a mistake distinct from words the book itself prints red.
 //  - unheard (jumped while re-finding the place): secondary ink
 //  - revealed (shown as help when stuck): secondary ink, and flagged
-// A flagged word carries the flag underline in every state.
+//  - fixed (a mistake said right after going back): on a bright yellow
+//    highlight, still flagged
+// A flagged word carries the flag underline in every state. The last word said
+// right (where the reciter is) has a soft green glow behind it.
 private struct MemorizeWord: View {
     let segments: [Segment]
     let outcome: WordOutcome?
@@ -280,8 +285,10 @@ private struct MemorizeWord: View {
     /// are coloured. Without it the whole word is.
     var heard: String? = nil
     var flagged = false
+    var isCurrent = false
     let fontSize: CGFloat
     var onDismiss: () -> Void = {}
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var onToggleFlag: () -> Void = {}
 
     var body: some View {
@@ -309,8 +316,22 @@ private struct MemorizeWord: View {
                           : Theme.error.opacity(0.10))   // keeps error text ≥4.5:1
                     .padding(.horizontal, -fontSize * 0.1)
                     .padding(.vertical, fontSize * 0.12)
+            } else if outcome?.isFixed == true {
+                RoundedRectangle(cornerRadius: fontSize * 0.18, style: .continuous)
+                    .fill(Theme.fixedHighlight)
+                    .padding(.horizontal, -fontSize * 0.1)
+                    .padding(.vertical, fontSize * 0.12)
+            } else if isCurrent {
+                // A mistake's own background wins over the glow.
+                RoundedRectangle(cornerRadius: fontSize * 0.3, style: .continuous)
+                    .fill(Theme.accent.opacity(0.15))
+                    .padding(.horizontal, -fontSize * 0.18)
+                    .padding(.vertical, fontSize * 0.04)
+                    .blur(radius: fontSize * 0.08)
+                    .transition(.opacity)
             }
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: isCurrent)
         .overlay {
             if outcome == .skipped {
                 Rectangle().fill(Theme.error)
@@ -340,6 +361,7 @@ private struct MemorizeWord: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(plain)
         .accessibilityValue(accessibilityNote)
+        .accessibilityAddTraits(accessibilityTraits)
     }
 
     /// The letters to colour as the mistake, when what was heard is known
@@ -358,6 +380,7 @@ private struct MemorizeWord: View {
     private func tint(_ color: SegmentColor) -> Color {
         switch outcome {
         case .none, .correct?, .shown?: return inkColor(color)
+        case .fixed?: return Theme.onFixed(inkColor(color))
         case .unsure?: return Theme.unsure
         case .wrong?, .skipped?: return Theme.error
         case .unheard?, .revealed?: return Theme.inkSecondary
@@ -372,7 +395,12 @@ private struct MemorizeWord: View {
         case .skipped?: return "skipped"
         case .unheard?: return "not heard"
         case .revealed?: return "revealed"
+        case .fixed?: return "fixed"
         }
+    }
+
+    private var accessibilityTraits: AccessibilityTraits {
+        isCurrent ? .isSelected : []
     }
 }
 
@@ -543,6 +571,7 @@ private struct BaytRow: View {
                 heard: { reveal?.heard(bayt: bayt.number, half: which, wordIndex: $0) },
                 added: { reveal?.added(bayt: bayt.number, half: which, wordIndex: $0) },
                 flagged: { flagged(which, $0) },
+                isCurrent: { reveal?.isCurrent(bayt: bayt.number, half: which, wordIndex: $0) ?? false },
                 onDismiss: { actions.dismissMistake(bayt.number, which, $0) },
                 onDismissAdded: { actions.dismissAdded(bayt.number, which, $0) },
                 onToggleFlag: { k in
@@ -590,6 +619,15 @@ private let previewPage = Matn.preview.pages.first ?? MatnPage(page: 1, items: [
     let idx = RecitationIndex(matn: matn)
     return PageView(matn: matn, pageModel: matn.pages.first ?? MatnPage(page: 1, items: []), mode: .memorize,
                     reveal: RevealState(index: idx, cursor: 5, outcomes: [2: .unsure, 3: .wrong(heard: "كلمة"), 4: .skipped]))
+        .environmentObject(FlagStore.inMemory())
+}
+
+#Preview("Memorize — where the reciter is") {
+    let matn = Matn.preview
+    let idx = RecitationIndex(matn: matn)
+    return PageView(matn: matn, pageModel: matn.pages.first ?? MatnPage(page: 1, items: []), mode: .memorize,
+                    reveal: RevealState(index: idx, cursor: 6, outcomes: [0: .correct, 1: .correct, 2: .correct,
+                                        3: .wrong(heard: "كلمة"), 4: .correct, 5: .correct], lastRight: 5))
         .environmentObject(FlagStore.inMemory())
 }
 #endif
