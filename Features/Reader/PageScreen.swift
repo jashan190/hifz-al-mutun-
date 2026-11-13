@@ -90,12 +90,14 @@ struct PageScreen: View {
         // top bar in the camera/status strip; the side-rail layouts keep just a
         // quiet chapter running head here.
         .safeAreaInset(edge: .top, spacing: 0) {
-            if barsVisible {
-                if currentLayout == .standard { topBar }
-                else if currentLayout.usesTopBar {
-                    // A strip as thick as the landscape rail's width, below the status.
-                    readerChrome(vertical: false, width: max(ReaderChrome.railWidth, topInset))
-                }
+            if barsVisible && currentLayout == .standard { topBar }
+        }
+        // Upright inner screen: the bar IS the top camera/status strip — green runs
+        // to the top edge, the buttons sit in it beside the time/wifi, no excess.
+        .overlay(alignment: .top) {
+            if barsVisible && currentLayout.usesTopBar {
+                readerChrome(vertical: false, width: topInset)
+                    .ignoresSafeArea(edges: .top)
             }
         }
         // Bottom bar: only regular devices keep a footer.
