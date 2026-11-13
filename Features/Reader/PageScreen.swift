@@ -212,12 +212,6 @@ struct PageScreen: View {
         )
     }
 
-    /// The hadith number shown on the current page (prose), else nil.
-    private var currentHadith: Int? {
-        displayPages.first { $0.page == currentPage }?
-            .items.compactMap { if case .hadith(let f) = $0 { return f.hadithNumber } else { return nil } }.first
-    }
-
     /// The runtime prose page that holds this hadith's `wordInBody`, or nil.
     private func prosePage(hadith: Int, wordInBody: Int) -> Int? {
         ProsePaginator.page(holding: hadith, wordInBody: wordInBody, in: prosePages)
@@ -283,6 +277,7 @@ struct PageScreen: View {
         // Taken now, not before the await, in case they turned the page meanwhile.
         let place = ProsePaginator.place(onPage: currentPage, in: prosePages)
         prosePages = result.pages
+        voice.prosePages = result.pages
         proseBabs = hadiths.map {
             Bab(id: "h\($0.number)", title: $0.title, startPage: result.firstPageOf[$0.number] ?? 1)
         }
@@ -332,8 +327,7 @@ struct PageScreen: View {
     }
 
     private func startVoice(bayt: Int? = nil) {
-        let seed = matn.kind == .prose ? currentHadith : bayt
-        voice.start(matn: matn, fromPage: currentPage, bayt: seed, flags: flagStore)
+        voice.start(matn: matn, fromPage: currentPage, bayt: bayt, flags: flagStore)
     }
 
     private func setMode(_ m: PageMode) {
@@ -407,7 +401,7 @@ struct PageScreen: View {
                     let n = flagStore.count(for: matn.id)
                     HStack(spacing: 5) {
                         Image(systemName: "flag.fill").font(.system(size: 12, weight: .semibold))
-                        Text(n > 0 ? "مراجعة · \(Numerals.eastern(n))" : "مراجعة")
+                        Text(n > 0 ? "مراجعة (\(Numerals.eastern(n)))" : "مراجعة")   // a "·" reads as ٠
                             .font(.footnote.weight(.semibold))
                     }
                     .foregroundStyle(n > 0 ? Theme.onChrome : Theme.onChromeDim)
