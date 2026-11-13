@@ -113,20 +113,18 @@ struct ReaderChrome: View {
     // MARK: - Horizontal top bar (Duo open, upright)
 
     private var bar: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 12) {
-                navGroup
-                Spacer(minLength: 0)
-                actionGroup
-                pageText
-            }
-            if mode == .memorize {
-                VoiceStatusLabel(voice: voice).transition(.opacity)
-            }
+        HStack(spacing: 12) {
+            navGroup
+            Spacer(minLength: 0)
+            actionGroup
+            pageText
         }
         .padding(.horizontal, Theme.margin)
-        .padding(.top, max(18, topInset + 10))
-        .padding(.bottom, 10)
+        // A slim strip the same thickness as the landscape rail's width, sitting
+        // just below the status bar / camera at the top.
+        .frame(height: Self.railWidth)
+        .frame(maxWidth: .infinity)
+        .padding(.top, topInset)
         .background { chrome.ignoresSafeArea(edges: .top) }
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.chromeHairline).frame(height: 1) }
         .transition(.move(edge: .top).combined(with: .opacity))

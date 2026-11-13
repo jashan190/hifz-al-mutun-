@@ -194,9 +194,13 @@ private struct LayeredText: View {
     let size: CGFloat
     var width: CGFloat? = nil          // fixed column (hemistich) or nil (heading)
     var defaultColor: Color = Theme.ink
+    // Which edge the half-line justifies toward: the sadr (right column) hugs the
+    // right, the ajuz (left column) the left — so the verse fills both outer edges
+    // evenly and sits centred, with any slack meeting in the middle.
+    var textAlignment: Alignment = .leading
 
     var body: some View {
-        ZStack(alignment: width == nil ? .center : .leading) {
+        ZStack(alignment: width == nil ? .center : textAlignment) {
             layer(rendered.base)
             // The shifted nuns are also nudged slightly left (positive x reads as
             // leftward under RTL) so they sit in the gap between words, clear of the
@@ -243,7 +247,7 @@ private struct LayeredText: View {
             // shrink range so such an outlier scales down to fit instead of
             // truncating with an ellipsis.
             text.lineLimit(1).minimumScaleFactor(0.75)
-                .frame(width: width, alignment: .leading)
+                .frame(width: width, alignment: textAlignment)
         } else {
             text.multilineTextAlignment(.center).frame(maxWidth: .infinity)
         }
@@ -595,7 +599,8 @@ private struct BaytRow: View {
                 ),
                 font: PageFont.font(size: fontSize),
                 size: fontSize,
-                width: columnWidth
+                width: columnWidth,
+                textAlignment: which == .ajuz ? .trailing : .leading
             )
             // Long-press: flag or unflag any word of this half-line. The page is
             // justified as one line, so the menu lists its words.
