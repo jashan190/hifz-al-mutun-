@@ -26,7 +26,7 @@ struct PageView: View {
 
     // Tighter margins/gaps give each hemistich more width, which — since the text
     // is sized to fill its column — makes the glyphs noticeably larger.
-    private let hPadding: CGFloat = 8
+    private let hPadding: CGFloat = 5
     // A small top margin so the verses fill the page rather than floating below a
     // wide gap.
     private let topMargin: CGFloat = 8
@@ -38,7 +38,7 @@ struct PageView: View {
     // smaller uniform size; clamping up here would make that line overflow and
     // break the "every line, one size" rule.
     private let minSize: CGFloat = 8
-    private let maxSize: CGFloat = 48
+    private let maxSize: CGFloat = 60
     // Width measurement underestimates SwiftUI's rendered width, so size and
     // justify to a slightly conservative target to avoid truncation.
     private let fitSafety: CGFloat = 0.99
@@ -62,7 +62,7 @@ struct PageView: View {
                                    2 * maxColumn + numberColumn + numberGap + midGap + 2 * hPadding)
             let columnWidth = max(
                 1,
-                (contentWidth - 2 * hPadding - 2 * (numberColumn + numberGap) - midGap) / 2
+                (contentWidth - 2 * hPadding - numberColumn - numberGap - midGap) / 2
             )
             let fontSize = pageFontSize(columnWidth: columnWidth)
             // A full page (its quota of bayts) distributes its rows to fill the
@@ -535,9 +535,6 @@ private struct BaytRow: View {
             hemistich(bayt.sadr, which: .sadr)
             Color.clear.frame(width: midGap)
             hemistich(bayt.ajuz, which: .ajuz)
-            // Mirror the number column on the left so the two hemistichs sit
-            // centred on the page instead of drifting toward the left edge.
-            Color.clear.frame(width: numberColumn + numberGap)
         }
         .accessibilityElement(children: .combine)   // VoiceOver: one element per bayt
         .accessibilityActions {

@@ -91,11 +91,11 @@ enum Theme {
     //  • rumuz — code letters, the separating wāw, reader names, emphasis: a deep
     //    carmine that reads as book-red ink, a touch deeper and cooler than the
     //    error red so the two don't look like the same colour.
-    static let quran = Color.dynamic(light: 0x123F5E, dark: 0x7FBEE4)
-    static let rumuz = Color.dynamic(light: 0x8E1822, dark: 0xF08287)
+    static let quran = Color.dynamic(light: 0x0C2E47, dark: 0x8AC6E8)
+    static let rumuz = Color.dynamic(light: 0x6E1019, dark: 0xF28A8E)
     //  • sabz — whole bayts the edition prints in green (e.g. the naming bayt):
     //    the Madinah green, matching the bab headings.
-    static let sabz = Color.dynamic(light: 0x164A2E, dark: 0x6ABF90)
+    static let sabz = Color.dynamic(light: 0x0F3A23, dark: 0x74C79A)
 
     // One accent for every subject now: Madinah green. Subjects are distinguished
     // by their icon (`Subject.icon`), not colour.

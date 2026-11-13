@@ -160,9 +160,9 @@ struct ReaderChrome: View {
             Spacer(minLength: 0)
             actionGroup
         }
-        // Generous top clearance so the controls never sit under the status
-        // bar / Dynamic Island at the top of the camera strip.
-        .padding(.top, max(54, topInset))
+        // Clear the status bar / Dynamic Island pill at the top of the camera
+        // strip, leaving a standard gap beneath it.
+        .padding(.top, max(80, topInset + 12))
         .padding(.bottom, 16)
         .frame(width: width)
         .frame(maxHeight: .infinity)
