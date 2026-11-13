@@ -37,13 +37,16 @@ struct PageScreen: View {
     private var displayPageCount: Int { displayPages.count }
     private var displayBabs: [Bab] { matn.kind == .prose ? proseBabs : matn.babs }
 
-    /// Two pages side by side (the open iPhone Duo on its side).
-    private func showsTwoPages(_ size: CGSize) -> Bool {
-        size.width > size.height
-            && BookSpread.isInnerScreen(phone: UIDevice.current.userInterfaceIdiom == .phone,
-                                        regularWidth: horizontalSizeClass == .regular,
-                                        regularHeight: verticalSizeClass == .regular)
+    /// How the reader lays out for the current device/fold/orientation.
+    private func layout(_ size: CGSize) -> ReaderLayout {
+        ReaderLayout.resolve(foldable: DuoDevice.isFoldable,
+                             regularWidth: horizontalSizeClass == .regular,
+                             regularHeight: verticalSizeClass == .regular,
+                             isLandscape: size.width > size.height)
     }
+
+    /// Two pages side by side (the open iPhone Duo on its side).
+    private func showsTwoPages(_ size: CGSize) -> Bool { layout(size).showsTwoPages }
 
     /// The spread on screen, as the pager's selection. Turning it moves to the
     /// spread's first page; the page itself stays put while it's in view, so
@@ -69,7 +72,11 @@ struct PageScreen: View {
       // Outer GeometryReader gives the screen size so prose can be paginated at
       // runtime; poems ignore it (behaviour unchanged).
       GeometryReader { geo in
-        let twoPages = showsTwoPages(geo.size)
+        let currentLayout = layout(geo.size)
+        let twoPages = currentLayout.showsTwoPages
+        // The camera/status reserved strip on the trailing (right) edge and top.
+        let leadingInset = geo.safeAreaInsets.leading
+        let topInset = geo.safeAreaInsets.top
         pager(twoPages: twoPages)
         .task(id: geo.size) {
             // Two pages share the width.
@@ -79,10 +86,50 @@ struct PageScreen: View {
         .onAppear { ReadingPosition.recordOpened(matn.id) }
         .environment(\.readerActions, actions)
         .background(Theme.cover.ignoresSafeArea())
-        .safeAreaInset(edge: .top, spacing: 0) { if barsVisible { topBar } }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if barsVisible { footer }
+        // Top: the full header on regular devices; the Duo held upright gets the
+        // top bar in the camera/status strip; the side-rail layouts keep just a
+        // quiet chapter running head here.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if barsVisible && currentLayout == .standard { topBar }
         }
+        // Upright inner screen: the bar IS the top camera/status strip — green runs
+        // to the top edge, the buttons sit in it beside the time/wifi, no excess.
+        .overlay(alignment: .top) {
+            if barsVisible && currentLayout.usesTopBar {
+                let info = islandInfo(geo, topInset: topInset)
+                readerChrome(vertical: false, width: topInset,
+                             islandReserve: info.reserve, islandCenterY: info.centerY)
+                    .ignoresSafeArea(edges: .top)
+            }
+        }
+        // Bottom bar: only regular devices keep a footer.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if barsVisible && currentLayout == .standard { footer }
+        }
+        // Side rail (Duo folded or on its side) slotted into the trailing (right)
+        // camera/status strip: reserve only what the device doesn't already, then
+        // overlay the rail flush to the edge, matching the strip width.
+        .safeAreaInset(edge: .leading, spacing: 0) {
+            if barsVisible && currentLayout.usesVerticalRail {
+                Color.clear.frame(width: max(0, ReaderChrome.railWidth - leadingInset))
+            }
+        }
+        .overlay(alignment: .leading) {
+            if barsVisible && currentLayout.usesVerticalRail {
+                let railW = max(ReaderChrome.railWidth, leadingInset)
+                // The status pill renders inboard of the camera edge; nudge the
+                // controls under it. (Offset x is RTL-flipped here: + moves left.)
+                // The folded cover's stacked pill sits lower, so drop the controls
+                // further there so the back button isn't hidden under it.
+                let coverExtra: CGFloat = currentLayout == .duoCover ? 56 : 0
+                readerChrome(vertical: true, width: railW, topInset: topInset,
+                             railOffsetX: railW * 0.075,
+                             railTopPad: max(124, topInset + 48) + coverExtra)
+                    .ignoresSafeArea()
+            }
+        }
+        // Leaving Memorize releases the mic (was on the footer, which the Duo hides).
+        .onChange(of: mode) { _, m in if m != .memorize { voice.clear() } }
         .sheet(isPresented: $reviewPresented) {
             ReviewSheet(
                 matn: matn,
@@ -112,7 +159,9 @@ struct PageScreen: View {
                                       topInset: geo.safeAreaInsets.top) {
                             showIndex = false
                         }
-                        .frame(width: geo.size.width * 0.8)
+                        // Regular devices keep the original fraction; the Duo gets
+                        // a slim fixed panel so it never swallows the spread.
+                        .frame(width: currentLayout.isDuo ? 260 : geo.size.width * 0.8)
                         .frame(maxHeight: .infinity)
                         .background(Theme.page)
                         .transition(.opacity)
@@ -249,6 +298,9 @@ struct PageScreen: View {
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        // Fill the physical bottom edge (cover has no gap there) while the top
+        // keeps the safe area, so the cover's top isn't cut off by the notch.
+        .ignoresSafeArea(edges: .bottom)
         // The phone folded or opened: landscape is only for the inner screen.
         .onChange(of: horizontalSizeClass) { AppDelegate.screenChanged() }
         .onChange(of: verticalSizeClass) { AppDelegate.screenChanged() }
@@ -300,18 +352,16 @@ struct PageScreen: View {
     /// One page: the title page (0) or a page of the text.
     @ViewBuilder private func pageView(_ page: Int) -> some View {
         if page == 0 {
-            // Page 0: the matn's title page — the same cover, filling the page.
+            // Page 0: the matn's title page — the cover fills the whole page, down
+            // to the physical bottom edge (past the home-indicator safe area).
             MatnCover(matn: matn, style: .page)
+                .ignoresSafeArea(edges: .bottom)
                 .tag(0)
-                .contentShape(Rectangle())
-                .onTapGesture { toggleBars() }
         } else if let pageModel = displayPages.first(where: { $0.page == page }) {
             PageView(matn: matn, pageModel: pageModel, mode: mode,
                      reveal: mode == .memorize ? voice.reveal : nil,
                      flashTarget: flashTarget)
                 .tag(pageModel.page)
-                .contentShape(Rectangle())
-                .onTapGesture { toggleBars() }
         }
     }
 
@@ -432,15 +482,53 @@ struct PageScreen: View {
             Rectangle().fill(Theme.chromeHairline).frame(height: 1)
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))
-        .onChange(of: mode) { _, m in
-            if m != .memorize { voice.clear() }
-        }
     }
+
+    /// The unified Duo chrome (bottom bar or vertical rail), wired to this reader.
+    private func readerChrome(vertical: Bool,
+                              width: CGFloat = ReaderChrome.railWidth,
+                              topInset: CGFloat = 0,
+                              islandReserve: CGFloat = 0,
+                              islandCenterY: CGFloat = 0,
+                              railOffsetX: CGFloat = 0,
+                              railTopPad: CGFloat? = nil) -> some View {
+        ReaderChrome(mode: $mode, voice: voice, tint: subjectAccent, chrome: chrome,
+                     flagCount: flagStore.count(for: matn.id),
+                     currentPage: currentPage, pageCount: displayPageCount,
+                     vertical: vertical, width: width, topInset: topInset,
+                     islandReserve: islandReserve, islandCenterY: islandCenterY,
+                     railOffsetX: railOffsetX, railTopPad: railTopPad,
+                     onBack: { dismiss() },
+                     onIndex: { showIndex = true },
+                     onReview: { reviewPresented = true },
+                     onStartVoice: { startVoice() })
+    }
+
+    /// The horizontal span of the camera / Dynamic Island occlusion at the top of
+    /// the screen, reserved so the top-bar controls shift clear as it expands.
+    /// iOS 27.1 `reservedRegions`; 0 on older systems (controls already sit on the
+    /// opposite side from the island).
+    private func islandInfo(_ geo: GeometryProxy, topInset: CGFloat)
+        -> (reserve: CGFloat, centerY: CGFloat, centerX: CGFloat) {
+        let fallback = (reserve: CGFloat(0), centerY: topInset / 2, centerX: geo.size.width / 2)
+        guard #available(iOS 27.1, *) else { return fallback }
+        let regions = geo.reservedRegions(kind: .occlusion, options: [.includeInactive])
+        let top = regions.filter { $0.frame.minY < topInset + 40 && $0.frame.width > 0 }
+        guard !top.isEmpty,
+              let leadingEdge = top.map(\.frame.minX).min(),
+              let trailingEdge = top.map(\.frame.maxX).max(),
+              let minY = top.map(\.frame.minY).min(),
+              let maxY = top.map(\.frame.maxY).max() else { return fallback }
+        return (reserve: max(0, geo.size.width - leadingEdge),
+                centerY: (minY + maxY) / 2,
+                centerX: (leadingEdge + trailingEdge) / 2)
+    }
+
 }
 
 // Beside the mic: what voice review is doing, and what to do when it can't
 // (UX.md: "the mic button says why and offers … Open Settings").
-private struct VoiceStatusLabel: View {
+struct VoiceStatusLabel: View {
     @ObservedObject var voice: VoiceController
     @Environment(\.openURL) private var openURL
 

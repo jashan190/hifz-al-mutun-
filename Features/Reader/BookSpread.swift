@@ -1,20 +1,31 @@
 import SwiftUI
 import UIKit
 
-/// The open iPhone Duo held on its side reads like a book: two pages at a
-/// time, in fixed pairs (1–2, 3–4, …), the odd page on the right. The title
-/// page (0) stands alone. A spread is named by its first page.
+/// The open iPhone Duo held on its side reads like a book: two pages at a time.
+/// Like a printed muṣḥaf, the cover (page 0) shares the opening spread with
+/// page 1 — cover on the right, the poem's first page on the left — then 2·3,
+/// 4·5, … (even pages on the right throughout). A spread is named by its
+/// right-hand page.
 enum BookSpread {
     /// The spread that holds `page`.
-    static func first(of page: Int) -> Int { page <= 0 ? 0 : page - (page - 1) % 2 }
+    static func first(of page: Int) -> Int {
+        if page <= 1 { return 1 }                 // cover (0) and page 1 share the opening spread
+        return page % 2 == 0 ? page : page - 1    // 2·3 → 2, 4·5 → 4, …
+    }
 
-    /// Every spread of a document with pages 1…`count`, title page first.
-    static func spreads(pageCount count: Int) -> [Int] { [0] + Array(stride(from: 1, through: max(0, count), by: 2)) }
+    /// Every spread of a document with pages 1…`count`: the cover+1 opening,
+    /// then even-numbered recto pages.
+    static func spreads(pageCount count: Int) -> [Int] {
+        guard count >= 1 else { return [] }
+        return [1] + Array(stride(from: 2, through: count, by: 2))
+    }
 
-    /// The pages a spread shows, right to left: one for the title page, else
-    /// two (nil on the left past the last page).
+    /// The pages a spread shows as [right, left] — RTL lays the first element on
+    /// the right. The opening spread is cover (right) · page 1 (left); otherwise
+    /// the recto page and its verso (nil on the left past the last page).
     static func pages(of first: Int, pageCount count: Int) -> [Int?] {
-        first == 0 ? [0] : [first, first + 1 <= count ? first + 1 : nil]
+        if first == 1 { return [0, 1] }           // cover (right) · page 1 (left)
+        return [first, first + 1 <= count ? first + 1 : nil]
     }
 
     /// The open Duo's inner screen: the only iPhone screen regular in both
