@@ -27,6 +27,9 @@ struct PageView: View {
     // Tighter margins/gaps give each hemistich more width, which — since the text
     // is sized to fill its column — makes the glyphs noticeably larger.
     private let hPadding: CGFloat = 8
+    // A small top margin so the verses fill the page rather than floating below a
+    // wide gap.
+    private let topMargin: CGFloat = 8
     private let numberColumn: CGFloat = 24
     private let numberGap: CGFloat = 5
     private let midGap: CGFloat = 10
@@ -42,7 +45,7 @@ struct PageView: View {
 
     @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
 
-    static let folioHeight: CGFloat = 34
+    static let folioHeight: CGFloat = 22
 
     var body: some View {
         GeometryReader { geo in
@@ -59,7 +62,7 @@ struct PageView: View {
                                    2 * maxColumn + numberColumn + numberGap + midGap + 2 * hPadding)
             let columnWidth = max(
                 1,
-                (contentWidth - 2 * hPadding - numberColumn - numberGap - midGap) / 2
+                (contentWidth - 2 * hPadding - 2 * (numberColumn + numberGap) - midGap) / 2
             )
             let fontSize = pageFontSize(columnWidth: columnWidth)
             // A full page (its quota of bayts) distributes its rows to fill the
@@ -114,12 +117,12 @@ struct PageView: View {
                     .frame(
                         minWidth: contentWidth - 2 * hPadding,
                         maxWidth: contentWidth - 2 * hPadding,
-                        minHeight: geo.size.height - Self.folioHeight - 2 * Theme.margin,
+                        minHeight: geo.size.height - Self.folioHeight - topMargin,
                         alignment: .top
                     )
                     .padding(.horizontal, hPadding)
                     .frame(maxWidth: .infinity)   // centre the capped column
-                    .padding(.top, Theme.margin)
+                    .padding(.top, topMargin)
                 }
                 folio
             }
@@ -231,7 +234,7 @@ private struct LayeredText: View {
 
     @ViewBuilder
     private func layer(_ s: AttributedString) -> some View {
-        let text = Text(s).font(font).foregroundStyle(defaultColor)
+        let text = Text(s).font(font).fontWeight(.medium).foregroundStyle(defaultColor)
         if let width {
             // Width measurement (NSString.size) can under-predict SwiftUI's
             // rendered width for some Arabic clusters (e.g. the madda in وَآلِهِ),
@@ -532,6 +535,9 @@ private struct BaytRow: View {
             hemistich(bayt.sadr, which: .sadr)
             Color.clear.frame(width: midGap)
             hemistich(bayt.ajuz, which: .ajuz)
+            // Mirror the number column on the left so the two hemistichs sit
+            // centred on the page instead of drifting toward the left edge.
+            Color.clear.frame(width: numberColumn + numberGap)
         }
         .accessibilityElement(children: .combine)   // VoiceOver: one element per bayt
         .accessibilityActions {

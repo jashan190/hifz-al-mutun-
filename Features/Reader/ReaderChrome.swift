@@ -140,10 +140,11 @@ struct ReaderChrome: View {
                 .foregroundStyle(Theme.onChromeDim)
                 .accessibilityLabel("Cover")
         } else {
-            Text("\(Numerals.eastern(currentPage)) / \(Numerals.eastern(pageCount))")
+            // The leading LRM (U+200E) forces a left-to-right reading: "٣ / ٦".
+            Text("\u{200E}\(Numerals.eastern(currentPage)) / \(Numerals.eastern(pageCount))")
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(Theme.onChromeDim)
-                .environment(\.layoutDirection, .leftToRight)   // read "٣ / ٦" left-to-right
+                .environment(\.layoutDirection, .leftToRight)
                 .fixedSize()
                 .accessibilityLabel("Page \(currentPage) of \(pageCount)")
         }
