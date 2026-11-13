@@ -3,8 +3,9 @@ import UIKit
 
 /// The open iPhone Duo held on its side reads like a book: two pages at a time.
 /// Like a printed muṣḥaf, the cover (page 0) shares the opening spread with
-/// page 1 — cover on the left, the poem's first page on the right — then 2·3,
-/// 4·5, … A spread is named by its right-hand (recto) page.
+/// page 1 — cover on the right, the poem's first page on the left — then 2·3,
+/// 4·5, … (even pages on the right throughout). A spread is named by its
+/// right-hand page.
 enum BookSpread {
     /// The spread that holds `page`.
     static func first(of page: Int) -> Int {
@@ -20,10 +21,10 @@ enum BookSpread {
     }
 
     /// The pages a spread shows as [right, left] — RTL lays the first element on
-    /// the right. The opening spread is page 1 (right) · cover (left); otherwise
+    /// the right. The opening spread is cover (right) · page 1 (left); otherwise
     /// the recto page and its verso (nil on the left past the last page).
     static func pages(of first: Int, pageCount count: Int) -> [Int?] {
-        if first == 1 { return [1, 0] }           // page 1 (right) · cover (left)
+        if first == 1 { return [0, 1] }           // cover (right) · page 1 (left)
         return [first, first + 1 <= count ? first + 1 : nil]
     }
 
