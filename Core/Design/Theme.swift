@@ -75,19 +75,9 @@ enum Theme {
     static let onChromeDim = onChrome.opacity(0.65)
     static let chromeHairline = onChrome.opacity(0.22)
 
-    /// The header/footer (and sidecar) bar colour for a subject — a deep,
-    /// saturated version that stays dark enough for cream (`onChrome`) text in
-    /// both light and dark mode. Qur'ān keeps the original Madinah green.
-    static func subjectChrome(_ subject: Subject) -> Color {
-        switch subject {
-        case .quran:   return chrome
-        case .hadith:  return .dynamic(light: 0xB0302A, dark: 0x7C241E)
-        case .seerah:  return .dynamic(light: 0x203C9E, dark: 0x172A6E)
-        case .aqeedah: return .dynamic(light: 0x5A2E6B, dark: 0x3C1E49)
-        case .arabic:  return .dynamic(light: 0x6B4A2A, dark: 0x48311C)
-        case .fiqh:    return .dynamic(light: 0x0E7E77, dark: 0x09605A)
-        }
-    }
+    /// The header/footer (and sidecar) bar colour. Madinah green is the app's one
+    /// identity colour now — subjects are told apart by icon, not hue.
+    static func subjectChrome(_ subject: Subject) -> Color { chrome }
 
     // Raised surfaces (library cards, sheets) above the paper.
     static let surface = Color.dynamic(light: 0xFFFFFF, dark: 0x201F1C)
@@ -107,19 +97,9 @@ enum Theme {
     //    the Madinah green, matching the bab headings.
     static let sabz = Color.dynamic(light: 0x1E5B3A, dark: 0x5FB585)
 
-    // Per-subject accent colours for the library shelves and covers. Saturated
-    // on purpose so a subject is recognizable at a glance, even at cover size.
-    // Dark values are lightened so titles read on the dark page.
-    static func subjectAccent(_ subject: Subject) -> Color {
-        switch subject {
-        case .quran:   return accent                                   // Madinah green
-        case .hadith:  return .dynamic(light: 0xC0362C, dark: 0xE87E76)
-        case .seerah:  return .dynamic(light: 0x203C9E, dark: 0x7389E6)
-        case .aqeedah: return .dynamic(light: 0x5A2E6B, dark: 0xB487C6)
-        case .arabic:  return .dynamic(light: 0x6B4A2A, dark: 0xC59C6E)
-        case .fiqh:    return .dynamic(light: 0x0E8E86, dark: 0x53C6BE)
-        }
-    }
+    // One accent for every subject now: Madinah green. Subjects are distinguished
+    // by their icon (`Subject.icon`), not colour.
+    static func subjectAccent(_ subject: Subject) -> Color { accent }
 
     // 16-point screen margins.
     static let margin: CGFloat = 16

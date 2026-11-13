@@ -75,14 +75,14 @@ struct RootView: View {
         HStack(alignment: .firstTextBaseline) {
             Text("متون")
                 .font(DisplayFont.title(size: 40))
-                .foregroundStyle(Theme.brand)
+                .foregroundStyle(Theme.accent)
             Spacer()
             Button { showSettings = true } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.brand)
+                    .foregroundStyle(Theme.accent)
                     .frame(width: 40, height: 40)
-                    .background(Circle().fill(Theme.brand.opacity(0.1)))
+                    .background(Circle().fill(Theme.accent.opacity(0.1)))
             }
             .buttonStyle(PressableStyle())
             .accessibilityLabel("Settings")
@@ -161,9 +161,13 @@ private struct ShelfSection: View {
                         .foregroundStyle(shelf.subject.accent)
                         .rotationEffect(.degrees(isCollapsed ? -90 : 0))
                     Spacer()
-                    Text(shelf.subject.arabicName)
-                        .font(DisplayFont.body(size: 17).weight(.bold))
-                        .foregroundStyle(shelf.subject.accent)
+                    HStack(spacing: 7) {
+                        Text(shelf.subject.arabicName)
+                            .font(DisplayFont.body(size: 17).weight(.bold))
+                        Image(systemName: shelf.subject.icon)
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundStyle(shelf.subject.accent)
                 }
                 .contentShape(Rectangle())
             }
