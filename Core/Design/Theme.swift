@@ -37,10 +37,10 @@ enum Theme {
     static let numeral = ink.opacity(0.75)        // page / bayt / footnote numbers
     static let outline = ink.opacity(0.12)         // hidden hemistichs in Test
 
-    // The app's own identity colour — a warm charcoal/ink, deliberately NOT any
-    // subject hue (red/yellow/green/blue), used for app-level chrome (the home
-    // masthead, settings, etc.). Flips light⇄dark so it stays legible.
-    static let brand = Color.dynamic(light: 0x2E2C27, dark: 0xDAD5C9)
+    // The app's identity colour — Madinah green. Used for app-level chrome (the
+    // home masthead, settings, selected states). Green is now the one app colour;
+    // subjects are told apart by icon, not hue.
+    static let brand = Color.dynamic(light: 0x1E5B3A, dark: 0x5FB585)
 
     // Accents and marks
     static let accent = Color.dynamic(light: 0x1E5B3A, dark: 0x5FB585)   // Madinah green
