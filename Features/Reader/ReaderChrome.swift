@@ -23,6 +23,9 @@ struct ReaderChrome: View {
     /// Horizontal span reserved on the trailing (status-pill) side for the camera /
     /// Dynamic Island occlusion, so the controls shift clear as it expands.
     var islandReserve: CGFloat = 0
+    /// Vertical centre of the status pill / island, so the top-bar controls line
+    /// up with it exactly.
+    var islandCenterY: CGFloat = 0
     let onBack: () -> Void
     let onIndex: () -> Void
     let onReview: () -> Void
@@ -108,22 +111,25 @@ struct ReaderChrome: View {
     // MARK: - Horizontal top bar (Duo open, upright)
 
     private var bar: some View {
-        HStack(spacing: 12) {
-            // Reserve the camera / Dynamic Island span on the leading (right) side
-            // so the controls gather on the trailing (left) side and shift clear
-            // as the island expands.
-            Spacer(minLength: islandReserve)
-            navGroup
-            actionGroup
-            pageText
-        }
-        .padding(.horizontal, Theme.margin)
-        // The bar IS the top camera strip: the controls sit centred, in line with
-        // the system time/wifi pill.
-        .frame(height: width)
-        .frame(maxWidth: .infinity)
-        .background { chrome }
-        .transition(.move(edge: .top).combined(with: .opacity))
+        chrome
+            .frame(maxWidth: .infinity)
+            .frame(height: width)
+            .overlay(alignment: .top) {
+                HStack(spacing: 12) {
+                    // Nav (back, index) sits on the right, just inside the reserved
+                    // island span; actions and page number on the left.
+                    Spacer(minLength: islandReserve)
+                    navGroup
+                    Spacer(minLength: 0)
+                    actionGroup
+                    pageText
+                }
+                .padding(.horizontal, Theme.margin)
+                .frame(height: buttonSize)
+                // Line the controls up with the status pill's vertical centre.
+                .padding(.top, max(0, islandCenterY - buttonSize / 2))
+            }
+            .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     // Page indicator, always read left-to-right ("٣ / ٦"); a book glyph on the cover.

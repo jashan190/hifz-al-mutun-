@@ -96,8 +96,9 @@ struct PageScreen: View {
         // to the top edge, the buttons sit in it beside the time/wifi, no excess.
         .overlay(alignment: .top) {
             if barsVisible && currentLayout.usesTopBar {
+                let info = islandInfo(geo, topInset: topInset)
                 readerChrome(vertical: false, width: topInset,
-                             islandReserve: islandReserve(geo, topInset: topInset))
+                             islandReserve: info.reserve, islandCenterY: info.centerY)
                     .ignoresSafeArea(edges: .top)
             }
         }
@@ -481,12 +482,13 @@ struct PageScreen: View {
     private func readerChrome(vertical: Bool,
                               width: CGFloat = ReaderChrome.railWidth,
                               topInset: CGFloat = 0,
-                              islandReserve: CGFloat = 0) -> some View {
+                              islandReserve: CGFloat = 0,
+                              islandCenterY: CGFloat = 0) -> some View {
         ReaderChrome(mode: $mode, voice: voice, tint: subjectAccent, chrome: chrome,
                      flagCount: flagStore.count(for: matn.id),
                      currentPage: currentPage, pageCount: displayPageCount,
                      vertical: vertical, width: width, topInset: topInset,
-                     islandReserve: islandReserve,
+                     islandReserve: islandReserve, islandCenterY: islandCenterY,
                      onBack: { dismiss() },
                      onIndex: { showIndex = true },
                      onReview: { reviewPresented = true },
@@ -497,12 +499,16 @@ struct PageScreen: View {
     /// the screen, reserved so the top-bar controls shift clear as it expands.
     /// iOS 27.1 `reservedRegions`; 0 on older systems (controls already sit on the
     /// opposite side from the island).
-    private func islandReserve(_ geo: GeometryProxy, topInset: CGFloat) -> CGFloat {
-        guard #available(iOS 27.1, *) else { return 0 }
+    private func islandInfo(_ geo: GeometryProxy, topInset: CGFloat) -> (reserve: CGFloat, centerY: CGFloat) {
+        let fallback = (reserve: CGFloat(0), centerY: topInset / 2)
+        guard #available(iOS 27.1, *) else { return fallback }
         let regions = geo.reservedRegions(kind: .occlusion, options: [.includeInactive])
         let top = regions.filter { $0.frame.minY < topInset + 40 && $0.frame.width > 0 }
-        guard let leadingEdge = top.map(\.frame.minX).min() else { return 0 }
-        return max(0, geo.size.width - leadingEdge)
+        guard !top.isEmpty,
+              let leadingEdge = top.map(\.frame.minX).min(),
+              let minY = top.map(\.frame.minY).min(),
+              let maxY = top.map(\.frame.maxY).max() else { return fallback }
+        return (reserve: max(0, geo.size.width - leadingEdge), centerY: (minY + maxY) / 2)
     }
 
 }
