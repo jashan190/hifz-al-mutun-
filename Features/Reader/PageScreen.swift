@@ -117,13 +117,10 @@ struct PageScreen: View {
         .overlay(alignment: .leading) {
             if barsVisible && currentLayout.usesVerticalRail {
                 let railW = max(ReaderChrome.railWidth, leadingInset)
-                let info = islandInfo(geo, topInset: topInset)
-                // Centre the rail controls under the status pill (clamped to stay
-                // inside the rail).
-                let rawOffset = info.centerX - (geo.size.width - railW / 2)
-                let limit = railW / 2 - 22
+                // The status pill renders inboard of the camera edge; nudge the
+                // controls under it. (Offset x is RTL-flipped here: + moves left.)
                 readerChrome(vertical: true, width: railW, topInset: topInset,
-                             railOffsetX: min(max(rawOffset, -limit), limit))
+                             railOffsetX: railW * 0.075)
                     .ignoresSafeArea()
             }
         }
