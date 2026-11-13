@@ -88,12 +88,16 @@ struct MatnCover: View {
 
     private var content: some View {
         VStack(spacing: sz(5, 9, 12)) {
-            Text(cartLabel)
-                .font(PageFont.font(size: sz(7, 12, 15)))
-                .foregroundStyle(color)
-                .padding(.horizontal, sz(7, 12, 16))
-                .padding(.vertical, sz(1, 2, 3))
-                .overlay(Capsule().stroke(color.opacity(0.8), lineWidth: 1))
+            HStack(spacing: sz(3, 5, 6)) {
+                Image(systemName: matn.subject.icon)
+                    .font(.system(size: sz(7, 11, 14), weight: .medium))
+                Text(cartLabel)
+                    .font(PageFont.font(size: sz(7, 12, 15)))
+            }
+            .foregroundStyle(color)
+            .padding(.horizontal, sz(7, 12, 16))
+            .padding(.vertical, sz(1, 2, 3))
+            .overlay(Capsule().stroke(color.opacity(0.8), lineWidth: 1))
             Text(matn.title)
                 .font(PageFont.font(size: titleSize))
                 .foregroundStyle(color)
