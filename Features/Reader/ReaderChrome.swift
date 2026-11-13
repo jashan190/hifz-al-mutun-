@@ -21,10 +21,9 @@ struct ReaderChrome: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Width of the vertical rail: a 44-pt touch target plus breathing room, and
-    /// no more — deliberately slim (Apple's foldable guidance keeps controls off
-    /// the fold and out of the way).
-    static let railWidth: CGFloat = 52
+    /// Width of the vertical rail: a single 44-pt touch target, no wider — like
+    /// Apple's slim vertical toolbar. The icons fill this width.
+    static let railWidth: CGFloat = 44
 
     private var micBinding: Binding<Bool> {
         Binding(get: { voice.isLive }, set: { on in on ? onStartVoice() : voice.stop() })
@@ -85,24 +84,40 @@ struct ReaderChrome: View {
     // MARK: - Vertical rail
 
     private var rail: some View {
-        VStack(spacing: 14) {
-            ChromeIconButton(system: "chevron.backward", label: "Back to Library", action: onBack)
-            ChromeIconButton(system: "list.bullet", label: "Index", action: onIndex)
+        VStack(spacing: 4) {
+            railIcon("chevron.backward", label: "Back to Library", action: onBack)
+            railIcon("list.bullet", label: "Index", action: onIndex)
             railModeButton
             if mode == .memorize {
                 MicButton(isListening: micBinding, tint: tint)
                     .transition(.scale.combined(with: .opacity))
             }
             railReviewButton
-            pageStack
+            pageStack.padding(.top, 4)
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 14)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
         .frame(width: Self.railWidth)
         .frame(maxHeight: .infinity)
-        .background { chrome.ignoresSafeArea() }
+        // Bleed only top/bottom — not sideways into the edge safe-area/camera
+        // region, which was ballooning the rail far past its width.
+        .background { chrome.ignoresSafeArea(edges: .vertical) }
         .overlay(alignment: .trailing) { Rectangle().fill(Theme.chromeHairline).frame(width: 1) }
         .transition(.move(edge: .leading).combined(with: .opacity))
+    }
+
+    /// A plain, full-width toolbar icon — fills the slim rail, no floating circle.
+    private func railIcon(_ system: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Theme.onChrome)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel(label)
     }
 
     private var railModeButton: some View {
@@ -111,10 +126,10 @@ struct ReaderChrome: View {
             if reduceMotion { mode = next } else { withAnimation(.easeInOut(duration: 0.22)) { mode = next } }
         } label: {
             Image(systemName: mode == .read ? "book.closed.fill" : "eye.slash.fill")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Theme.onChrome)
-                .frame(width: 36, height: 36)
-                .background(Circle().fill(Theme.onChrome.opacity(0.12)))
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel("Mode: \(mode == .read ? "Read" : "Memorize")")
@@ -124,10 +139,10 @@ struct ReaderChrome: View {
     private var railReviewButton: some View {
         Button(action: onReview) {
             Image(systemName: "flag.fill")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(flagCount > 0 ? Theme.onChrome : Theme.onChromeDim)
-                .frame(width: 36, height: 36)
-                .background(Circle().fill(Theme.onChrome.opacity(0.12)))
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
                 .overlay(alignment: .topTrailing) {
                     if flagCount > 0 {
                         Text(Numerals.eastern(flagCount))
@@ -135,7 +150,7 @@ struct ReaderChrome: View {
                             .foregroundStyle(Theme.onChrome)
                             .padding(3)
                             .background(Circle().fill(tint))
-                            .offset(x: 4, y: -4)
+                            .offset(x: 2, y: 2)
                     }
                 }
         }
