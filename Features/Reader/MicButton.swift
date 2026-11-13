@@ -17,10 +17,12 @@ struct MicButton: View {
             else { withAnimation(.easeInOut(duration: 0.2)) { isListening.toggle() } }
         } label: {
             Image(systemName: "mic.fill")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(isListening ? Theme.onChrome : tint)
-                .frame(width: 40, height: 40)
-                .background(Circle().fill(isListening ? tint : Theme.onChrome))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.onChrome)
+                .frame(width: 38, height: 38)
+                // Liquid Glass; it tints green while listening.
+                .glassEffect(isListening ? .regular.tint(tint).interactive() : .regular.interactive(),
+                             in: .circle)
                 .overlay(
                     Circle()
                         .stroke(Theme.onChrome, lineWidth: 2)
@@ -28,7 +30,6 @@ struct MicButton: View {
                         .opacity(pulse ? 0 : (isListening ? 0.7 : 0))
                 )
         }
-        .buttonStyle(PressableStyle())
         .onChange(of: isListening) { _, listening in
             pulse = false
             if listening && !reduceMotion {

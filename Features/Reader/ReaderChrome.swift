@@ -114,9 +114,9 @@ struct ReaderChrome: View {
             pageText
         }
         .padding(.horizontal, Theme.margin)
-        // The bar IS the top camera strip: it fills that height, buttons bottom-
-        // aligned so they sit below the time/wifi pill (which hugs the top).
-        .frame(height: width, alignment: .bottom)
+        // The bar IS the top camera strip: the controls sit centred, in line with
+        // the system time/wifi pill.
+        .frame(height: width)
         .frame(maxWidth: .infinity)
         .background { chrome }
         .transition(.move(edge: .top).combined(with: .opacity))
