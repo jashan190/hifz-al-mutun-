@@ -14,6 +14,11 @@ struct ReaderChrome: View {
     let currentPage: Int
     let pageCount: Int
     let vertical: Bool
+    /// Rail width — defaults to the slim toolbar width, but on the Duo's inner
+    /// screen it's set to the camera/status reserved strip so the rail fills it.
+    var width: CGFloat = ReaderChrome.railWidth
+    /// Top padding so rail controls clear the status bar at the top of the strip.
+    var topInset: CGFloat = 0
     let onBack: () -> Void
     let onIndex: () -> Void
     let onReview: () -> Void
@@ -96,13 +101,11 @@ struct ReaderChrome: View {
             pageStack.padding(.top, 4)
             Spacer(minLength: 0)
         }
-        .padding(.top, 8)
+        .padding(.top, max(8, topInset))
         .padding(.bottom, 10)
-        .frame(width: Self.railWidth)
+        .frame(width: width)
         .frame(maxHeight: .infinity)
-        // Bleed only top/bottom — not sideways into the edge safe-area/camera
-        // region, which was ballooning the rail far past its width.
-        .background { chrome.ignoresSafeArea(edges: .vertical) }
+        .background { chrome.ignoresSafeArea() }
         .overlay(alignment: .trailing) { Rectangle().fill(Theme.chromeHairline).frame(width: 1) }
         .transition(.move(edge: .leading).combined(with: .opacity))
     }

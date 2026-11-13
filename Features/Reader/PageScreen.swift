@@ -98,10 +98,20 @@ struct PageScreen: View {
                 else if currentLayout == .duoPortrait { readerChrome(vertical: false) }
             }
         }
-        // Right-edge rail: the Duo folded or open on its side. In this RTL app the
-        // physical right edge is `.leading`.
+        // Folded cover: a slim rail on the physical right edge that reserves its
+        // own space (no side camera strip there). `.leading` is the right edge in RTL.
         .safeAreaInset(edge: .leading, spacing: 0) {
-            if barsVisible && currentLayout.usesVerticalRail { readerChrome(vertical: true) }
+            if barsVisible && currentLayout == .duoCover { readerChrome(vertical: true) }
+        }
+        // Open landscape: slot the rail into the right-edge camera/status strip the
+        // content already leaves clear — flush to the edge, matching the strip width.
+        .overlay(alignment: .leading) {
+            if barsVisible && currentLayout == .duoSpread {
+                readerChrome(vertical: true,
+                             width: max(ReaderChrome.railWidth, geo.safeAreaInsets.leading),
+                             topInset: geo.safeAreaInsets.top)
+                    .ignoresSafeArea()
+            }
         }
         // Leaving Memorize releases the mic (was on the footer, which the Duo hides).
         .onChange(of: mode) { _, m in if m != .memorize { voice.clear() } }
@@ -459,11 +469,13 @@ struct PageScreen: View {
     }
 
     /// The unified Duo chrome (bottom bar or vertical rail), wired to this reader.
-    private func readerChrome(vertical: Bool) -> some View {
+    private func readerChrome(vertical: Bool,
+                              width: CGFloat = ReaderChrome.railWidth,
+                              topInset: CGFloat = 0) -> some View {
         ReaderChrome(mode: $mode, voice: voice, tint: subjectAccent, chrome: chrome,
                      flagCount: flagStore.count(for: matn.id),
                      currentPage: currentPage, pageCount: displayPageCount,
-                     vertical: vertical,
+                     vertical: vertical, width: width, topInset: topInset,
                      onBack: { dismiss() },
                      onIndex: { showIndex = true },
                      onReview: { reviewPresented = true },
