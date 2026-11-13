@@ -119,8 +119,12 @@ struct PageScreen: View {
                 let railW = max(ReaderChrome.railWidth, leadingInset)
                 // The status pill renders inboard of the camera edge; nudge the
                 // controls under it. (Offset x is RTL-flipped here: + moves left.)
+                // The folded cover's stacked pill sits lower, so drop the controls
+                // further there so the back button isn't hidden under it.
+                let coverExtra: CGFloat = currentLayout == .duoCover ? 56 : 0
                 readerChrome(vertical: true, width: railW, topInset: topInset,
-                             railOffsetX: railW * 0.075)
+                             railOffsetX: railW * 0.075,
+                             railTopPad: max(124, topInset + 48) + coverExtra)
                     .ignoresSafeArea()
             }
         }
@@ -486,13 +490,14 @@ struct PageScreen: View {
                               topInset: CGFloat = 0,
                               islandReserve: CGFloat = 0,
                               islandCenterY: CGFloat = 0,
-                              railOffsetX: CGFloat = 0) -> some View {
+                              railOffsetX: CGFloat = 0,
+                              railTopPad: CGFloat? = nil) -> some View {
         ReaderChrome(mode: $mode, voice: voice, tint: subjectAccent, chrome: chrome,
                      flagCount: flagStore.count(for: matn.id),
                      currentPage: currentPage, pageCount: displayPageCount,
                      vertical: vertical, width: width, topInset: topInset,
                      islandReserve: islandReserve, islandCenterY: islandCenterY,
-                     railOffsetX: railOffsetX,
+                     railOffsetX: railOffsetX, railTopPad: railTopPad,
                      onBack: { dismiss() },
                      onIndex: { showIndex = true },
                      onReview: { reviewPresented = true },

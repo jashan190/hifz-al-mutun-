@@ -28,6 +28,9 @@ struct ReaderChrome: View {
     var islandCenterY: CGFloat = 0
     /// Horizontal offset for the rail controls, to sit directly under the pill.
     var railOffsetX: CGFloat = 0
+    /// Top clearance for the rail controls; nil uses the default. The folded cover
+    /// needs more, as its stacked status pill sits lower.
+    var railTopPad: CGFloat? = nil
     let onBack: () -> Void
     let onIndex: () -> Void
     let onReview: () -> Void
@@ -164,7 +167,7 @@ struct ReaderChrome: View {
         }
         // Clear the status bar / Dynamic Island pill at the top of the camera
         // strip, dropped a little lower so the top controls sit well below it.
-        .padding(.top, max(124, topInset + 48))
+        .padding(.top, railTopPad ?? max(124, topInset + 48))
         .padding(.bottom, 16)
         // Sit directly under the status pill.
         .offset(x: railOffsetX)
