@@ -147,10 +147,13 @@ struct RootView: View {
 /// One subject's collapsible section: a tappable subject header (with a chevron)
 /// above a horizontally scrolling row of covers.
 private struct ShelfSection: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let shelf: Shelf
     let isCollapsed: Bool
     let zoom: Namespace.ID
     let toggle: () -> Void
+
+    private let coverWidth: CGFloat = 116
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 10) {
@@ -174,26 +177,39 @@ private struct ShelfSection: View {
             .buttonStyle(PressableStyle())
 
             if !isCollapsed {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
+                // Wide screens (iPad, the Duo's inner screen) spread the covers
+                // evenly across the full width; phones keep a horizontal shelf.
+                if horizontalSizeClass == .regular {
+                    HStack(alignment: .top, spacing: 16) {
                         ForEach(shelf.matns) { matn in
-                            NavigationLink {
-                                PageScreen(matn: matn, startOnCover: true)
-                                    .navigationTransition(.zoom(sourceID: matn.id, in: zoom))
-                            } label: {
-                                MatnCover(matn: matn, style: .shelf)
-                                    .frame(width: 116)
-                                    .matchedTransitionSource(id: matn.id, in: zoom)
-                            }
-                            .buttonStyle(PressableStyle())
+                            cover(matn).frame(maxWidth: .infinity)
                         }
                     }
-                    .padding(.vertical, 2)
+                    .environment(\.layoutDirection, .rightToLeft)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(shelf.matns) { matn in cover(matn) }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    .environment(\.layoutDirection, .rightToLeft)
+                    .scrollClipDisabled()
                 }
-                .environment(\.layoutDirection, .rightToLeft)
-                .scrollClipDisabled()
             }
         }
+    }
+
+    private func cover(_ matn: Matn) -> some View {
+        NavigationLink {
+            PageScreen(matn: matn, startOnCover: true)
+                .navigationTransition(.zoom(sourceID: matn.id, in: zoom))
+        } label: {
+            MatnCover(matn: matn, style: .shelf)
+                .frame(width: coverWidth)
+                .matchedTransitionSource(id: matn.id, in: zoom)
+        }
+        .buttonStyle(PressableStyle())
     }
 }
 
