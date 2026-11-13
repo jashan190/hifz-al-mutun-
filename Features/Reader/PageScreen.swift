@@ -96,7 +96,8 @@ struct PageScreen: View {
         // to the top edge, the buttons sit in it beside the time/wifi, no excess.
         .overlay(alignment: .top) {
             if barsVisible && currentLayout.usesTopBar {
-                readerChrome(vertical: false, width: topInset)
+                readerChrome(vertical: false, width: topInset,
+                             islandReserve: islandReserve(geo, topInset: topInset))
                     .ignoresSafeArea(edges: .top)
             }
         }
@@ -479,15 +480,29 @@ struct PageScreen: View {
     /// The unified Duo chrome (bottom bar or vertical rail), wired to this reader.
     private func readerChrome(vertical: Bool,
                               width: CGFloat = ReaderChrome.railWidth,
-                              topInset: CGFloat = 0) -> some View {
+                              topInset: CGFloat = 0,
+                              islandReserve: CGFloat = 0) -> some View {
         ReaderChrome(mode: $mode, voice: voice, tint: subjectAccent, chrome: chrome,
                      flagCount: flagStore.count(for: matn.id),
                      currentPage: currentPage, pageCount: displayPageCount,
                      vertical: vertical, width: width, topInset: topInset,
+                     islandReserve: islandReserve,
                      onBack: { dismiss() },
                      onIndex: { showIndex = true },
                      onReview: { reviewPresented = true },
                      onStartVoice: { startVoice() })
+    }
+
+    /// The horizontal span of the camera / Dynamic Island occlusion at the top of
+    /// the screen, reserved so the top-bar controls shift clear as it expands.
+    /// iOS 27.1 `reservedRegions`; 0 on older systems (controls already sit on the
+    /// opposite side from the island).
+    private func islandReserve(_ geo: GeometryProxy, topInset: CGFloat) -> CGFloat {
+        guard #available(iOS 27.1, *) else { return 0 }
+        let regions = geo.reservedRegions(kind: .occlusion, options: [.includeInactive])
+        let top = regions.filter { $0.frame.minY < topInset + 40 && $0.frame.width > 0 }
+        guard let leadingEdge = top.map(\.frame.minX).min() else { return 0 }
+        return max(0, geo.size.width - leadingEdge)
     }
 
 }

@@ -20,6 +20,9 @@ struct ReaderChrome: View {
     var width: CGFloat = ReaderChrome.railWidth
     /// Padding so controls clear the status bar / camera at the top of the strip.
     var topInset: CGFloat = 0
+    /// Horizontal span reserved on the trailing (status-pill) side for the camera /
+    /// Dynamic Island occlusion, so the controls shift clear as it expands.
+    var islandReserve: CGFloat = 0
     let onBack: () -> Void
     let onIndex: () -> Void
     let onReview: () -> Void
@@ -106,9 +109,10 @@ struct ReaderChrome: View {
 
     private var bar: some View {
         HStack(spacing: 12) {
-            // Leading (right) side kept clear for the system time/wifi pill; all
-            // controls gather on the trailing (left) side of the strip.
-            Spacer(minLength: 0)
+            // Reserve the camera / Dynamic Island span on the leading (right) side
+            // so the controls gather on the trailing (left) side and shift clear
+            // as the island expands.
+            Spacer(minLength: islandReserve)
             navGroup
             actionGroup
             pageText
