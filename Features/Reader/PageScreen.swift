@@ -92,7 +92,10 @@ struct PageScreen: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             if barsVisible {
                 if currentLayout == .standard { topBar }
-                else if currentLayout.usesTopBar { readerChrome(vertical: false, topInset: topInset) }
+                else if currentLayout.usesTopBar {
+                    // A strip as thick as the landscape rail's width, below the status.
+                    readerChrome(vertical: false, width: max(ReaderChrome.railWidth, topInset))
+                }
             }
         }
         // Bottom bar: only regular devices keep a footer.
@@ -285,10 +288,9 @@ struct PageScreen: View {
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
-        // Let pages run to the physical top and bottom edges so the cover (and
-        // every page) fills the screen — the chrome is drawn over the top as an
-        // inset/overlay.
-        .ignoresSafeArea(edges: .vertical)
+        // Fill the physical bottom edge (cover has no gap there) while the top
+        // keeps the safe area, so the cover's top isn't cut off by the notch.
+        .ignoresSafeArea(edges: .bottom)
         // The phone folded or opened: landscape is only for the inner screen.
         .onChange(of: horizontalSizeClass) { AppDelegate.screenChanged() }
         .onChange(of: verticalSizeClass) { AppDelegate.screenChanged() }
@@ -345,15 +347,11 @@ struct PageScreen: View {
             MatnCover(matn: matn, style: .page)
                 .ignoresSafeArea(edges: .bottom)
                 .tag(0)
-                .contentShape(Rectangle())
-                .onTapGesture { toggleBars() }
         } else if let pageModel = displayPages.first(where: { $0.page == page }) {
             PageView(matn: matn, pageModel: pageModel, mode: mode,
                      reveal: mode == .memorize ? voice.reveal : nil,
                      flashTarget: flashTarget)
                 .tag(pageModel.page)
-                .contentShape(Rectangle())
-                .onTapGesture { toggleBars() }
         }
     }
 

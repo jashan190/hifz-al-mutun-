@@ -120,12 +120,11 @@ struct ReaderChrome: View {
             pageText
         }
         .padding(.horizontal, Theme.margin)
-        // A slim strip the same thickness as the landscape rail's width, sitting
-        // just below the status bar / camera at the top.
-        .frame(height: Self.railWidth)
+        // A strip the same thickness as the landscape rail's width, sitting just
+        // below the status bar / Dynamic Island so its buttons stay tappable.
+        .frame(height: width)
         .frame(maxWidth: .infinity)
-        .padding(.top, topInset)
-        .background { chrome.ignoresSafeArea(edges: .top) }
+        .background { chrome }
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.chromeHairline).frame(height: 1) }
         .transition(.move(edge: .top).combined(with: .opacity))
     }

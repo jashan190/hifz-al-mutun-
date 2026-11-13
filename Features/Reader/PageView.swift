@@ -26,9 +26,10 @@ struct PageView: View {
 
     // Tighter margins/gaps give each hemistich more width, which — since the text
     // is sized to fill its column — makes the glyphs noticeably larger.
-    private let hPadding: CGFloat = 5
-    // Match the folio height at the bottom so top and bottom margins look equal.
-    private let topMargin: CGFloat = 22
+    // Even padding: top == bottom (`pagePadding`), left == right == half of it.
+    static let pagePadding: CGFloat = 28
+    private var hPadding: CGFloat { Self.pagePadding / 2 }
+    private var topMargin: CGFloat { Self.pagePadding }
     // Lean number column + gaps so the two hemistichs get as much width (and thus
     // font size) as possible.
     private let numberColumn: CGFloat = 20
@@ -46,7 +47,7 @@ struct PageView: View {
 
     @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
 
-    static let folioHeight: CGFloat = 22
+    static let folioHeight: CGFloat = Self.pagePadding
 
     var body: some View {
         GeometryReader { geo in
