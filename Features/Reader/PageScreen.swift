@@ -37,13 +37,16 @@ struct PageScreen: View {
     private var displayPageCount: Int { displayPages.count }
     private var displayBabs: [Bab] { matn.kind == .prose ? proseBabs : matn.babs }
 
-    /// Two pages side by side (the open iPhone Duo on its side).
-    private func showsTwoPages(_ size: CGSize) -> Bool {
-        size.width > size.height
-            && BookSpread.isInnerScreen(phone: UIDevice.current.userInterfaceIdiom == .phone,
-                                        regularWidth: horizontalSizeClass == .regular,
-                                        regularHeight: verticalSizeClass == .regular)
+    /// How the reader lays out for the current device/fold/orientation.
+    private func layout(_ size: CGSize) -> ReaderLayout {
+        ReaderLayout.resolve(foldable: DuoDevice.isFoldable,
+                             regularWidth: horizontalSizeClass == .regular,
+                             regularHeight: verticalSizeClass == .regular,
+                             isLandscape: size.width > size.height)
     }
+
+    /// Two pages side by side (the open iPhone Duo on its side).
+    private func showsTwoPages(_ size: CGSize) -> Bool { layout(size).showsTwoPages }
 
     /// The spread on screen, as the pager's selection. Turning it moves to the
     /// spread's first page; the page itself stays put while it's in view, so
