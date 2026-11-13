@@ -134,10 +134,9 @@ struct PageScreen: View {
                                       topInset: geo.safeAreaInsets.top) {
                             showIndex = false
                         }
-                        // A fraction of the screen on a phone (unchanged), but
-                        // capped so the Duo's big inner screen gets a modest
-                        // panel, not one swallowing most of the spread.
-                        .frame(width: min(geo.size.width * 0.8, 320))
+                        // Regular devices keep the original fraction; the Duo gets
+                        // a slim fixed panel so it never swallows the spread.
+                        .frame(width: currentLayout.isDuo ? 260 : geo.size.width * 0.8)
                         .frame(maxHeight: .infinity)
                         .background(Theme.page)
                         .transition(.opacity)

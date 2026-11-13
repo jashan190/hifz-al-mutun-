@@ -85,10 +85,9 @@ struct ReaderChrome: View {
     // MARK: - Vertical rail
 
     private var rail: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 14) {
             ChromeIconButton(system: "chevron.backward", label: "Back to Library", action: onBack)
             ChromeIconButton(system: "list.bullet", label: "Index", action: onIndex)
-            Spacer(minLength: 8)
             railModeButton
             if mode == .memorize {
                 MicButton(isListening: micBinding, tint: tint)
@@ -96,8 +95,9 @@ struct ReaderChrome: View {
             }
             railReviewButton
             pageStack
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
         .frame(width: Self.railWidth)
         .frame(maxHeight: .infinity)
         .background { chrome.ignoresSafeArea() }
