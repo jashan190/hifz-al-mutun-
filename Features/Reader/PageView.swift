@@ -48,9 +48,18 @@ struct PageView: View {
         GeometryReader { geo in
             let items = pageModel.items
             let bayts = items.compactMap { if case .bayt(let b) = $0 { return b } else { return nil } }
+            // Cap the reading column to the width at which the font reaches its
+            // max size. On a phone this is the full width (unchanged); on the
+            // Duo's wide inner screen it keeps the verses filling their columns
+            // and centred with equal margins, instead of stretching thin across
+            // the page or clumping to one side.
+            let widest = PageMetrics.widestHemistich(in: matn, at: referenceSize)
+            let maxColumn = widest > 0 ? maxSize * widest / (referenceSize * fitSafety) : geo.size.width
+            let contentWidth = min(geo.size.width,
+                                   2 * maxColumn + numberColumn + numberGap + midGap + 2 * hPadding)
             let columnWidth = max(
                 1,
-                (geo.size.width - 2 * hPadding - numberColumn - numberGap - midGap) / 2
+                (contentWidth - 2 * hPadding - numberColumn - numberGap - midGap) / 2
             )
             let fontSize = pageFontSize(columnWidth: columnWidth)
             // A full page (its quota of bayts) distributes its rows to fill the
@@ -103,11 +112,13 @@ struct PageView: View {
                         }
                     }
                     .frame(
-                        maxWidth: .infinity,
+                        minWidth: contentWidth - 2 * hPadding,
+                        maxWidth: contentWidth - 2 * hPadding,
                         minHeight: geo.size.height - Self.folioHeight - 2 * Theme.margin,
                         alignment: .top
                     )
                     .padding(.horizontal, hPadding)
+                    .frame(maxWidth: .infinity)   // centre the capped column
                     .padding(.top, Theme.margin)
                 }
                 folio
