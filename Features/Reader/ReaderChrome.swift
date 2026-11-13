@@ -125,7 +125,7 @@ struct ReaderChrome: View {
             }
         }
         .padding(.horizontal, Theme.margin)
-        .padding(.top, max(8, topInset))
+        .padding(.top, max(18, topInset + 10))
         .padding(.bottom, 10)
         .background { chrome.ignoresSafeArea(edges: .top) }
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.chromeHairline).frame(height: 1) }
@@ -161,8 +161,8 @@ struct ReaderChrome: View {
             actionGroup
         }
         // Clear the status bar / Dynamic Island pill at the top of the camera
-        // strip, leaving a standard gap beneath it.
-        .padding(.top, max(80, topInset + 12))
+        // strip, leaving a comfortable gap so the top controls are tappable.
+        .padding(.top, max(104, topInset + 28))
         .padding(.bottom, 16)
         .frame(width: width)
         .frame(maxHeight: .infinity)

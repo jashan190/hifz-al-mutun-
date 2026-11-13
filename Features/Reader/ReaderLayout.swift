@@ -19,8 +19,12 @@ enum ReaderLayout: Equatable {
 
     /// Two pages side by side.
     var showsTwoPages: Bool { self == .duoSpread }
-    /// Controls live in a vertical rail on the trailing edge (else a bottom bar).
-    var usesVerticalRail: Bool { self == .duoCover || self == .duoSpread }
+    /// Controls live in a vertical rail on the trailing edge — only the landscape
+    /// spread, where the camera strip runs down that edge. Portrait layouts (the
+    /// folded cover and the upright inner screen) use a top bar instead.
+    var usesVerticalRail: Bool { self == .duoSpread }
+    /// Controls live in a horizontal top bar (the camera strip runs across the top).
+    var usesTopBar: Bool { self == .duoCover || self == .duoPortrait }
     /// Any of the Duo layouts (header removed, chapter shown as a running head).
     var isDuo: Bool { self != .standard }
 

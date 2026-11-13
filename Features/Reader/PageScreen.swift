@@ -92,7 +92,7 @@ struct PageScreen: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             if barsVisible {
                 if currentLayout == .standard { topBar }
-                else if currentLayout == .duoPortrait { readerChrome(vertical: false, topInset: topInset) }
+                else if currentLayout.usesTopBar { readerChrome(vertical: false, topInset: topInset) }
             }
         }
         // Bottom bar: only regular devices keep a footer.
@@ -336,8 +336,10 @@ struct PageScreen: View {
     /// One page: the title page (0) or a page of the text.
     @ViewBuilder private func pageView(_ page: Int) -> some View {
         if page == 0 {
-            // Page 0: the matn's title page — the same cover, filling the page.
+            // Page 0: the matn's title page — the cover fills the whole page, down
+            // to the physical bottom edge (past the home-indicator safe area).
             MatnCover(matn: matn, style: .page)
+                .ignoresSafeArea(edges: .bottom)
                 .tag(0)
                 .contentShape(Rectangle())
                 .onTapGesture { toggleBars() }

@@ -27,12 +27,13 @@ struct PageView: View {
     // Tighter margins/gaps give each hemistich more width, which — since the text
     // is sized to fill its column — makes the glyphs noticeably larger.
     private let hPadding: CGFloat = 5
-    // A small top margin so the verses fill the page rather than floating below a
-    // wide gap.
-    private let topMargin: CGFloat = 8
-    private let numberColumn: CGFloat = 24
-    private let numberGap: CGFloat = 5
-    private let midGap: CGFloat = 10
+    // Match the folio height at the bottom so top and bottom margins look equal.
+    private let topMargin: CGFloat = 22
+    // Lean number column + gaps so the two hemistichs get as much width (and thus
+    // font size) as possible.
+    private let numberColumn: CGFloat = 20
+    private let numberGap: CGFloat = 4
+    private let midGap: CGFloat = 7
     private let referenceSize: CGFloat = 40
     // Low floor: a long-metre poem (Shāṭibiyyah) fits its longest hemistich at a
     // smaller uniform size; clamping up here would make that line overflow and
@@ -62,7 +63,7 @@ struct PageView: View {
                                    2 * maxColumn + numberColumn + numberGap + midGap + 2 * hPadding)
             let columnWidth = max(
                 1,
-                (contentWidth - 2 * hPadding - numberColumn - numberGap - midGap) / 2
+                (contentWidth - 2 * hPadding - 2 * (numberColumn + numberGap) - midGap) / 2
             )
             let fontSize = pageFontSize(columnWidth: columnWidth)
             // A full page (its quota of bayts) distributes its rows to fill the
@@ -535,6 +536,9 @@ private struct BaytRow: View {
             hemistich(bayt.sadr, which: .sadr)
             Color.clear.frame(width: midGap)
             hemistich(bayt.ajuz, which: .ajuz)
+            // Mirror the number column on the left so the two hemistichs are
+            // centred on the page.
+            Color.clear.frame(width: numberColumn + numberGap)
         }
         .accessibilityElement(children: .combine)   // VoiceOver: one element per bayt
         .accessibilityActions {

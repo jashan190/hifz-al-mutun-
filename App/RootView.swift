@@ -177,25 +177,14 @@ private struct ShelfSection: View {
             .buttonStyle(PressableStyle())
 
             if !isCollapsed {
-                // Wide screens (iPad, the Duo's inner screen) spread the covers
-                // evenly across the full width; phones keep a horizontal shelf.
-                if horizontalSizeClass == .regular {
-                    HStack(alignment: .top, spacing: 16) {
-                        ForEach(shelf.matns) { matn in
-                            cover(matn).frame(maxWidth: .infinity)
-                        }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(shelf.matns) { matn in cover(matn) }
                     }
-                    .environment(\.layoutDirection, .rightToLeft)
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(shelf.matns) { matn in cover(matn) }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                    .environment(\.layoutDirection, .rightToLeft)
-                    .scrollClipDisabled()
+                    .padding(.vertical, 2)
                 }
+                .environment(\.layoutDirection, .rightToLeft)
+                .scrollClipDisabled()
             }
         }
     }
