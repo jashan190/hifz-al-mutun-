@@ -63,7 +63,7 @@ struct PageView: View {
                                    2 * maxColumn + numberColumn + numberGap + midGap + 2 * hPadding)
             let columnWidth = max(
                 1,
-                (contentWidth - 2 * hPadding - 2 * (numberColumn + numberGap) - midGap) / 2
+                (contentWidth - 2 * hPadding - numberColumn - 2 * midGap) / 2
             )
             let fontSize = pageFontSize(columnWidth: columnWidth)
             // A full page (its quota of bayts) distributes its rows to fill the
@@ -531,14 +531,13 @@ private struct BaytRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            number
-            Color.clear.frame(width: numberGap)
+            // The bayt number sits in the centre, between the two hemistichs, so
+            // the verse is symmetric with equal margins on both sides of the page.
             hemistich(bayt.sadr, which: .sadr)
             Color.clear.frame(width: midGap)
+            number
+            Color.clear.frame(width: midGap)
             hemistich(bayt.ajuz, which: .ajuz)
-            // Mirror the number column on the left so the two hemistichs are
-            // centred on the page.
-            Color.clear.frame(width: numberColumn + numberGap)
         }
         .accessibilityElement(children: .combine)   // VoiceOver: one element per bayt
         .accessibilityActions {

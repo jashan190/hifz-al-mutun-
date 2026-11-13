@@ -285,6 +285,9 @@ struct PageScreen: View {
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        // Let pages run to the physical bottom edge so the cover (and every page)
+        // fills down past the home-indicator safe area, with no cream gap.
+        .ignoresSafeArea(edges: .bottom)
         // The phone folded or opened: landscape is only for the inner screen.
         .onChange(of: horizontalSizeClass) { AppDelegate.screenChanged() }
         .onChange(of: verticalSizeClass) { AppDelegate.screenChanged() }
