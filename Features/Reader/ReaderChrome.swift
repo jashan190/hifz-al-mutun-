@@ -29,8 +29,8 @@ struct ReaderChrome: View {
 
     /// Width of the vertical rail: a single, generous touch target.
     static let railWidth: CGFloat = 56
-    /// Diameter of a chrome button — big, with a cream disc for strong contrast.
-    private let buttonSize: CGFloat = 46
+    /// Diameter of a chrome button — a compact Liquid Glass circle.
+    private let buttonSize: CGFloat = 38
 
     private var micBinding: Binding<Bool> {
         Binding(get: { voice.isLive }, set: { on in on ? onStartVoice() : voice.stop() })
@@ -44,16 +44,18 @@ struct ReaderChrome: View {
 
     // MARK: - Shared controls (cream disc + green glyph: big, high contrast)
 
+    /// A Liquid Glass circle with a glyph — matches iOS 26 system controls.
+    private func glassCircle(_ system: String, size: CGFloat = 16) -> some View {
+        Image(systemName: system)
+            .font(.system(size: size, weight: .semibold))
+            .foregroundStyle(Theme.onChrome)
+            .frame(width: buttonSize, height: buttonSize)
+            .glassEffect(.regular.interactive(), in: .circle)
+    }
+
     private func discButton(_ system: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: system)
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(chrome)
-                .frame(width: buttonSize, height: buttonSize)
-                .background(Circle().fill(Theme.onChrome))
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityLabel(label)
+        Button(action: action) { glassCircle(system) }
+            .accessibilityLabel(label)
     }
 
     private var modeButton: some View {
@@ -61,24 +63,15 @@ struct ReaderChrome: View {
             let next: PageMode = mode == .read ? .memorize : .read
             if reduceMotion { mode = next } else { withAnimation(.easeInOut(duration: 0.22)) { mode = next } }
         } label: {
-            Image(systemName: mode == .read ? "book.closed.fill" : "eye.slash.fill")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(chrome)
-                .frame(width: buttonSize, height: buttonSize)
-                .background(Circle().fill(Theme.onChrome))
+            glassCircle(mode == .read ? "book.closed.fill" : "eye.slash.fill")
         }
-        .buttonStyle(PressableStyle())
         .accessibilityLabel("Mode: \(mode == .read ? "Read" : "Memorize")")
         .accessibilityHint("Switches between Read and Memorize")
     }
 
     private var reviewButton: some View {
         Button(action: onReview) {
-            Image(systemName: "flag.fill")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(chrome)
-                .frame(width: buttonSize, height: buttonSize)
-                .background(Circle().fill(Theme.onChrome))
+            glassCircle("flag.fill", size: 15)
                 .overlay(alignment: .topTrailing) {
                     if flagCount > 0 {
                         Text(Numerals.eastern(flagCount))
@@ -90,7 +83,6 @@ struct ReaderChrome: View {
                     }
                 }
         }
-        .buttonStyle(PressableStyle())
         .accessibilityLabel("Review")
     }
 
