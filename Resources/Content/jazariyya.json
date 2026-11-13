@@ -146,23 +146,19 @@
       "ajuzWords": [
         {
           "text": "مُحَمَّدُ",
-          "norm": "محمد",
-          "color": "red"
+          "norm": "محمد"
         },
         {
-          "text": "بْنُ",
-          "norm": "بن",
-          "color": "red"
+          "text": "ابْنُ",
+          "norm": "ابن"
         },
         {
           "text": "الْجَزَرِيِّ",
-          "norm": "الجزري",
-          "color": "red"
+          "norm": "الجزري"
         },
         {
           "text": "الشَّافِعِي",
-          "norm": "الشافعي",
-          "color": "red"
+          "norm": "الشافعي"
         }
       ]
     },
@@ -255,7 +251,7 @@
       "ajuz": "فِيمَا عَلَى قَارِئِهِ أَنْ يَعْلَمَهْ",
       "sadrWords": [
         {
-          "text": "وَبَعْدُ",
+          "text": "وَبَعْدُ :",
           "norm": "وبعد"
         },
         {
@@ -269,34 +265,34 @@
         {
           "text": "مُقَدِّمَهْ",
           "norm": "مقدمه",
-          "color": "red"
+          "color": "green"
         }
       ],
       "ajuzWords": [
         {
           "text": "فِيمَا",
           "norm": "فيما",
-          "color": "red"
+          "color": "green"
         },
         {
           "text": "عَلَى",
           "norm": "علي",
-          "color": "red"
+          "color": "green"
         },
         {
           "text": "قَارِئِهِ",
           "norm": "قاريه",
-          "color": "red"
+          "color": "green"
         },
         {
           "text": "أَنْ",
           "norm": "ان",
-          "color": "red"
+          "color": "green"
         },
         {
           "text": "يَعْلَمَهْ",
           "norm": "يعلمه",
-          "color": "red"
+          "color": "green"
         }
       ]
     },
@@ -480,7 +476,19 @@
         },
         {
           "text": "بِهَا",
-          "norm": "بها"
+          "norm": "بها",
+          "runs": [
+            {
+              "text": "بِ"
+            },
+            {
+              "text": ":"
+            },
+            {
+              "text": "هَا",
+              "color": "red"
+            }
+          ]
         }
       ]
     },
@@ -544,7 +552,8 @@
       "sadrWords": [
         {
           "text": "فَأَلِفُ",
-          "norm": "فالف"
+          "norm": "فالف",
+          "color": "red"
         },
         {
           "text": "الْجَوْفِ",
@@ -594,20 +603,30 @@
         {
           "text": "لِأَقْصَى",
           "norm": "لاقصي",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "الْحَلْقِ",
           "norm": "الحلق",
-          "color": "red"
+          "runs": [
+            {
+              "text": "الْحَلْقِ",
+              "color": "blue"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "هَمْزٌ",
-          "norm": "همز"
+          "norm": "همز",
+          "color": "red"
         },
         {
           "text": "هَاءُ",
-          "norm": "هاء"
+          "norm": "هاء",
+          "color": "red"
         }
       ],
       "ajuzWords": [
@@ -617,15 +636,26 @@
         },
         {
           "text": "لِوَسْطِهِ",
-          "norm": "لوسطه"
+          "norm": "لوسطه",
+          "runs": [
+            {
+              "text": "لِوَسْطِهِ",
+              "color": "blue"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "فَعَيْنٌ",
-          "norm": "فعين"
+          "norm": "فعين",
+          "color": "red"
         },
         {
           "text": "حَاءُ",
-          "norm": "حاء"
+          "norm": "حاء",
+          "color": "red"
         }
       ]
     },
@@ -640,36 +670,72 @@
         {
           "text": "أَدْنَاهُ",
           "norm": "ادناه",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَدْنَاهُ",
+              "color": "blue"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "غَيْنٌ",
-          "norm": "غين"
+          "norm": "غين",
+          "color": "red"
         },
         {
           "text": "خَاؤُهَا",
-          "norm": "خاوها"
+          "norm": "خاوها",
+          "runs": [
+            {
+              "text": "خَاؤُهَا",
+              "color": "red"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَالْقَافُ",
-          "norm": "والقاف"
+          "norm": "والقاف",
+          "runs": [
+            {
+              "text": "وَالْقَافُ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "أَقْصَى",
           "norm": "اقصي",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "اللِّسَانِ",
           "norm": "اللسان",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "فَوْقُ",
           "norm": "فوق",
-          "color": "red"
+          "runs": [
+            {
+              "text": "فَوْقُ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "ثُمَّ",
@@ -677,7 +743,8 @@
         },
         {
           "text": "الْكَافُ",
-          "norm": "الكاف"
+          "norm": "الكاف",
+          "color": "red"
         }
       ]
     },
@@ -692,39 +759,60 @@
         {
           "text": "أَسْفَلُ",
           "norm": "اسفل",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "وَالْوَسْطُ",
           "norm": "والوسط",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَالْوَسْطُ",
+              "color": "blue"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "فَجِيمُ",
-          "norm": "فجيم"
+          "norm": "فجيم",
+          "color": "red"
         },
         {
           "text": "الشِّينُ",
-          "norm": "الشين"
+          "norm": "الشين",
+          "color": "red"
         },
         {
           "text": "يَا",
-          "norm": "يا"
+          "norm": "يا",
+          "color": "red"
         }
       ],
       "ajuzWords": [
         {
           "text": "وَالضَّادُ",
-          "norm": "والضاد"
+          "norm": "والضاد",
+          "runs": [
+            {
+              "text": "وَالضَّادُ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مِنْ",
-          "norm": "من"
+          "norm": "من",
+          "color": "blue"
         },
         {
           "text": "حَافَتِهِ",
           "norm": "حافته",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "إِذْ",
@@ -762,13 +850,31 @@
         },
         {
           "text": "يُمْنَاهَا",
-          "norm": "يمناها"
+          "norm": "يمناها",
+          "runs": [
+            {
+              "text": "يُمْنَاهَا"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "وَاللَّامُ",
-          "norm": "واللام"
+          "norm": "واللام",
+          "runs": [
+            {
+              "text": "وَاللَّامُ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "أَدْنَاهَا",
@@ -790,7 +896,16 @@
       "sadrWords": [
         {
           "text": "وَالنُّونُ",
-          "norm": "والنون"
+          "norm": "والنون",
+          "runs": [
+            {
+              "text": "وَالنُّونُ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مِنْ",
@@ -798,8 +913,7 @@
         },
         {
           "text": "طَرَفِهِ",
-          "norm": "طرفه",
-          "color": "red"
+          "norm": "طرفه"
         },
         {
           "text": "تَحْتُ",
@@ -813,7 +927,16 @@
       "ajuzWords": [
         {
           "text": "وَالرَّا",
-          "norm": "والرا"
+          "norm": "والرا",
+          "runs": [
+            {
+              "text": "وَالرَّا",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "يُدَانِيهِ",
@@ -839,15 +962,26 @@
       "sadrWords": [
         {
           "text": "وَالطَّاءُ",
-          "norm": "والطاء"
+          "norm": "والطاء",
+          "color": "red"
         },
         {
           "text": "وَالدَّالُ",
-          "norm": "والدال"
+          "norm": "والدال",
+          "color": "red"
         },
         {
           "text": "وَتَا",
-          "norm": "وتا"
+          "norm": "وتا",
+          "runs": [
+            {
+              "text": "وَتَا",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مِنْهُ",
@@ -865,11 +999,29 @@
         },
         {
           "text": "الثَّنَايَا",
-          "norm": "الثنايا"
+          "norm": "الثنايا",
+          "runs": [
+            {
+              "text": "الثَّنَايَا"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَالصَّفِيرُ",
-          "norm": "والصفير"
+          "norm": "والصفير",
+          "runs": [
+            {
+              "text": "وَالصَّفِيرُ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مُسْتَكِنّ",
@@ -903,21 +1055,41 @@
         },
         {
           "text": "السُّفْلَى",
-          "norm": "السفلي"
+          "norm": "السفلي",
+          "runs": [
+            {
+              "text": "السُّفْلَى"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "وَالظَّاءُ",
-          "norm": "والظاء"
+          "norm": "والظاء",
+          "color": "red"
         },
         {
           "text": "وَالذَّالُ",
-          "norm": "والذال"
+          "norm": "والذال",
+          "color": "red"
         },
         {
           "text": "وَثَا",
-          "norm": "وثا"
+          "norm": "وثا",
+          "runs": [
+            {
+              "text": "وَثَا",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "لِلْعُلْيَا",
@@ -939,7 +1111,15 @@
         },
         {
           "text": "طَرَفَيْهِمَا",
-          "norm": "طرفيهما"
+          "norm": "طرفيهما",
+          "runs": [
+            {
+              "text": "طَرَفَيْهِمَا"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "وَمِنْ",
@@ -957,7 +1137,16 @@
       "ajuzWords": [
         {
           "text": "فَالْفَا",
-          "norm": "فالفا"
+          "norm": "فالفا",
+          "runs": [
+            {
+              "text": "فَالْفَا",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مَعَ",
@@ -988,26 +1177,54 @@
         {
           "text": "لِلشَّفَتَيْنِ",
           "norm": "للشفتين",
-          "color": "red"
+          "runs": [
+            {
+              "text": "لِلشَّفَتَيْنِ",
+              "color": "blue"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "الْوَاوُ",
-          "norm": "الواو"
+          "norm": "الواو",
+          "color": "red"
         },
         {
           "text": "بَاءٌ",
-          "norm": "باء"
+          "norm": "باء",
+          "color": "red"
         },
         {
           "text": "مِيمُ",
-          "norm": "ميم"
+          "norm": "ميم",
+          "runs": [
+            {
+              "text": "مِيمُ",
+              "color": "red"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "وَغُنَّةٌ",
           "norm": "وغنه",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَغُنَّةٌ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مَخْرَجُهَا",
@@ -1015,8 +1232,7 @@
         },
         {
           "text": "الْخَيْشُومُ",
-          "norm": "الخيشوم",
-          "color": "red"
+          "norm": "الخيشوم"
         }
       ]
     },
@@ -1031,7 +1247,15 @@
         {
           "text": "صِفَاتُهَا",
           "norm": "صفاتها",
-          "color": "red"
+          "runs": [
+            {
+              "text": "صِفَاتُهَا",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "جَهْرٌ",
@@ -1052,15 +1276,24 @@
           "norm": "منفتح"
         },
         {
-          "text": "مُصْمَتَةٌ",
-          "norm": "مصمته"
+          "text": "مُصْمَتَةٌ /",
+          "norm": "مصمته",
+          "runs": [
+            {
+              "text": "مُصْمَتَةٌ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَالضِّدَّ",
           "norm": "والضد"
         },
         {
-          "text": "قُلْ",
+          "text": "قُلْ :",
           "norm": "قل"
         }
       ]
@@ -1075,28 +1308,43 @@
       "sadrWords": [
         {
           "text": "مَهْمُوسُهَا",
-          "norm": "مهموسها"
+          "norm": "مهموسها",
+          "runs": [
+            {
+              "text": "مَهْمُوسُهَا",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "فَحَثَّهُ",
-          "norm": "فحثه",
-          "color": "red"
+          "norm": "فحثه"
         },
         {
           "text": "شَخْصٌ",
-          "norm": "شخص",
-          "color": "red"
+          "norm": "شخص"
         },
         {
           "text": "سَكَتْ",
-          "norm": "سكت",
-          "color": "red"
+          "norm": "سكت"
         }
       ],
       "ajuzWords": [
         {
           "text": "شَدِيدُهَا",
-          "norm": "شديدها"
+          "norm": "شديدها",
+          "runs": [
+            {
+              "text": "شَدِيدُهَا",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "لَفْظُ",
@@ -1104,18 +1352,15 @@
         },
         {
           "text": "أَجِدْ",
-          "norm": "اجد",
-          "color": "red"
+          "norm": "اجد"
         },
         {
           "text": "قَطٍ",
-          "norm": "قط",
-          "color": "red"
+          "norm": "قط"
         },
         {
           "text": "بَكَتْ",
-          "norm": "بكت",
-          "color": "red"
+          "norm": "بكت"
         }
       ]
     },
@@ -1133,21 +1378,29 @@
         },
         {
           "text": "رِخْوٍ",
-          "norm": "رخو"
+          "norm": "رخو",
+          "color": "red"
         },
         {
           "text": "وَالشَّدِيدِ",
-          "norm": "والشديد"
+          "norm": "والشديد",
+          "runs": [
+            {
+              "text": "وَالشَّدِيدِ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "لِنْ",
-          "norm": "لن",
-          "color": "red"
+          "norm": "لن"
         },
         {
           "text": "عُمَرْ",
-          "norm": "عمر",
-          "color": "red"
+          "norm": "عمر"
         }
       ],
       "ajuzWords": [
@@ -1156,23 +1409,28 @@
           "norm": "وسبع"
         },
         {
-          "text": "عُلْوٍ",
+          "text": "عُلْوٍ :",
           "norm": "علو"
         },
         {
           "text": "خُصَّ",
-          "norm": "خص",
-          "color": "red"
+          "norm": "خص"
         },
         {
           "text": "ضَغْطٍ",
-          "norm": "ضغط",
-          "color": "red"
+          "norm": "ضغط"
         },
         {
           "text": "قِظْ",
           "norm": "قظ",
-          "color": "red"
+          "runs": [
+            {
+              "text": "قِظْ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "حَصَرْ",
@@ -1190,44 +1448,54 @@
       "sadrWords": [
         {
           "text": "وَصَادُ",
-          "norm": "وصاد",
-          "color": "red"
+          "norm": "وصاد"
         },
         {
           "text": "ضَادُ",
-          "norm": "ضاد",
-          "color": "red"
+          "norm": "ضاد"
         },
         {
           "text": "طَاءُ",
-          "norm": "طاء",
-          "color": "red"
+          "norm": "طاء"
         },
         {
           "text": "ظَاءُ",
           "norm": "ظاء",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ظَاءُ"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مُطْبَقَهْ",
-          "norm": "مطبقه"
+          "norm": "مطبقه",
+          "color": "red"
         }
       ],
       "ajuzWords": [
         {
           "text": "وَفَرَّ",
-          "norm": "وفر",
-          "color": "red"
+          "norm": "وفر"
         },
         {
           "text": "مِنْ",
-          "norm": "من",
-          "color": "red"
+          "norm": "من"
         },
         {
           "text": "لُبٍّ",
           "norm": "لب",
-          "color": "red"
+          "runs": [
+            {
+              "text": "لُبٍّ"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "الْحُرُوفُ",
@@ -1235,7 +1503,8 @@
         },
         {
           "text": "الْمُذْلَقَهْ",
-          "norm": "المذلقه"
+          "norm": "المذلقه",
+          "color": "red"
         }
       ]
     },
@@ -1249,42 +1518,73 @@
       "sadrWords": [
         {
           "text": "صَفِيرُهَا",
-          "norm": "صفيرها"
+          "norm": "صفيرها",
+          "runs": [
+            {
+              "text": "صَفِيرُهَا",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "صَادٌ",
-          "norm": "صاد",
-          "color": "red"
+          "norm": "صاد"
         },
         {
           "text": "وَزَايٌ",
-          "norm": "وزاي",
-          "color": "red"
+          "norm": "وزاي"
         },
         {
           "text": "سِينُ",
-          "norm": "سين",
-          "color": "red"
+          "norm": "سين"
         }
       ],
       "ajuzWords": [
         {
           "text": "قَلْقَلَةٌ",
-          "norm": "قلقله"
+          "norm": "قلقله",
+          "runs": [
+            {
+              "text": "قَلْقَلَةٌ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "قُطْبُ",
-          "norm": "قطب",
-          "color": "red"
+          "norm": "قطب"
         },
         {
           "text": "جَدٍ",
           "norm": "جد",
-          "color": "red"
+          "runs": [
+            {
+              "text": "جَدٍ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَاللِّينُ",
-          "norm": "واللين"
+          "norm": "واللين",
+          "runs": [
+            {
+              "text": "وَاللِّينُ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         }
       ]
     },
@@ -1298,13 +1598,11 @@
       "sadrWords": [
         {
           "text": "وَاوٌ",
-          "norm": "واو",
-          "color": "red"
+          "norm": "واو"
         },
         {
           "text": "وَيَاءٌ",
-          "norm": "وياء",
-          "color": "red"
+          "norm": "وياء"
         },
         {
           "text": "سَكَنَا",
@@ -1317,12 +1615,30 @@
       ],
       "ajuzWords": [
         {
-          "text": "قَبْلَهُمَا",
-          "norm": "قبلهما"
+          "text": "قَبْلَهُمَا /",
+          "norm": "قبلهما",
+          "runs": [
+            {
+              "text": "قَبْلَهُمَا"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَالِانْحِرَافُ",
-          "norm": "والانحراف"
+          "norm": "والانحراف",
+          "runs": [
+            {
+              "text": "وَالِانْحِرَافُ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "صُحِّحَا",
@@ -1344,13 +1660,20 @@
         },
         {
           "text": "اللَّامِ",
-          "norm": "اللام",
-          "color": "red"
+          "norm": "اللام"
         },
         {
           "text": "وَالرَّا",
           "norm": "والرا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَالرَّا"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَبِتَكْرِيرٍ",
@@ -1363,22 +1686,31 @@
       ],
       "ajuzWords": [
         {
-          "text": "وَلِلتَّفَشِّي",
-          "norm": "وللتفشي"
+          "text": "وَلِلتَّفَشِّي :",
+          "norm": "وللتفشي",
+          "color": "red"
         },
         {
           "text": "الشِّينُ",
-          "norm": "الشين",
-          "color": "red"
+          "norm": "الشين"
         },
         {
           "text": "ضَادًا",
           "norm": "ضادا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ضَادًا"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "اسْتَطِلْ",
-          "norm": "استطل"
+          "norm": "استطل",
+          "color": "red"
         }
       ]
     },
@@ -1396,8 +1728,7 @@
         },
         {
           "text": "بِالتَّجْوِيدِ",
-          "norm": "بالتجويد",
-          "color": "red"
+          "norm": "بالتجويد"
         },
         {
           "text": "حَتْمٌ",
@@ -1524,7 +1855,7 @@
       "ajuz": "مِنْ صِفَةٍ لَهَا وَمُسْتَحَقَّهَا",
       "sadrWords": [
         {
-          "text": "وَهُوَ",
+          "text": "وَهُوَ :",
           "norm": "وهو"
         },
         {
@@ -1709,11 +2040,13 @@
       "sadrWords": [
         {
           "text": "فَرَقِّقَنْ",
-          "norm": "فرققن"
+          "norm": "فرققن",
+          "color": "red"
         },
         {
           "text": "مُسْتَفِلًا",
-          "norm": "مستفلا"
+          "norm": "مستفلا",
+          "color": "red"
         },
         {
           "text": "مِنْ",
@@ -1752,30 +2085,76 @@
       "ajuz": "اللَّهُ ثُمَّ لَامَ لِلَّهِ لَنَا",
       "sadrWords": [
         {
-          "text": "وَهَمْزَ",
+          "text": "وَهَمَزَ :",
           "norm": "وهمز"
         },
         {
           "text": "الْحَمْدُ",
           "norm": "الحمد",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ا",
+              "color": "red"
+            },
+            {
+              "text": "لْحَمْدُ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "أَعُوذُ",
           "norm": "اعوذ",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَ",
+              "color": "red"
+            },
+            {
+              "text": "عُوذُ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "اهْدِنَا",
           "norm": "اهدنا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ا",
+              "color": "red"
+            },
+            {
+              "text": "هْدِنَا",
+              "color": "blue"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "اللَّهُ",
           "norm": "الله",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ا",
+              "color": "red"
+            },
+            {
+              "text": "للَّهُ",
+              "color": "blue"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "ثُمَّ",
@@ -1783,17 +2162,47 @@
         },
         {
           "text": "لَامَ",
-          "norm": "لام"
+          "norm": "لام",
+          "runs": [
+            {
+              "text": "لَامَ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "لِلَّهِ",
           "norm": "لله",
-          "color": "red"
+          "runs": [
+            {
+              "text": "لِلَّ",
+              "color": "red"
+            },
+            {
+              "text": "هِ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "لَنَا",
           "norm": "لنا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "لَ",
+              "color": "red"
+            },
+            {
+              "text": "نَا",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -1808,27 +2217,77 @@
         {
           "text": "وَلْيَتَلَطَّفْ",
           "norm": "وليتلطف",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَلْيَتَلَ",
+              "color": "blue"
+            },
+            {
+              "text": "طَّ",
+              "color": "red"
+            },
+            {
+              "text": "فْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَعَلَى",
           "norm": "وعلي",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَ",
+              "color": "blue"
+            },
+            {
+              "text": "عَلَ",
+              "color": "red"
+            },
+            {
+              "text": "ى",
+              "color": "blue"
+            }
+          ]
         },
         {
           "text": "اللَّهِ",
           "norm": "الله",
-          "color": "red"
+          "runs": [
+            {
+              "text": "اللَّهِ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَلَا",
           "norm": "ولا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "الضْ",
           "norm": "الض",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ال",
+              "color": "blue"
+            },
+            {
+              "text": "ضْ",
+              "color": "red"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         }
       ],
       "ajuzWords": [
@@ -1838,21 +2297,63 @@
         },
         {
           "text": "مِنْ",
-          "norm": "من"
+          "norm": "من",
+          "runs": [
+            {
+              "text": "مِنْ"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مَخْمَصَةٍ",
           "norm": "مخمصه",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَ",
+              "color": "red"
+            },
+            {
+              "text": "خْ",
+              "color": "blue"
+            },
+            {
+              "text": "مَ",
+              "color": "red"
+            },
+            {
+              "text": "صَةٍ",
+              "color": "blue"
+            }
+          ]
         },
         {
           "text": "وَمِنْ",
-          "norm": "ومن"
+          "norm": "ومن",
+          "runs": [
+            {
+              "text": "وَمِنْ"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مَرَضْ",
           "norm": "مرض",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَ",
+              "color": "red"
+            },
+            {
+              "text": "رَضْ",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -1866,27 +2367,72 @@
       "sadrWords": [
         {
           "text": "وَبَاءَ",
-          "norm": "وباء"
+          "norm": "وباء",
+          "runs": [
+            {
+              "text": "وَبَاءَ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "بَرْقٍ",
           "norm": "برق",
-          "color": "red"
+          "runs": [
+            {
+              "text": "بَ",
+              "color": "red"
+            },
+            {
+              "text": "رْقٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "بَاطِلٍ",
           "norm": "باطل",
-          "color": "red"
+          "runs": [
+            {
+              "text": "بَ",
+              "color": "red"
+            },
+            {
+              "text": "اطِلٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "بِهِمْ",
           "norm": "بهم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "بِ",
+              "color": "red"
+            },
+            {
+              "text": "هِمْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "بِذِي",
           "norm": "بذي",
-          "color": "red"
+          "color": "blue"
         }
       ],
       "ajuzWords": [
@@ -1935,34 +2481,122 @@
         {
           "text": "كَحُبٍّ",
           "norm": "كحب",
-          "color": "red"
+          "runs": [
+            {
+              "text": "كَ"
+            },
+            {
+              "text": " : "
+            },
+            {
+              "text": "حُ",
+              "color": "blue"
+            },
+            {
+              "text": "بٍّ",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "الصَّبْرِ",
           "norm": "الصبر",
-          "color": "red"
+          "runs": [
+            {
+              "text": "الصَّ",
+              "color": "blue"
+            },
+            {
+              "text": "بْ",
+              "color": "red"
+            },
+            {
+              "text": "رِ",
+              "color": "blue"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
-          "text": "رَبْوَةٍِۨ",
+          "text": "رَبْوَةٍِۨ",
           "norm": "ربوه",
-          "color": "red"
+          "runs": [
+            {
+              "text": "رَ",
+              "color": "blue"
+            },
+            {
+              "text": "بْ",
+              "color": "red"
+            },
+            {
+              "text": "وَةٍِۨ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "اجْتُثَّتْ",
           "norm": "اجتثت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ا",
+              "color": "blue"
+            },
+            {
+              "text": "جْ",
+              "color": "red"
+            },
+            {
+              "text": "تُثَّتْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَحَجٍّ",
           "norm": "وحج",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَحَ",
+              "color": "blue"
+            },
+            {
+              "text": "جٍّ",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "الْفَجْرِ",
           "norm": "الفجر",
-          "color": "red"
+          "runs": [
+            {
+              "text": "الْفَ",
+              "color": "blue"
+            },
+            {
+              "text": "جْ",
+              "color": "red"
+            },
+            {
+              "text": "رِ",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -2028,43 +2662,155 @@
       "sadrWords": [
         {
           "text": "وَحَاءَ",
-          "norm": "وحاء"
+          "norm": "وحاء",
+          "runs": [
+            {
+              "text": "وَحَاءَ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "حَصْحَصَ",
           "norm": "حصحص",
-          "color": "red"
+          "runs": [
+            {
+              "text": "حَ",
+              "color": "red"
+            },
+            {
+              "text": "صْ",
+              "color": "blue"
+            },
+            {
+              "text": "حَ",
+              "color": "red"
+            },
+            {
+              "text": "صَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "أَحَطتُّ",
           "norm": "احطت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَ",
+              "color": "blue"
+            },
+            {
+              "text": "حَ",
+              "color": "red"
+            },
+            {
+              "text": "طتُّ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "الْحَقُّ",
           "norm": "الحق",
-          "color": "red"
+          "runs": [
+            {
+              "text": "الْ",
+              "color": "blue"
+            },
+            {
+              "text": "حَ",
+              "color": "red"
+            },
+            {
+              "text": "قُّ",
+              "color": "blue"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "وَسِينَ",
-          "norm": "وسين"
+          "norm": "وسين",
+          "runs": [
+            {
+              "text": "وَسِينَ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مُسْتَقِيمٍ",
           "norm": "مستقيم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مُ",
+              "color": "blue"
+            },
+            {
+              "text": "سْ",
+              "color": "red"
+            },
+            {
+              "text": "تَقِيمٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "يَسْطُو",
           "norm": "يسطو",
-          "color": "red"
+          "runs": [
+            {
+              "text": "يَ",
+              "color": "blue"
+            },
+            {
+              "text": "سْ",
+              "color": "red"
+            },
+            {
+              "text": "طُو",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "يَسْقُو",
           "norm": "يسقو",
-          "color": "red"
+          "runs": [
+            {
+              "text": "يَ",
+              "color": "blue"
+            },
+            {
+              "text": "سْ",
+              "color": "red"
+            },
+            {
+              "text": "قُو",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -2194,13 +2940,21 @@
           "norm": "والخلف"
         },
         {
-          "text": "فِي",
+          "text": "فِي :",
           "norm": "في"
         },
         {
           "text": "فِرْقٍ",
           "norm": "فرق",
-          "color": "red"
+          "runs": [
+            {
+              "text": "فِرْقٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "لِكَسْرٍ",
@@ -2280,8 +3034,18 @@
         },
         {
           "text": "كَعَبْدُ",
-          "norm": "كعبد",
-          "color": "red"
+          "runs": [
+            {
+              "text": "كَ"
+            },
+            {
+              "text": " : "
+            },
+            {
+              "text": "عَبْدُ"
+            }
+          ],
+          "norm": "كعبد"
         },
         {
           "text": "اللَّهِ",
@@ -2307,7 +3071,7 @@
           "norm": "الاستعلاء"
         },
         {
-          "text": "فَخِّمْ",
+          "text": "فَخِّمْ ،",
           "norm": "فخم"
         },
         {
@@ -2317,26 +3081,48 @@
       ],
       "ajuzWords": [
         {
-          "text": "لِاطْبَاقَ",
-          "norm": "لاطباق"
+          "text": "الْإِطْبَاقُ",
+          "norm": "الاطباق"
         },
         {
           "text": "أَقْوَى",
           "norm": "اقوي"
         },
         {
-          "text": "نَحْوُ",
+          "text": "نَحْوُ :",
           "norm": "نحو"
         },
         {
           "text": "قَالَ",
           "norm": "قال",
-          "color": "red"
+          "runs": [
+            {
+              "text": "قَ",
+              "color": "red"
+            },
+            {
+              "text": "الَ",
+              "color": "blue"
+            }
+          ]
         },
         {
           "text": "وَالْعَصَا",
           "norm": "والعصا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَالْعَ",
+              "color": "blue"
+            },
+            {
+              "text": "صَ",
+              "color": "red"
+            },
+            {
+              "text": "ا",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -2357,13 +3143,26 @@
           "norm": "الاطباق"
         },
         {
-          "text": "مِنْ",
+          "text": "مِنْ :",
           "norm": "من"
         },
         {
           "text": "أَحَطتُّ",
           "norm": "احطت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَحَ",
+              "color": "blue"
+            },
+            {
+              "text": "ط",
+              "color": "red"
+            },
+            {
+              "text": "تُّ",
+              "color": "blue"
+            }
+          ]
         },
         {
           "text": "مَعْ",
@@ -2372,18 +3171,54 @@
       ],
       "ajuzWords": [
         {
-          "text": "بَسَطتَ",
+          "text": "بَسَطْتَ",
           "norm": "بسطت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "بَسَ",
+              "color": "blue"
+            },
+            {
+              "text": "طْ",
+              "color": "red"
+            },
+            {
+              "text": "تَ",
+              "color": "blue"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَالْخُلْفُ",
           "norm": "والخلف"
         },
         {
-          "text": "بِنَخْلُقْكُّمْ",
-          "norm": "بنخلقكم",
-          "color": "red"
+          "text": "بِنَخْلُقْكُمْ",
+          "runs": [
+            {
+              "text": "بِ"
+            },
+            {
+              "text": " : "
+            },
+            {
+              "text": "نَخْلُ",
+              "color": "blue"
+            },
+            {
+              "text": "قْ",
+              "color": "red"
+            },
+            {
+              "text": "كُمْ",
+              "color": "blue"
+            }
+          ],
+          "norm": "بنخلقكم"
         },
         {
           "text": "وَقَعْ",
@@ -2412,25 +3247,70 @@
           "norm": "السكون"
         },
         {
-          "text": "فِي",
+          "text": "فِي :",
           "norm": "في"
         },
         {
           "text": "جَعَلْنَا",
           "norm": "جعلنا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "جَعَ",
+              "color": "blue"
+            },
+            {
+              "text": "لْ",
+              "color": "red"
+            },
+            {
+              "text": "نَا",
+              "color": "blue"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "أَنْعَمْتَ",
           "norm": "انعمت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَ",
+              "color": "blue"
+            },
+            {
+              "text": "نْ",
+              "color": "red"
+            },
+            {
+              "text": "عَمْتَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَالْمَغْضُوبِ",
           "norm": "والمغضوب",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَالْمَ",
+              "color": "blue"
+            },
+            {
+              "text": "غْ",
+              "color": "red"
+            },
+            {
+              "text": "ضُوبِ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "مَعْ",
@@ -2439,7 +3319,20 @@
         {
           "text": "ضَلَلْنَا",
           "norm": "ضللنا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ضَ",
+              "color": "blue"
+            },
+            {
+              "text": "لَلْ",
+              "color": "red"
+            },
+            {
+              "text": "نَا",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -2456,18 +3349,34 @@
           "norm": "وخلص"
         },
         {
-          "text": "انْفِتَاحَ",
+          "text": "انْفِتَاحَ :",
           "norm": "انفتاح"
         },
         {
           "text": "مَحْذُورًا",
           "norm": "محذورا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَحْ",
+              "color": "blue"
+            },
+            {
+              "text": "ذُ",
+              "color": "red"
+            },
+            {
+              "text": "ورًا",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "عَسَى",
           "norm": "عسي",
-          "color": "red"
+          "color": "blue"
         }
       ],
       "ajuzWords": [
@@ -2481,13 +3390,35 @@
         },
         {
           "text": "بِمَحْظُورًا",
-          "norm": "بمحظورا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "بِ"
+            },
+            {
+              "text": " : "
+            },
+            {
+              "text": "مَحْ",
+              "color": "blue"
+            },
+            {
+              "text": "ظُ",
+              "color": "red"
+            },
+            {
+              "text": "ورًا",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ],
+          "norm": "بمحظورا"
         },
         {
           "text": "عَصَى",
           "norm": "عصي",
-          "color": "red"
+          "color": "blue"
         }
       ]
     },
@@ -2512,25 +3443,76 @@
           "norm": "بكاف"
         },
         {
-          "text": "وَيَتَا",
-          "norm": "ويتا"
+          "text": "وَبِتَا",
+          "norm": "وبتا"
         }
       ],
       "ajuzWords": [
         {
           "text": "كَشِرْكِكُمْ",
-          "norm": "كشرككم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "كَ"
+            },
+            {
+              "text": " : "
+            },
+            {
+              "text": "شِرْ",
+              "color": "blue"
+            },
+            {
+              "text": "كِكُ",
+              "color": "red"
+            },
+            {
+              "text": "مْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ],
+          "norm": "كشرككم"
         },
         {
           "text": "وَتَتَوَفَّى",
           "norm": "وتتوفي",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَ",
+              "color": "blue"
+            },
+            {
+              "text": "تَتَ",
+              "color": "red"
+            },
+            {
+              "text": "وَفَّى",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "فِتْنَةَ",
           "norm": "فتنه",
-          "color": "red"
+          "runs": [
+            {
+              "text": "فِ",
+              "color": "blue"
+            },
+            {
+              "text": "تْ",
+              "color": "red"
+            },
+            {
+              "text": "نَةَ",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -2569,24 +3551,59 @@
           "norm": "ادغم"
         },
         {
-          "text": "كَقُل",
-          "norm": "كقل",
-          "color": "red"
+          "text": "كَقُلْ",
+          "runs": [
+            {
+              "text": "كَ"
+            },
+            {
+              "text": " : "
+            },
+            {
+              "text": "قُلْ",
+              "color": "blue"
+            }
+          ],
+          "norm": "كقل"
         },
         {
           "text": "رَّبِّ",
           "norm": "رب",
-          "color": "red"
+          "runs": [
+            {
+              "text": "رَّ",
+              "color": "red"
+            },
+            {
+              "text": "بِّ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
-          "text": "وَبَل",
+          "text": "وَبَلْ",
           "norm": "وبل",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "لَّا",
           "norm": "لا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "لَّ",
+              "color": "red"
+            },
+            {
+              "text": "ا",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَأَبِنْ",
@@ -2604,32 +3621,59 @@
       "sadrWords": [
         {
           "text": "فِي",
-          "norm": "في",
-          "color": "red"
+          "norm": "في"
         },
         {
           "text": "يَوْمٍ",
           "norm": "يوم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "يَوْمٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
-          "text": "مَعْ",
+          "text": "مَعْ :",
           "norm": "مع"
         },
         {
           "text": "قَالُوا",
           "norm": "قالوا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "وَهُمْ",
           "norm": "وهم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَهُمْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَقُلْ",
           "norm": "وقل",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَ",
+              "color": "red"
+            },
+            {
+              "text": " : "
+            },
+            {
+              "text": "قُلْ",
+              "color": "blue"
+            }
+          ]
         },
         {
           "text": "نَعَمْ",
@@ -2641,27 +3685,73 @@
         {
           "text": "سَبِّحْهُ",
           "norm": "سبحه",
-          "color": "red"
+          "runs": [
+            {
+              "text": "سَبِّ",
+              "color": "blue"
+            },
+            {
+              "text": "حْهُ",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "لَا",
           "norm": "لا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "تُزِغْ",
           "norm": "تزغ",
-          "color": "red"
+          "runs": [
+            {
+              "text": "تُزِ",
+              "color": "blue"
+            },
+            {
+              "text": "غْ",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "قُلُوبَ",
           "norm": "قلوب",
-          "color": "red"
+          "runs": [
+            {
+              "text": "قُ",
+              "color": "red"
+            },
+            {
+              "text": "لُوبَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "فَالْتَقَمْ",
           "norm": "فالتقم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "فَالْ",
+              "color": "blue"
+            },
+            {
+              "text": "تَ",
+              "color": "red"
+            },
+            {
+              "text": "قَمْ",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -2676,7 +3766,15 @@
         {
           "text": "وَالضَّادَ",
           "norm": "والضاد",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَالضَّادَ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "بِاسْتِطَالَةٍ",
@@ -2699,7 +3797,15 @@
         {
           "text": "الظَّاءِ",
           "norm": "الظاء",
-          "color": "red"
+          "runs": [
+            {
+              "text": "الظَّاءِ",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَكُلُّهَا",
@@ -2726,54 +3832,118 @@
         {
           "text": "الظَّعْنِ",
           "norm": "الظعن",
-          "color": "red"
+          "runs": [
+            {
+              "text": "الظَّعْنِ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ظِلُّ",
           "norm": "ظل",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ظِلُّ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "الظُّهْرِ",
           "norm": "الظهر",
-          "color": "red"
+          "runs": [
+            {
+              "text": "الظُّهْرِ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "عُظْمُ",
           "norm": "عظم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "عُظْمُ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "الْحِفْظِ",
           "norm": "الحفظ",
-          "color": "red"
+          "color": "blue"
         }
       ],
       "ajuzWords": [
         {
           "text": "أَيْقِظْ",
           "norm": "ايقظ",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَيْقِظْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَأَنْظِرْ",
           "norm": "وانظر",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَأَنْظِرْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "عَظْمَ",
           "norm": "عظم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "عَظْمَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ظَهْرِ",
           "norm": "ظهر",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ظَهْرِ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "اللَّفْظِ",
           "norm": "اللفظ",
-          "color": "red"
+          "color": "blue"
         }
       ]
     },
@@ -2788,54 +3958,118 @@
         {
           "text": "ظَاهِرْ",
           "norm": "ظاهر",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ظَاهِرْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "لَظَى",
           "norm": "لظي",
-          "color": "red"
+          "runs": [
+            {
+              "text": "لَظَى",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "شُوَاظُ",
           "norm": "شواظ",
-          "color": "red"
+          "runs": [
+            {
+              "text": "شُوَاظُ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "كَظْمٍ",
           "norm": "كظم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "كَظْمٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ظَلَمَا",
           "norm": "ظلما",
-          "color": "red"
+          "color": "blue"
         }
       ],
       "ajuzWords": [
         {
           "text": "أَغْلُظْ",
           "norm": "اغلظ",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَغْلُظْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ظَلَامٌ",
           "norm": "ظلام",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ظَلَامٌ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ظُفْرٍ",
           "norm": "ظفر",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ظُفْرٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "انْتَظِرْ",
           "norm": "انتظر",
-          "color": "red"
+          "runs": [
+            {
+              "text": "انْتَظِرْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ظَمَا",
           "norm": "ظما",
-          "color": "red"
+          "color": "blue"
         }
       ]
     },
@@ -2850,25 +4084,33 @@
         {
           "text": "أَظْفَرَ",
           "norm": "اظفر",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَظْفَرَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ظَنًّا",
           "norm": "ظنا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "كَيْفَ",
           "norm": "كيف"
         },
         {
-          "text": "جَا",
+          "text": "جَا ،",
           "norm": "جا"
         },
         {
           "text": "وَعِظْ",
           "norm": "وعظ",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "سِوَى",
@@ -2879,20 +4121,45 @@
         {
           "text": "عِضِينَ",
           "norm": "عضين",
-          "color": "red"
+          "runs": [
+            {
+              "text": "عِضِينَ",
+              "color": "blue"
+            },
+            {
+              "text": " /",
+              "color": "blue"
+            }
+          ]
         },
         {
           "text": "ظَلَّ",
           "norm": "ظل",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "النَّحْلِ",
-          "norm": "النحل"
+          "norm": "النحل",
+          "runs": [
+            {
+              "text": "النَّحْلِ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "زُخْرُفٍ",
-          "norm": "زخرف"
+          "norm": "زخرف",
+          "runs": [
+            {
+              "text": "زُخْرُفٍ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "سَوَا",
@@ -2911,12 +4178,28 @@
         {
           "text": "وَظَلْتَ",
           "norm": "وظلت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَظَلْتَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ظَلْتُمْ",
           "norm": "ظلتم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ظَلْتُمْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَبِرُومٍ",
@@ -2925,7 +4208,7 @@
         {
           "text": "ظَلُّوا",
           "norm": "ظلوا",
-          "color": "red"
+          "color": "blue"
         }
       ],
       "ajuzWords": [
@@ -2936,7 +4219,15 @@
         {
           "text": "ظَلَّتْ",
           "norm": "ظلت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ظَلَّتْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "شُعَرَا",
@@ -2945,7 +4236,7 @@
         {
           "text": "نَظَلُّ",
           "norm": "نظل",
-          "color": "red"
+          "color": "blue"
         }
       ]
     },
@@ -2960,12 +4251,20 @@
         {
           "text": "يَظْلَلْنَ",
           "norm": "يظللن",
-          "color": "red"
+          "runs": [
+            {
+              "text": "يَظْلَلْنَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "مَحْظُورًا",
           "norm": "محظورا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "مَعَ",
@@ -2974,19 +4273,26 @@
         {
           "text": "الْمُحْتَظِرِ",
           "norm": "المحتظر",
-          "color": "red"
+          "color": "blue"
         }
       ],
       "ajuzWords": [
         {
           "text": "وَكُنْتَ",
-          "norm": "وكنت",
-          "color": "red"
+          "norm": "وكنت"
         },
         {
           "text": "فَظًّا",
           "norm": "فظا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "فَظًّا",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَجَمِيعَ",
@@ -2995,7 +4301,7 @@
         {
           "text": "النَّظَرِ",
           "norm": "النظر",
-          "color": "red"
+          "color": "blue"
         }
       ]
     },
@@ -3014,12 +4320,32 @@
         {
           "text": "بِوَيْلٌ",
           "norm": "بويل",
-          "color": "red"
+          "runs": [
+            {
+              "text": "بِ"
+            },
+            {
+              "text": " : "
+            },
+            {
+              "text": "وَيْلٌ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "هَلْ",
           "norm": "هل",
-          "color": "red"
+          "runs": [
+            {
+              "text": "هَلْ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَأُولَى",
@@ -3028,14 +4354,22 @@
         {
           "text": "نَاضِرَهْ",
           "norm": "ناضره",
-          "color": "red"
+          "runs": [
+            {
+              "text": "نَاضِرَهْ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "وَالْغَيْظُ",
           "norm": "والغيظ",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "لَا",
@@ -3043,7 +4377,15 @@
         },
         {
           "text": "الرَّعْدُ",
-          "norm": "الرعد"
+          "norm": "الرعد",
+          "runs": [
+            {
+              "text": "الرَّعْدُ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَهُودٌ",
@@ -3066,7 +4408,7 @@
         {
           "text": "وَالْحَظُّ",
           "norm": "والحظ",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "لَا",
@@ -3075,7 +4417,7 @@
         {
           "text": "الْحَضُّ",
           "norm": "الحض",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "عَلَى",
@@ -3088,13 +4430,13 @@
       ],
       "ajuzWords": [
         {
-          "text": "وَفِي",
+          "text": "وَفِي :",
           "norm": "وفي"
         },
         {
           "text": "ظَنِينٍ",
           "norm": "ظنين",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "الْخِلَافُ",
@@ -3119,7 +4461,7 @@
           "norm": "وان"
         },
         {
-          "text": "تَلَاقَيَا",
+          "text": "تَلَاقَيَا :",
           "norm": "تلاقيا"
         },
         {
@@ -3135,22 +4477,65 @@
         {
           "text": "أَنْقَضَ",
           "norm": "انقض",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَنْقَ",
+              "color": "blue"
+            },
+            {
+              "text": "ضَ",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "ظَهْرَكَ",
           "norm": "ظهرك",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ظَ",
+              "color": "red"
+            },
+            {
+              "text": "هْرَكَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "يَعَضُّ",
           "norm": "يعض",
-          "color": "red"
+          "runs": [
+            {
+              "text": "يَعَ",
+              "color": "blue"
+            },
+            {
+              "text": "ضُّ",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "الظَّالِمُ",
           "norm": "الظالم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ال",
+              "color": "blue"
+            },
+            {
+              "text": "ظَّ",
+              "color": "red"
+            },
+            {
+              "text": "الِمُ",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -3165,7 +4550,23 @@
         {
           "text": "وَاضْطُرَّ",
           "norm": "واضطر",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَا",
+              "color": "blue"
+            },
+            {
+              "text": "ضْ",
+              "color": "red"
+            },
+            {
+              "text": "طُرَّ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "مَعْ",
@@ -3174,7 +4575,23 @@
         {
           "text": "وَعَظتَ",
           "norm": "وعظت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَعَ",
+              "color": "blue"
+            },
+            {
+              "text": "ظ",
+              "color": "red"
+            },
+            {
+              "text": "تَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "مَعْ",
@@ -3183,7 +4600,20 @@
         {
           "text": "أَفَضْتُمُ",
           "norm": "افضتم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَفَ",
+              "color": "blue"
+            },
+            {
+              "text": "ضْ",
+              "color": "red"
+            },
+            {
+              "text": "تُمُ",
+              "color": "blue"
+            }
+          ]
         }
       ],
       "ajuzWords": [
@@ -3192,18 +4622,47 @@
           "norm": "وصف"
         },
         {
-          "text": "هَا",
+          "text": "هَا :",
           "norm": "ها"
         },
         {
           "text": "جِبَاهُهُمْ",
           "norm": "جباههم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "جِبَا",
+              "color": "blue"
+            },
+            {
+              "text": "هُهُ",
+              "color": "red"
+            },
+            {
+              "text": "مْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "عَلَيْهِمُ",
           "norm": "عليهم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "عَلَيْ",
+              "color": "blue"
+            },
+            {
+              "text": "هِ",
+              "color": "red"
+            },
+            {
+              "text": "مُ",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -3221,8 +4680,7 @@
         },
         {
           "text": "الْغُنَّةَ",
-          "norm": "الغنه",
-          "color": "red"
+          "norm": "الغنه"
         },
         {
           "text": "مِنْ",
@@ -3253,9 +4711,17 @@
           "norm": "ما"
         },
         {
-          "text": "شُدِّدَا",
+          "text": "شُدِّدَا /",
           "norm": "شددا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "شُدِّدَا"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَأَخْفِيَنْ",
@@ -3357,13 +4823,11 @@
         },
         {
           "text": "وَاوٍ",
-          "norm": "واو",
-          "color": "red"
+          "norm": "واو"
         },
         {
           "text": "وَفَا",
-          "norm": "وفا",
-          "color": "red"
+          "norm": "وفا"
         },
         {
           "text": "أَنْ",
@@ -3398,30 +4862,50 @@
           "color": "red"
         },
         {
-          "text": "يُلْفَى",
+          "text": "يُلْفَى :",
           "norm": "يلفي"
         }
       ],
       "ajuzWords": [
         {
-          "text": "إِظْهَارٌِۨ",
+          "text": "إِظْهَارٌِۨ",
           "norm": "اظهار",
-          "color": "red"
+          "runs": [
+            {
+              "text": "إِظْهَارٌِۨ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ادْغَامٌ",
           "norm": "ادغام",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ادْغَامٌ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَقَلْبٌ",
           "norm": "وقلب",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَقَلْبٌ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "إِخْفَا",
-          "norm": "اخفا",
-          "color": "red"
+          "norm": "اخفا"
         }
       ]
     },
@@ -3449,11 +4933,21 @@
         },
         {
           "text": "أَظْهِرْ",
-          "norm": "اظهر"
+          "norm": "اظهر",
+          "runs": [
+            {
+              "text": "أَظْهِرْ",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَادَّغِمْ",
-          "norm": "وادغم"
+          "norm": "وادغم",
+          "color": "red"
         }
       ],
       "ajuzWords": [
@@ -3502,7 +4996,7 @@
           "norm": "بغنه"
         },
         {
-          "text": "فِي",
+          "text": "فِي :",
           "norm": "في"
         },
         {
@@ -3522,12 +5016,45 @@
         },
         {
           "text": "كَدُنْيَا",
-          "norm": "كدنيا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "كَ"
+            },
+            {
+              "text": " : "
+            },
+            {
+              "text": "دُ",
+              "color": "blue"
+            },
+            {
+              "text": "نْيَ",
+              "color": "red"
+            },
+            {
+              "text": "ا",
+              "color": "blue"
+            }
+          ],
+          "norm": "كدنيا"
         },
         {
           "text": "عَنْوَنُوا",
-          "norm": "عنونوا"
+          "norm": "عنونوا",
+          "runs": [
+            {
+              "text": "عَ",
+              "color": "blue"
+            },
+            {
+              "text": "نْوَ",
+              "color": "red"
+            },
+            {
+              "text": "نُوا",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -3541,7 +5068,8 @@
       "sadrWords": [
         {
           "text": "وَالْقَلْبُ",
-          "norm": "والقلب"
+          "norm": "والقلب",
+          "color": "red"
         },
         {
           "text": "عِنْدَ",
@@ -3553,8 +5081,17 @@
           "color": "red"
         },
         {
-          "text": "بِغُنَّةٍ",
-          "norm": "بغنه"
+          "text": "بِغُنَّةٍ /",
+          "norm": "بغنه",
+          "runs": [
+            {
+              "text": "بِغُنَّةٍ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "كَذَا",
@@ -3563,8 +5100,8 @@
       ],
       "ajuzWords": [
         {
-          "text": "لَاخْفَا",
-          "norm": "لاخفا",
+          "text": "الْإِخْفَا",
+          "norm": "الاخفا",
           "color": "red"
         },
         {
@@ -3573,7 +5110,8 @@
         },
         {
           "text": "بَاقِي",
-          "norm": "باقي"
+          "norm": "باقي",
+          "color": "red"
         },
         {
           "text": "الْحُرُوفِ",
@@ -3597,17 +5135,31 @@
         {
           "text": "وَالْمَدُّ",
           "norm": "والمد",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَالْمَدُّ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "لَازِمٌ",
           "norm": "لازم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "لَازِمٌ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَوَاجِبٌ",
-          "norm": "وواجب",
-          "color": "red"
+          "norm": "وواجب"
         },
         {
           "text": "أَتَى",
@@ -3618,7 +5170,14 @@
         {
           "text": "وَجَائِزٌ",
           "norm": "وجايز",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَجَائِزٌ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَهْوَ",
@@ -3626,8 +5185,7 @@
         },
         {
           "text": "وَقَصْرٌ",
-          "norm": "وقصر",
-          "color": "red"
+          "norm": "وقصر"
         },
         {
           "text": "ثَبَتَا",
@@ -3666,7 +5224,8 @@
         },
         {
           "text": "مَدّ",
-          "norm": "مد"
+          "norm": "مد",
+          "color": "red"
         }
       ],
       "ajuzWords": [
@@ -3699,7 +5258,15 @@
         {
           "text": "وَوَاجِبٌ",
           "norm": "وواجب",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَوَاجِبٌ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "إِنْ",
@@ -3748,7 +5315,15 @@
         {
           "text": "وَجَائِزٌ",
           "norm": "وجايز",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَجَائِزٌ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "إِذَا",
@@ -3823,7 +5398,7 @@
         {
           "text": "الْوُقُوفِ",
           "norm": "الوقوف",
-          "color": "red"
+          "color": "green"
         }
       ]
     },
@@ -3836,9 +5411,9 @@
       "ajuz": "ثَلَاثَةً تَامٌّ وَكَافٍ وَحَسَنْ",
       "sadrWords": [
         {
-          "text": "وَالِابْتِدَاءِ",
+          "text": "وَالِابْتِدَاءِ ،",
           "norm": "والابتداء",
-          "color": "red"
+          "color": "green"
         },
         {
           "text": "وَهْيَ",
@@ -3855,18 +5430,34 @@
       ],
       "ajuzWords": [
         {
-          "text": "ثَلَاثَةً",
+          "text": "ثَلَاثَةً :",
           "norm": "ثلاثه"
         },
         {
           "text": "تَامٌّ",
           "norm": "تام",
-          "color": "red"
+          "runs": [
+            {
+              "text": "تَامٌّ",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَكَافٍ",
           "norm": "وكاف",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَكَافٍ",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَحَسَنْ",
@@ -3892,7 +5483,7 @@
           "norm": "لما"
         },
         {
-          "text": "تَمَّ",
+          "text": "تَمَّ :",
           "norm": "تم"
         },
         {
@@ -3942,15 +5533,31 @@
         {
           "text": "فَالتَّامُّ",
           "norm": "فالتام",
-          "color": "red"
+          "runs": [
+            {
+              "text": "فَالتَّامُّ",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "فَالْكَافِي",
           "norm": "فالكافي",
-          "color": "red"
+          "runs": [
+            {
+              "text": "فَالْكَافِي",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
-          "text": "وَلَفْظًا",
+          "text": "وَلَفْظًا :",
           "norm": "ولفظا"
         },
         {
@@ -3972,7 +5579,7 @@
           "norm": "الاي"
         },
         {
-          "text": "جَوِّزْ",
+          "text": "جَوِّزْ ،",
           "norm": "جوز"
         },
         {
@@ -3999,13 +5606,21 @@
           "norm": "ما"
         },
         {
-          "text": "تَمَّ",
+          "text": "تَمَّ :",
           "norm": "تم"
         },
         {
           "text": "قَبِيحٌ",
           "norm": "قبيح",
-          "color": "red"
+          "runs": [
+            {
+              "text": "قَبِيحٌ",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَلَهُ",
@@ -4018,7 +5633,7 @@
           "norm": "يوقف"
         },
         {
-          "text": "مُضْطَرًّا",
+          "text": "مُضْطَرًّا ،",
           "norm": "مضطرا"
         },
         {
@@ -4105,15 +5720,18 @@
         },
         {
           "text": "لِمَقْطُوعٍ",
-          "norm": "لمقطوع"
+          "norm": "لمقطوع",
+          "color": "green"
         },
         {
           "text": "وَمَوْصُولٍ",
-          "norm": "وموصول"
+          "norm": "وموصول",
+          "color": "green"
         },
         {
           "text": "وَتَا",
-          "norm": "وتا"
+          "norm": "وتا",
+          "color": "green"
         }
       ],
       "ajuzWords": [
@@ -4160,7 +5778,7 @@
           "norm": "بعشر"
         },
         {
-          "text": "كَلِمَاتٍ",
+          "text": "كَلِمَاتٍ :",
           "norm": "كلمات"
         },
         {
@@ -4177,27 +5795,43 @@
       "ajuzWords": [
         {
           "text": "مَعْ",
-          "norm": "مع"
+          "norm": "مع",
+          "runs": [
+            {
+              "text": "مَعْ"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "مَلْجَأٍ",
           "norm": "ملجا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَلْجَأٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَلَا",
           "norm": "ولا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "إِلَهَ",
           "norm": "اله",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "إِلَّا",
           "norm": "الا",
-          "color": "red"
+          "color": "blue"
         }
       ]
     },
@@ -4212,11 +5846,27 @@
         {
           "text": "وَتَعْبُدُوا",
           "norm": "وتعبدوا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَتَعْبُدُوا",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "يَاسِينَ",
-          "norm": "ياسين"
+          "norm": "ياسين",
+          "runs": [
+            {
+              "text": "يَاسِينَ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ثَانِي",
@@ -4229,34 +5879,57 @@
         {
           "text": "لَا",
           "norm": "لا",
-          "color": "red"
+          "color": "blue"
         }
       ],
       "ajuzWords": [
         {
           "text": "يُشْرِكْنَ",
           "norm": "يشركن",
-          "color": "red"
+          "runs": [
+            {
+              "text": "يُشْرِكْنَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "تُشْرِكْ",
           "norm": "تشرك",
-          "color": "red"
+          "runs": [
+            {
+              "text": "تُشْرِكْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "يَدْخُلَنْ",
           "norm": "يدخلن",
-          "color": "red"
+          "runs": [
+            {
+              "text": "يَدْخُلَنْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "تَعْلُوا",
           "norm": "تعلوا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "عَلَى",
-          "norm": "علي",
-          "color": "red"
+          "norm": "علي"
         }
       ]
     },
@@ -4271,27 +5944,43 @@
         {
           "text": "أَنْ",
           "norm": "ان",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "لَا",
           "norm": "لا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "يَقُولُوا",
           "norm": "يقولوا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "يَقُولُوا",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "لَا",
           "norm": "لا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "أَقُولَ",
           "norm": "اقول",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَقُولَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "إِنْ",
@@ -4301,7 +5990,15 @@
         {
           "text": "مَّا",
           "norm": "ما",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَّا",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         }
       ],
       "ajuzWords": [
@@ -4314,8 +6011,17 @@
           "norm": "والمفتوح"
         },
         {
-          "text": "صِلْ",
-          "norm": "صل"
+          "text": "صِلْ /",
+          "norm": "صل",
+          "runs": [
+            {
+              "text": "صِلْ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَعَنْ",
@@ -4334,17 +6040,25 @@
       "page": 9,
       "row": 3,
       "babId": "maqtu-mawsul",
-      "sadr": "نُهُوا اقْطَعُوا مِنْ مَّا مَلَكْ رُومِ النِّسَا",
+      "sadr": "نُهُوا اقْطَعُوا مِنْ مَّا بِرُومٍ وَالنِّسَا",
       "ajuz": "خُلْفُ الْمُنَافِقِينَ أَمْ مَّنْ أَسَّسَ",
       "sadrWords": [
         {
           "text": "نُهُوا",
-          "norm": "نهوا",
-          "color": "red"
+          "norm": "نهوا"
         },
         {
           "text": "اقْطَعُوا",
-          "norm": "اقطعوا"
+          "norm": "اقطعوا",
+          "runs": [
+            {
+              "text": "اقْطَعُوا"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "مِنْ",
@@ -4354,20 +6068,24 @@
         {
           "text": "مَّا",
           "norm": "ما",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَّا",
+              "color": "red"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
-          "text": "مَلَكْ",
-          "norm": "ملك",
-          "color": "red"
+          "text": "بِرُومٍ",
+          "norm": "بروم"
         },
         {
-          "text": "رُومِ",
-          "norm": "روم"
-        },
-        {
-          "text": "النِّسَا",
-          "norm": "النسا"
+          "text": "وَالنِّسَا",
+          "norm": "والنسا"
         }
       ],
       "ajuzWords": [
@@ -4377,7 +6095,16 @@
         },
         {
           "text": "الْمُنَافِقِينَ",
-          "norm": "المنافقين"
+          "norm": "المنافقين",
+          "runs": [
+            {
+              "text": "الْمُنَافِقِينَ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "أَمْ",
@@ -4387,11 +6114,20 @@
         {
           "text": "مَّنْ",
           "norm": "من",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَّنْ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "أَسَّسَ",
-          "norm": "اسس"
+          "norm": "اسس",
+          "color": "blue"
         }
       ]
     },
@@ -4405,41 +6141,84 @@
       "sadrWords": [
         {
           "text": "فُصِّلَتِ",
-          "norm": "فصلت"
+          "norm": "فصلت",
+          "runs": [
+            {
+              "text": "فُصِّلَتِ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "النِّسَا",
-          "norm": "النسا"
+          "norm": "النسا",
+          "runs": [
+            {
+              "text": "النِّسَا"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَذِبْحٍ",
-          "norm": "وذبح"
+          "norm": "وذبح",
+          "runs": [
+            {
+              "text": "وَذِبْحٍ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "حَيْثُ",
           "norm": "حيث",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "مَا",
           "norm": "ما",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَا",
+              "color": "blue"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "وَأَنْ",
           "norm": "وان",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "لَّمْ",
           "norm": "لم",
-          "color": "red"
+          "color": "blue"
         },
         {
-          "text": "الْمَفْتُوحَ",
-          "norm": "المفتوح"
+          "text": "الْمَفْتُوحَ /",
+          "norm": "المفتوح",
+          "runs": [
+            {
+              "text": "الْمَفْتُوحَ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "كَسْرُ",
@@ -4453,7 +6232,15 @@
         {
           "text": "مَا",
           "norm": "ما",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَا",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         }
       ]
     },
@@ -4467,16 +6254,25 @@
       "sadrWords": [
         {
           "text": "لِأَنْعَامَ",
-          "norm": "لانعام"
+          "norm": "لانعام",
+          "runs": [
+            {
+              "text": "لِأَنْعَامَ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
-          "text": "وَالْمَفْتُوحَ",
+          "text": "وَالْمَفْتُوحَ :",
           "norm": "والمفتوح"
         },
         {
           "text": "يَدْعُونَ",
           "norm": "يدعون",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "مَعَا",
@@ -4512,29 +6308,54 @@
       "sadrWords": [
         {
           "text": "وَكُلِّ",
-          "norm": "وكل",
-          "color": "red"
+          "norm": "وكل"
         },
         {
           "text": "مَا",
           "norm": "ما",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "سَأَلْتُمُوهُ",
           "norm": "سالتموه",
-          "color": "red"
+          "runs": [
+            {
+              "text": "سَأَلْتُمُوهُ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَاخْتُلِفْ",
-          "norm": "واختلف"
+          "norm": "واختلف",
+          "runs": [
+            {
+              "text": "وَاخْتُلِفْ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "رُدُّوا",
           "norm": "ردوا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "رُدُّوا",
+              "color": "red"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "كَذَا",
@@ -4548,7 +6369,15 @@
         {
           "text": "بِئْسَمَا",
           "norm": "بيسما",
-          "color": "red"
+          "runs": [
+            {
+              "text": "بِئْسَمَا",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَالْوَصْلَ",
@@ -4571,12 +6400,21 @@
         {
           "text": "خَلَفْتُمُونِي",
           "norm": "خلفتموني",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "وَاشْتَرَوْا",
           "norm": "واشتروا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَاشْتَرَوْا",
+              "color": "blue"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "فِي",
@@ -4586,7 +6424,16 @@
         {
           "text": "مَا",
           "norm": "ما",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَا",
+              "color": "red"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "اقْطَعَا",
@@ -4597,22 +6444,46 @@
         {
           "text": "أُوحِي",
           "norm": "اوحي",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أُوحِي",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "أَفَضْتُمْ",
           "norm": "افضتم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "أَفَضْتُمْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "اشْتَهَتْ",
           "norm": "اشتهت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "اشْتَهَتْ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "يَبْلُوا",
           "norm": "يبلوا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "مَعَا",
@@ -4635,10 +6506,18 @@
         {
           "text": "فَعَلْنَ",
           "norm": "فعلن",
-          "color": "red"
+          "runs": [
+            {
+              "text": "فَعَلْنَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
-          "text": "وَقَعَتْ",
+          "text": "وَقَعَتْ ،",
           "norm": "وقعت"
         },
         {
@@ -4654,11 +6533,26 @@
         {
           "text": "تَنْزِيلُ",
           "norm": "تنزيل",
-          "color": "red"
+          "runs": [
+            {
+              "text": "تَنْزِيلُ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "شُعَرَاءَ",
-          "norm": "شعراء"
+          "norm": "شعراء",
+          "runs": [
+            {
+              "text": "شُعَرَاءَ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَغَيْرَهَا",
@@ -4681,14 +6575,31 @@
         {
           "text": "فَأَيْنَمَا",
           "norm": "فاينما",
-          "color": "red"
+          "runs": [
+            {
+              "text": "فَ",
+              "color": "blue"
+            },
+            {
+              "text": "أَيْنَمَا",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "كَالنَّحْلِ",
-          "norm": "كالنحل"
+          "norm": "كالنحل",
+          "runs": [
+            {
+              "text": "كَالنَّحْلِ"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
-          "text": "صِلْ",
+          "text": "صِلْ ،",
           "norm": "صل"
         },
         {
@@ -4729,7 +6640,15 @@
       "sadrWords": [
         {
           "text": "وَصِلْ",
-          "norm": "وصل"
+          "norm": "وصل",
+          "runs": [
+            {
+              "text": "وَصِلْ"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "فَإِلَّمْ",
@@ -4738,7 +6657,16 @@
         },
         {
           "text": "هُودَ",
-          "norm": "هود"
+          "norm": "هود",
+          "runs": [
+            {
+              "text": "هُودَ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "أَلَّن",
@@ -4748,14 +6676,32 @@
         {
           "text": "نَّجْعَلَا",
           "norm": "نجعلا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "نَّجْعَلَا",
+              "color": "blue"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "نَجْمَعَ",
           "norm": "نجمع",
-          "color": "red"
+          "runs": [
+            {
+              "text": "نَجْمَعَ",
+              "color": "blue"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "كَيْلَا",
@@ -4765,17 +6711,24 @@
         {
           "text": "تَحْزَنُوا",
           "norm": "تحزنوا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "تَحْزَنُوا",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "تَأْسَوْا",
           "norm": "تاسوا",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "عَلَى",
-          "norm": "علي",
-          "color": "red"
+          "norm": "علي"
         }
       ]
     },
@@ -4789,17 +6742,42 @@
       "sadrWords": [
         {
           "text": "حَجٌّ",
-          "norm": "حج"
+          "norm": "حج",
+          "runs": [
+            {
+              "text": "حَجٌّ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "عَلَيْكَ",
           "norm": "عليك",
-          "color": "red"
+          "runs": [
+            {
+              "text": "عَلَيْكَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "حَرَجٌ",
           "norm": "حرج",
-          "color": "red"
+          "runs": [
+            {
+              "text": "حَرَجٌ",
+              "color": "blue"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَقَطْعُهُمْ",
@@ -4815,12 +6793,28 @@
         {
           "text": "مَّنْ",
           "norm": "من",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَّنْ",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "يَشَاءُ",
           "norm": "يشاء",
-          "color": "red"
+          "runs": [
+            {
+              "text": "يَشَاءُ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "مَنْ",
@@ -4830,7 +6824,16 @@
         {
           "text": "تَوَلَّى",
           "norm": "تولي",
-          "color": "red"
+          "runs": [
+            {
+              "text": "تَوَلَّى",
+              "color": "blue"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "يَوْمَ",
@@ -4853,31 +6856,60 @@
       "ajuz": "تَحِينَ فِي الْإِمَامِ صِلْ وَوُهِّلَا",
       "sadrWords": [
         {
-          "text": "وَمَالِ",
-          "norm": "ومال",
+          "text": "وَ :",
+          "norm": "و"
+        },
+        {
+          "text": "مَالِ",
+          "norm": "مال",
           "color": "red"
         },
         {
           "text": "هَذَا",
           "norm": "هذا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "هَذَا",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَالَّذِينَ",
           "norm": "والذين",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَالَّذِينَ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "هَؤُلَا",
           "norm": "هولا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "هَؤُلَا",
+              "color": "blue"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "تَحِينَ",
           "norm": "تحين",
-          "color": "red"
+          "color": "blue"
         },
         {
           "text": "فِي",
@@ -4888,7 +6920,7 @@
           "norm": "الامام"
         },
         {
-          "text": "صِلْ",
+          "text": "صِلْ ،",
           "norm": "صل"
         },
         {
@@ -4908,12 +6940,30 @@
         {
           "text": "وَوَزَنُوهُمُ",
           "norm": "ووزنوهم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَوَزَنُو",
+              "color": "blue"
+            },
+            {
+              "text": "هُمُ",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَكَالُوهُمْ",
           "norm": "وكالوهم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَكَالُو",
+              "color": "blue"
+            },
+            {
+              "text": "هُمْ",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "صِلِ",
@@ -4926,23 +6976,49 @@
           "norm": "كذا"
         },
         {
-          "text": "مِنَ",
+          "text": "مِنَ :",
           "norm": "من"
         },
         {
           "text": "الْ",
           "norm": "ال",
-          "color": "red"
+          "runs": [
+            {
+              "text": "الْ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَهَا",
           "norm": "وها",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَ"
+            },
+            {
+              "text": "هَا",
+              "color": "red"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَيَا",
           "norm": "ويا",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَ"
+            },
+            {
+              "text": "يَا",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "لَا",
@@ -4965,7 +7041,16 @@
         {
           "text": "وَرَحْمَتُ",
           "norm": "ورحمت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَرَحْمَ",
+              "color": "blue"
+            },
+            {
+              "text": "تُ",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "الزُّخْرُفِ",
@@ -4983,15 +7068,39 @@
       "ajuzWords": [
         {
           "text": "لِأَعْرَافِ",
-          "norm": "لاعراف"
+          "norm": "لاعراف",
+          "runs": [
+            {
+              "text": "لِأَعْرَافِ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "رُومٍ",
-          "norm": "روم"
+          "norm": "روم",
+          "runs": [
+            {
+              "text": "رُومٍ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "هُودَ",
-          "norm": "هود"
+          "norm": "هود",
+          "runs": [
+            {
+              "text": "هُودَ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "كَافَ",
@@ -5014,7 +7123,20 @@
         {
           "text": "نِعْمَتُهَا",
           "norm": "نعمتها",
-          "color": "red"
+          "runs": [
+            {
+              "text": "نِعْمَ",
+              "color": "blue"
+            },
+            {
+              "text": "تُ",
+              "color": "red"
+            },
+            {
+              "text": "هَا",
+              "color": "blue"
+            }
+          ]
         },
         {
           "text": "ثَلَاثُ",
@@ -5022,7 +7144,15 @@
         },
         {
           "text": "نَحْلٍ",
-          "norm": "نحل"
+          "norm": "نحل",
+          "runs": [
+            {
+              "text": "نَحْلٍ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "إِبْرَهَمْ",
@@ -5035,7 +7165,7 @@
           "norm": "معا"
         },
         {
-          "text": "أَخِيرَاتٌ",
+          "text": "أَخِيرَاتٌ ،",
           "norm": "اخيرات"
         },
         {
@@ -5049,7 +7179,7 @@
         {
           "text": "هَمّ",
           "norm": "هم",
-          "color": "red"
+          "color": "blue"
         }
       ]
     },
@@ -5063,7 +7193,15 @@
       "sadrWords": [
         {
           "text": "لُقْمَانُ",
-          "norm": "لقمان"
+          "norm": "لقمان",
+          "runs": [
+            {
+              "text": "لُقْمَانُ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "ثُمَّ",
@@ -5071,7 +7209,15 @@
         },
         {
           "text": "فَاطِرٌ",
-          "norm": "فاطر"
+          "norm": "فاطر",
+          "runs": [
+            {
+              "text": "فَاطِرٌ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "كَالطُّورِ",
@@ -5081,16 +7227,45 @@
       "ajuzWords": [
         {
           "text": "عِمْرَانَ",
-          "norm": "عمران"
+          "norm": "عمران",
+          "runs": [
+            {
+              "text": "عِمْرَانَ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "لَعْنَتُ",
           "norm": "لعنت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "لَعْنَ",
+              "color": "blue"
+            },
+            {
+              "text": "تُ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
-          "text": "يِهَا",
-          "norm": "يها"
+          "text": "بِهَا",
+          "norm": "بها",
+          "runs": [
+            {
+              "text": "بِهَا"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَالنُّورِ",
@@ -5109,15 +7284,43 @@
         {
           "text": "وَامْرَأَتُ",
           "norm": "وامرات",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَامْرَأَ",
+              "color": "blue"
+            },
+            {
+              "text": "تُ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "يُوسُفَ",
-          "norm": "يوسف"
+          "norm": "يوسف",
+          "runs": [
+            {
+              "text": "يُوسُفَ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "عِمْرَانَ",
-          "norm": "عمران"
+          "norm": "عمران",
+          "runs": [
+            {
+              "text": "عِمْرَانَ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "الْقَصَصْ",
@@ -5127,22 +7330,40 @@
       "ajuzWords": [
         {
           "text": "تَحْرِيمُ",
-          "norm": "تحريم"
+          "norm": "تحريم",
+          "runs": [
+            {
+              "text": "تَحْرِيمُ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "مَعْصِيَتْ",
           "norm": "معصيت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "مَعْصِيَ",
+              "color": "blue"
+            },
+            {
+              "text": "تْ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "بِقَدْ",
-          "norm": "بقد",
-          "color": "red"
+          "norm": "بقد"
         },
         {
           "text": "سَمِعْ",
-          "norm": "سمع",
-          "color": "red"
+          "norm": "سمع"
         },
         {
           "text": "يُخَصّ",
@@ -5161,16 +7382,46 @@
         {
           "text": "شَجَرَتَ",
           "norm": "شجرت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "شَجَرَ",
+              "color": "blue"
+            },
+            {
+              "text": "تَ",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "الدُّخَانِ",
-          "norm": "الدخان"
+          "norm": "الدخان",
+          "runs": [
+            {
+              "text": "الدُّخَانِ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "سُنَّتْ",
           "norm": "سنت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "سُنَّ",
+              "color": "blue"
+            },
+            {
+              "text": "تْ",
+              "color": "red"
+            },
+            {
+              "text": " :"
+            }
+          ]
         },
         {
           "text": "فَاطِرِ",
@@ -5184,7 +7435,15 @@
         },
         {
           "text": "وَالْأَنْفَالِ",
-          "norm": "والانفال"
+          "norm": "والانفال",
+          "runs": [
+            {
+              "text": "وَالْأَنْفَالِ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَأُخْرَى",
@@ -5207,47 +7466,130 @@
         {
           "text": "قُرَّتُ",
           "norm": "قرت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "قُرَّ",
+              "color": "blue"
+            },
+            {
+              "text": "تُ",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "عَيْنٍ",
           "norm": "عين",
-          "color": "red"
+          "runs": [
+            {
+              "text": "عَيْنٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "جَنَّتْ",
           "norm": "جنت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "جَنَّ",
+              "color": "blue"
+            },
+            {
+              "text": "تْ",
+              "color": "red"
+            }
+          ]
         },
         {
-          "text": "فِي",
+          "text": "فِي :",
           "norm": "في"
         },
         {
-          "text": "وَقَعَتْ",
-          "norm": "وقعت"
+          "text": "وَقَعَتْ /",
+          "norm": "وقعت",
+          "runs": [
+            {
+              "text": "وَقَعَتْ"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "فِطْرَتْ",
           "norm": "فطرت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "فِطْرَ",
+              "color": "blue"
+            },
+            {
+              "text": "تْ",
+              "color": "red"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "بَقِيَّتْ",
           "norm": "بقيت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "بَقِيَّ",
+              "color": "blue"
+            },
+            {
+              "text": "تْ",
+              "color": "red"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَابْنَتْ",
           "norm": "وابنت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَابْنَ",
+              "color": "blue"
+            },
+            {
+              "text": "تْ",
+              "color": "red"
+            },
+            {
+              "text": " /",
+              "color": "red"
+            }
+          ]
         },
         {
           "text": "وَكَلِمَتْ",
           "norm": "وكلمت",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَكَلِمَ",
+              "color": "blue"
+            },
+            {
+              "text": "تْ",
+              "color": "red"
+            }
+          ]
         }
       ]
     },
@@ -5265,7 +7607,15 @@
         },
         {
           "text": "الْأَعْرَافِ",
-          "norm": "الاعراف"
+          "norm": "الاعراف",
+          "runs": [
+            {
+              "text": "الْأَعْرَافِ"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَكُلُّ",
@@ -5317,13 +7667,11 @@
         },
         {
           "text": "بِهَمْزِ",
-          "norm": "بهمز",
-          "color": "red"
+          "norm": "بهمز"
         },
         {
           "text": "الْوَصْلِ",
-          "norm": "الوصل",
-          "color": "red"
+          "norm": "الوصل"
         },
         {
           "text": "مِنْ",
@@ -5375,8 +7723,7 @@
       "sadrWords": [
         {
           "text": "وَاكْسِرْهُ",
-          "norm": "واكسره",
-          "color": "red"
+          "norm": "واكسره"
         },
         {
           "text": "حَالَ",
@@ -5387,7 +7734,7 @@
           "norm": "الكسر"
         },
         {
-          "text": "وَالْفَتْحِ",
+          "text": "وَالْفَتْحِ ،",
           "norm": "والفتح"
         },
         {
@@ -5409,11 +7756,11 @@
           "norm": "اللام"
         },
         {
-          "text": "كَسْرُهَا",
+          "text": "كَسْرُهَا ،",
           "norm": "كسرها"
         },
         {
-          "text": "وَفِي",
+          "text": "وَفِي :",
           "norm": "وفي"
         }
       ]
@@ -5429,38 +7776,119 @@
         {
           "text": "ابْنٍ",
           "norm": "ابن",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ا",
+              "color": "red"
+            },
+            {
+              "text": "بْنٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "مَعَ",
           "norm": "مع"
         },
         {
-          "text": "ابْنَةٍ",
-          "norm": "ابنه",
-          "color": "red"
+          "text": "ابْنَتِ",
+          "norm": "ابنت",
+          "runs": [
+            {
+              "text": "ا",
+              "color": "red"
+            },
+            {
+              "text": "بْنَتِ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "امْرِئٍ",
           "norm": "امري",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ا",
+              "color": "red"
+            },
+            {
+              "text": "مْرِئٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَاثْنَيْنِ",
           "norm": "واثنين",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَ",
+              "color": "blue"
+            },
+            {
+              "text": "ا",
+              "color": "red"
+            },
+            {
+              "text": "ثْنَيْنِ",
+              "color": "blue"
+            }
+          ]
         }
       ],
       "ajuzWords": [
         {
           "text": "وَامْرَأَةٍ",
           "norm": "وامراه",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَ",
+              "color": "blue"
+            },
+            {
+              "text": "ا",
+              "color": "red"
+            },
+            {
+              "text": "مْرَأَةٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "وَاسْمٍ",
           "norm": "واسم",
-          "color": "red"
+          "runs": [
+            {
+              "text": "وَ",
+              "color": "blue"
+            },
+            {
+              "text": "ا",
+              "color": "red"
+            },
+            {
+              "text": "سْمٍ",
+              "color": "blue"
+            },
+            {
+              "text": " ،"
+            }
+          ]
         },
         {
           "text": "مَعَ",
@@ -5469,7 +7897,16 @@
         {
           "text": "اثْنَتَيْنِ",
           "norm": "اثنتين",
-          "color": "red"
+          "runs": [
+            {
+              "text": "ا",
+              "color": "red"
+            },
+            {
+              "text": "ثْنَتَيْنِ",
+              "color": "blue"
+            }
+          ]
         }
       ]
     },
@@ -5542,7 +7979,7 @@
           "norm": "او"
         },
         {
-          "text": "يَنْصَبِ",
+          "text": "يَنْصَبِ ،",
           "norm": "ينصب"
         },
         {
@@ -5556,7 +7993,7 @@
           "norm": "اشاره"
         },
         {
-          "text": "بِالضَّمِّ",
+          "text": "بِالضَّمِّ :",
           "norm": "بالضم"
         },
         {
@@ -5596,7 +8033,7 @@
         {
           "text": "الْمُقَدِّمَهْ",
           "norm": "المقدمه",
-          "color": "red"
+          "color": "green"
         }
       ],
       "ajuzWords": [
@@ -5627,7 +8064,7 @@
       "ajuz": "مَنْ يُحْسِنِ التَّجْوِيدَ يَظْفَرْ بِالرَّشَدْ",
       "sadrWords": [
         {
-          "text": "أَبْيَاتُهَا",
+          "text": "أَبْيَاتُهَا :",
           "norm": "ابياتها"
         },
         {

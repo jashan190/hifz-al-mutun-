@@ -26,12 +26,15 @@ struct PageView: View {
 
     // Tighter margins/gaps give each hemistich more width, which — since the text
     // is sized to fill its column — makes the glyphs noticeably larger.
-    private let hPadding: CGFloat = 10
-    private let numberColumn: CGFloat = 30
-    private let numberGap: CGFloat = 6
-    private let midGap: CGFloat = 14
+    private let hPadding: CGFloat = 8
+    private let numberColumn: CGFloat = 24
+    private let numberGap: CGFloat = 5
+    private let midGap: CGFloat = 10
     private let referenceSize: CGFloat = 40
-    private let minSize: CGFloat = 12
+    // Low floor: a long-metre poem (Shāṭibiyyah) fits its longest hemistich at a
+    // smaller uniform size; clamping up here would make that line overflow and
+    // break the "every line, one size" rule.
+    private let minSize: CGFloat = 8
     private let maxSize: CGFloat = 48
     // Width measurement underestimates SwiftUI's rendered width, so size and
     // justify to a slightly conservative target to avoid truncation.
@@ -49,7 +52,7 @@ struct PageView: View {
                 1,
                 (geo.size.width - 2 * hPadding - numberColumn - numberGap - midGap) / 2
             )
-            let fontSize = pageFontSize(bayts: bayts, columnWidth: columnWidth)
+            let fontSize = pageFontSize(columnWidth: columnWidth)
             // A full page (its quota of bayts) distributes its rows to fill the
             // page height; an under-filled last page keeps its gaps capped so it
             // sits at the top instead of ballooning.
@@ -123,17 +126,37 @@ struct PageView: View {
             .accessibilityLabel("Page \(pageModel.page)")
     }
 
-    private func pageFontSize(bayts: [Bayt], columnWidth: CGFloat) -> CGFloat {
+    // One size for the WHOLE poem (not just this page): fit the poem's single
+    // widest hemistich to the column, so every page reads at the same size the way
+    // a printed muṣḥaf does. Shorter lines are then kashida-justified to fill.
+    private func pageFontSize(columnWidth: CGFloat) -> CGFloat {
         let target = columnWidth * fitSafety
-        var best = maxSize
-        for bayt in bayts {
-            for text in [bayt.sadr.text, bayt.ajuz.text] {
-                let w = PageFont.width(text, size: referenceSize)
-                guard w > 0 else { continue }
-                best = min(best, referenceSize * target / w)
+        let widest = PageMetrics.widestHemistich(in: matn, at: referenceSize)
+        guard widest > 0 else { return minSize * typeScale }
+        let best = referenceSize * target / widest
+        return min(max(best, minSize), maxSize) * typeScale
+    }
+}
+
+/// Poem-wide text measurements, memoized by matn id so a page turn doesn't
+/// re-measure every hemistich (Shāṭibiyyah has thousands).
+enum PageMetrics {
+    private static var widest: [String: CGFloat] = [:]
+
+    /// The width of the poem's single widest hemistich at `size`, so the reader
+    /// can pick one font size that fits every line of the poem.
+    static func widestHemistich(in matn: Matn, at size: CGFloat) -> CGFloat {
+        if let w = widest[matn.id] { return w }
+        var mx: CGFloat = 0
+        for page in matn.pages {
+            for item in page.items {
+                guard case .bayt(let b) = item else { continue }
+                mx = max(mx, PageFont.width(b.sadr.text, size: size))
+                mx = max(mx, PageFont.width(b.ajuz.text, size: size))
             }
         }
-        return min(max(best, minSize), maxSize) * typeScale
+        widest[matn.id] = mx
+        return mx
     }
 }
 
@@ -143,6 +166,7 @@ func inkColor(_ color: SegmentColor) -> Color {
     case .black: return Theme.ink
     case .blue:  return Theme.quran
     case .red:   return Theme.rumuz
+    case .green: return Theme.sabz
     }
 }
 
@@ -198,7 +222,12 @@ private struct LayeredText: View {
     private func layer(_ s: AttributedString) -> some View {
         let text = Text(s).font(font).foregroundStyle(defaultColor)
         if let width {
-            text.lineLimit(1).minimumScaleFactor(0.9)
+            // Width measurement (NSString.size) can under-predict SwiftUI's
+            // rendered width for some Arabic clusters (e.g. the madda in وَآلِهِ),
+            // so a line can exceed its measured-to-fit column. Allow a wider
+            // shrink range so such an outlier scales down to fit instead of
+            // truncating with an ellipsis.
+            text.lineLimit(1).minimumScaleFactor(0.75)
                 .frame(width: width, alignment: .leading)
         } else {
             text.multilineTextAlignment(.center).frame(maxWidth: .infinity)
@@ -544,7 +573,8 @@ private struct BaytRow: View {
                     justifyWidth: justifyWidth,
                     tint: inkColor,
                     boxed: flagRanges,
-                    flashBoxed: flashRanges
+                    flashBoxed: flashRanges,
+                    connectingNoonBelow: matnID == "jazariyya"
                 ),
                 font: PageFont.font(size: fontSize),
                 size: fontSize,

@@ -54,6 +54,7 @@ private func segColor(_ raw: String?) -> SegmentColor {
     switch raw {
     case "red": return .red
     case "blue": return .blue
+    case "green": return .green
     default: return .black
     }
 }

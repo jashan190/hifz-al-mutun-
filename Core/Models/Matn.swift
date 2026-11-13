@@ -22,6 +22,7 @@ enum SegmentColor: String, Decodable, Hashable {
     case black   // the poet's words
     case blue    // Quranic words (and, in a few chapters, letter lists / terms)
     case red     // rumuz (code letters), the separating wāw, reader names, emphasis
+    case green   // whole bayts the edition prints in green (e.g. the naming bayt)
 }
 
 /// One run of a half-line: either coloured text, or a footnote marker. Segments

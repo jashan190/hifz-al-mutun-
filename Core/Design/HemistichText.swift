@@ -69,7 +69,9 @@ enum HemistichText {
     private static func kashida(plain: String, targetWidth: CGFloat, size: CGFloat) -> [Int: Int] {
         let unit = PageFont.width("\u{0640}", size: size)
         let deficit = targetWidth - PageFont.width(plain, size: size)
-        guard unit > 0, deficit > unit else { return [:] }
+        // Fill any gap, not just gaps wider than one tatweel — short lines must
+        // reach the column edge too, so every bayt is the same length.
+        guard unit > 0, deficit > unit * 0.5 else { return [:] }
 
         let scalars = Array(plain.unicodeScalars)
         let points = insertionOffsets(scalars)
@@ -108,7 +110,12 @@ enum HemistichText {
     /// the line, a **fatḥa/ḍamma** lifts it ABOVE. A nun still followed by a letter
     /// (after its vowel) is a mid-word spelling nun and stays put. A bare connecting
     /// nun with no vowel defaults BELOW, as the book draws most of them.
-    private static func noonPlacements(_ plain: String) -> [Int: NoonPlace] {
+    ///
+    /// `connectingBelow`: the Ghawthani Jazariyyah draws *every* connecting nun below
+    /// the line, carrying its own vowel (fatḥa/ḍamma/kasra) on it — unlike the Suwaid
+    /// Shāṭibiyyah, where fatḥa/ḍamma nuns ride above. When true we force connecting
+    /// nuns below regardless of their vowel.
+    private static func noonPlacements(_ plain: String, connectingBelow: Bool) -> [Int: NoonPlace] {
         let sc = Array(plain.unicodeScalars)
         var map: [Int: NoonPlace] = [:]
         for i in sc.indices where sc[i].value == smallNoon {
@@ -116,7 +123,8 @@ enum HemistichText {
             var vowel: UInt32?
             if j < sc.count, isNoonHaraka(sc[j].value) { vowel = sc[j].value; j += 1 }
             if j == sc.count || sc[j].value == 0x20 {           // connecting nun
-                map[i] = (vowel == fatha || vowel == damma) ? .above : .below
+                map[i] = connectingBelow ? .below
+                       : ((vowel == fatha || vowel == damma) ? .above : .below)
             } else {
                 map[i] = .natural                               // mid-word spelling nun
             }
@@ -176,10 +184,11 @@ enum HemistichText {
         underlined: [Range<Int>] = [],
         boxed: [Range<Int>] = [],
         flashBoxed: [Range<Int>] = [],
-        emphasis: (ranges: [Range<Int>], color: Color)? = nil
+        emphasis: (ranges: [Range<Int>], color: Color)? = nil,
+        connectingNoonBelow: Bool = false
     ) -> Rendered {
         let insertions = kashida(plain: plain, targetWidth: justifyWidth, size: size)
-        let placements = noonPlacements(plain)
+        let placements = noonPlacements(plain, connectingBelow: connectingNoonBelow)
 
         var base = AttributedString()
         var above = AttributedString()

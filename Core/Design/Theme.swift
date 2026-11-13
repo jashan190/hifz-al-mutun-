@@ -103,6 +103,9 @@ enum Theme {
     //    error red so the two don't look like the same colour.
     static let quran = Color.dynamic(light: 0x1A5A86, dark: 0x74B6DE)
     static let rumuz = Color.dynamic(light: 0xB02430, dark: 0xEE7E82)
+    //  • sabz — whole bayts the edition prints in green (e.g. the naming bayt):
+    //    the Madinah green, matching the bab headings.
+    static let sabz = Color.dynamic(light: 0x1E5B3A, dark: 0x5FB585)
 
     // Per-subject accent colours for the library shelves and covers. Saturated
     // on purpose so a subject is recognizable at a glance, even at cover size.
