@@ -126,8 +126,9 @@ struct ReaderChrome: View {
                 }
                 .padding(.horizontal, Theme.margin)
                 .frame(height: buttonSize)
-                // Line the controls up with the status pill's vertical centre.
-                .padding(.top, max(0, islandCenterY - buttonSize / 2))
+                // Line the controls up with the status pill's vertical centre (the
+                // occlusion centre reads a touch high, so nudge down a little).
+                .padding(.top, max(0, islandCenterY - buttonSize / 2) + 14)
             }
             .transition(.move(edge: .top).combined(with: .opacity))
     }
@@ -161,9 +162,11 @@ struct ReaderChrome: View {
             actionGroup
         }
         // Clear the status bar / Dynamic Island pill at the top of the camera
-        // strip, leaving a comfortable gap so the top controls are tappable.
-        .padding(.top, max(104, topInset + 28))
+        // strip, dropped a little lower so the top controls sit well below it.
+        .padding(.top, max(124, topInset + 48))
         .padding(.bottom, 16)
+        // Nudge the controls slightly toward the content, off the camera edge.
+        .offset(x: -8)
         .frame(width: width)
         .frame(maxHeight: .infinity)
         .background { chrome.ignoresSafeArea() }
