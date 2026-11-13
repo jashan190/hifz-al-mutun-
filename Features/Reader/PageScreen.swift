@@ -72,7 +72,8 @@ struct PageScreen: View {
       // Outer GeometryReader gives the screen size so prose can be paginated at
       // runtime; poems ignore it (behaviour unchanged).
       GeometryReader { geo in
-        let twoPages = showsTwoPages(geo.size)
+        let currentLayout = layout(geo.size)
+        let twoPages = currentLayout.showsTwoPages
         pager(twoPages: twoPages)
         .task(id: geo.size) {
             // Two pages share the width.
@@ -82,10 +83,28 @@ struct PageScreen: View {
         .onAppear { ReadingPosition.recordOpened(matn.id) }
         .environment(\.readerActions, actions)
         .background(Theme.cover.ignoresSafeArea())
-        .safeAreaInset(edge: .top, spacing: 0) { if barsVisible { topBar } }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if barsVisible { footer }
+        // Top: the full header on regular devices; on the Duo the header is gone,
+        // leaving just the chapter as a quiet running head.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if barsVisible {
+                if currentLayout == .standard { topBar }
+                else if !babsCaption.isEmpty { duoRunningHead }
+            }
         }
+        // Bottom bar: the footer on regular devices and the Duo held upright.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if barsVisible {
+                if currentLayout == .standard { footer }
+                else if currentLayout == .duoPortrait { readerChrome(vertical: false) }
+            }
+        }
+        // Right-edge rail: the Duo folded or open on its side. In this RTL app the
+        // physical right edge is `.leading`.
+        .safeAreaInset(edge: .leading, spacing: 0) {
+            if barsVisible && currentLayout.usesVerticalRail { readerChrome(vertical: true) }
+        }
+        // Leaving Memorize releases the mic (was on the footer, which the Duo hides).
+        .onChange(of: mode) { _, m in if m != .memorize { voice.clear() } }
         .sheet(isPresented: $reviewPresented) {
             ReviewSheet(
                 matn: matn,
@@ -435,15 +454,38 @@ struct PageScreen: View {
             Rectangle().fill(Theme.chromeHairline).frame(height: 1)
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))
-        .onChange(of: mode) { _, m in
-            if m != .memorize { voice.clear() }
-        }
+    }
+
+    /// The unified Duo chrome (bottom bar or vertical rail), wired to this reader.
+    private func readerChrome(vertical: Bool) -> some View {
+        ReaderChrome(mode: $mode, voice: voice, tint: subjectAccent, chrome: chrome,
+                     flagCount: flagStore.count(for: matn.id),
+                     currentPage: currentPage, pageCount: displayPageCount,
+                     vertical: vertical,
+                     onBack: { dismiss() },
+                     onIndex: { showIndex = true },
+                     onReview: { reviewPresented = true },
+                     onStartVoice: { startVoice() })
+    }
+
+    /// On the Duo, the header is gone; the current chapter shows as a quiet
+    /// running head over the top margin of the page.
+    private var duoRunningHead: some View {
+        Text(babsCaption)
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(Theme.ink.opacity(0.45))
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+            .background(Theme.cover.ignoresSafeArea(edges: .top))
+            .transition(.opacity)
     }
 }
 
 // Beside the mic: what voice review is doing, and what to do when it can't
 // (UX.md: "the mic button says why and offers … Open Settings").
-private struct VoiceStatusLabel: View {
+struct VoiceStatusLabel: View {
     @ObservedObject var voice: VoiceController
     @Environment(\.openURL) private var openURL
 
