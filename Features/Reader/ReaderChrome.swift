@@ -132,12 +132,21 @@ struct ReaderChrome: View {
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
-    private var pageText: some View {
-        Text(isCover ? "الغلاف"
-             : "\(Numerals.eastern(currentPage)) / \(Numerals.eastern(pageCount))")
-            .font(.footnote.weight(.medium))
-            .foregroundStyle(Theme.onChromeDim)
-            .fixedSize()
+    // Page indicator, always read left-to-right ("٣ / ٦"); a book glyph on the cover.
+    @ViewBuilder private var pageText: some View {
+        if isCover {
+            Image(systemName: "book.closed")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Theme.onChromeDim)
+                .accessibilityLabel("Cover")
+        } else {
+            Text("\(Numerals.eastern(currentPage)) / \(Numerals.eastern(pageCount))")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Theme.onChromeDim)
+                .environment(\.layoutDirection, .leftToRight)   // read "٣ / ٦" left-to-right
+                .fixedSize()
+                .accessibilityLabel("Page \(currentPage) of \(pageCount)")
+        }
     }
 
     // MARK: - Vertical rail (Duo folded or on its side)
@@ -146,32 +155,18 @@ struct ReaderChrome: View {
         VStack(spacing: 12) {
             navGroup
             Spacer(minLength: 0)
+            pageText            // page number centred in the middle of the rail
+            Spacer(minLength: 0)
             actionGroup
-            pageStack
         }
-        .padding(.top, max(12, topInset))
-        .padding(.bottom, 14)
+        // Generous top clearance so the controls never sit under the status
+        // bar / Dynamic Island at the top of the camera strip.
+        .padding(.top, max(54, topInset))
+        .padding(.bottom, 16)
         .frame(width: width)
         .frame(maxHeight: .infinity)
         .background { chrome.ignoresSafeArea() }
         .overlay(alignment: .trailing) { Rectangle().fill(Theme.chromeHairline).frame(width: 1) }
         .transition(.move(edge: .leading).combined(with: .opacity))
-    }
-
-    @ViewBuilder private var pageStack: some View {
-        if isCover {
-            Image(systemName: "book.closed")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Theme.onChromeDim)
-                .accessibilityLabel("Cover")
-        } else {
-            VStack(spacing: 2) {
-                Text(Numerals.eastern(currentPage)).font(.system(size: 14, weight: .semibold))
-                Rectangle().fill(Theme.onChromeDim).frame(width: 14, height: 1)
-                Text(Numerals.eastern(pageCount)).font(.system(size: 12))
-            }
-            .foregroundStyle(Theme.onChromeDim)
-            .accessibilityLabel("Page \(currentPage) of \(pageCount)")
-        }
     }
 }

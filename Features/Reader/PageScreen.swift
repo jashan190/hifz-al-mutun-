@@ -93,7 +93,6 @@ struct PageScreen: View {
             if barsVisible {
                 if currentLayout == .standard { topBar }
                 else if currentLayout == .duoPortrait { readerChrome(vertical: false, topInset: topInset) }
-                else if !babsCaption.isEmpty { duoRunningHead }
             }
         }
         // Bottom bar: only regular devices keep a footer.
@@ -485,19 +484,6 @@ struct PageScreen: View {
                      onStartVoice: { startVoice() })
     }
 
-    /// On the Duo, the header is gone; the current chapter shows as a quiet
-    /// running head over the top margin of the page.
-    private var duoRunningHead: some View {
-        Text(babsCaption)
-            .font(.footnote.weight(.medium))
-            .foregroundStyle(Theme.ink.opacity(0.45))
-            .lineLimit(1)
-            .truncationMode(.middle)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-            .background(Theme.cover.ignoresSafeArea(edges: .top))
-            .transition(.opacity)
-    }
 }
 
 // Beside the mic: what voice review is doing, and what to do when it can't
