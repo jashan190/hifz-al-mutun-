@@ -1,10 +1,11 @@
 import SwiftUI
 
-/// The reader's controls as one component with two shapes: a horizontal **bottom
-/// bar** (the Duo held upright) or a slim **vertical rail** on the trailing edge
-/// (the Duo folded, or open on its side). Same controls, same order, either way.
-/// On the Duo this replaces the old split header + footer — back and index live
-/// here now, and the chapter name shows as a running head on the page.
+/// The reader's controls as one component with two shapes: a **vertical rail** in
+/// the camera/status strip on the trailing edge (the Duo folded, or open on its
+/// side) or a **horizontal top bar** in the top camera/status strip (the Duo open
+/// upright). Same controls either way — navigation (back, index) at the leading
+/// end/top, actions (mode, review) at the trailing end/bottom. On the Duo this
+/// replaces the old split header + footer; the chapter shows as a running head.
 struct ReaderChrome: View {
     @Binding var mode: PageMode
     @ObservedObject var voice: VoiceController
@@ -17,7 +18,7 @@ struct ReaderChrome: View {
     /// Rail width — defaults to the slim toolbar width, but on the Duo's inner
     /// screen it's set to the camera/status reserved strip so the rail fills it.
     var width: CGFloat = ReaderChrome.railWidth
-    /// Top padding so rail controls clear the status bar at the top of the strip.
+    /// Padding so controls clear the status bar / camera at the top of the strip.
     var topInset: CGFloat = 0
     let onBack: () -> Void
     let onIndex: () -> Void
@@ -26,9 +27,10 @@ struct ReaderChrome: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Width of the vertical rail: a single 44-pt touch target, no wider — like
-    /// Apple's slim vertical toolbar. The icons fill this width.
-    static let railWidth: CGFloat = 44
+    /// Width of the vertical rail: a single, generous touch target.
+    static let railWidth: CGFloat = 56
+    /// Diameter of a chrome button — big, with a cream disc for strong contrast.
+    private let buttonSize: CGFloat = 46
 
     private var micBinding: Binding<Bool> {
         Binding(get: { voice.isLive }, set: { on in on ? onStartVoice() : voice.stop() })
@@ -40,120 +42,51 @@ struct ReaderChrome: View {
         if vertical { rail } else { bar }
     }
 
-    // MARK: - Bottom bar (adds back + index to the familiar footer controls)
+    // MARK: - Shared controls (cream disc + green glyph: big, high contrast)
 
-    private var bar: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if mode == .memorize {
-                VoiceStatusLabel(voice: voice).transition(.opacity)
-            }
-            HStack(spacing: 12) {
-                ChromeIconButton(system: "chevron.backward", label: "Back to Library", action: onBack)
-                ChromeIconButton(system: "list.bullet", label: "Index", action: onIndex)
-                ModeToggle(mode: $mode, tint: tint).fixedSize()
-                if mode == .memorize {
-                    MicButton(isListening: micBinding, tint: tint)
-                        .transition(.scale.combined(with: .opacity))
-                }
-                reviewPill
-                Spacer(minLength: 0)
-                Text(isCover ? "الغلاف"
-                     : "\(Numerals.eastern(currentPage)) / \(Numerals.eastern(pageCount))")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Theme.onChromeDim)
-                    .fixedSize()
-            }
-        }
-        .padding(.horizontal, Theme.margin)
-        .padding(.vertical, 7)
-        .background { chrome.ignoresSafeArea(edges: .bottom) }
-        .overlay(alignment: .top) { Rectangle().fill(Theme.chromeHairline).frame(height: 1) }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
-    }
-
-    private var reviewPill: some View {
-        Button(action: onReview) {
-            HStack(spacing: 5) {
-                Image(systemName: "flag.fill").font(.system(size: 12, weight: .semibold))
-                Text(flagCount > 0 ? "مراجعة · \(Numerals.eastern(flagCount))" : "مراجعة")
-                    .font(.footnote.weight(.semibold))
-            }
-            .foregroundStyle(flagCount > 0 ? Theme.onChrome : Theme.onChromeDim)
-            .padding(.horizontal, 12).padding(.vertical, 6)
-            .background(Capsule().fill(Theme.onChrome.opacity(0.12)))
-        }
-        .buttonStyle(PressableStyle())
-        .fixedSize()
-    }
-
-    // MARK: - Vertical rail
-
-    private var rail: some View {
-        VStack(spacing: 4) {
-            railIcon("chevron.backward", label: "Back to Library", action: onBack)
-            railIcon("list.bullet", label: "Index", action: onIndex)
-            railModeButton
-            if mode == .memorize {
-                MicButton(isListening: micBinding, tint: tint)
-                    .transition(.scale.combined(with: .opacity))
-            }
-            railReviewButton
-            pageStack.padding(.top, 4)
-            Spacer(minLength: 0)
-        }
-        .padding(.top, max(8, topInset))
-        .padding(.bottom, 10)
-        .frame(width: width)
-        .frame(maxHeight: .infinity)
-        .background { chrome.ignoresSafeArea() }
-        .overlay(alignment: .trailing) { Rectangle().fill(Theme.chromeHairline).frame(width: 1) }
-        .transition(.move(edge: .leading).combined(with: .opacity))
-    }
-
-    /// A plain, full-width toolbar icon — fills the slim rail, no floating circle.
-    private func railIcon(_ system: String, label: String, action: @escaping () -> Void) -> some View {
+    private func discButton(_ system: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: system)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Theme.onChrome)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(Rectangle())
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(chrome)
+                .frame(width: buttonSize, height: buttonSize)
+                .background(Circle().fill(Theme.onChrome))
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel(label)
     }
 
-    private var railModeButton: some View {
+    private var modeButton: some View {
         Button {
             let next: PageMode = mode == .read ? .memorize : .read
             if reduceMotion { mode = next } else { withAnimation(.easeInOut(duration: 0.22)) { mode = next } }
         } label: {
             Image(systemName: mode == .read ? "book.closed.fill" : "eye.slash.fill")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Theme.onChrome)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(Rectangle())
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(chrome)
+                .frame(width: buttonSize, height: buttonSize)
+                .background(Circle().fill(Theme.onChrome))
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel("Mode: \(mode == .read ? "Read" : "Memorize")")
         .accessibilityHint("Switches between Read and Memorize")
     }
 
-    private var railReviewButton: some View {
+    private var reviewButton: some View {
         Button(action: onReview) {
             Image(systemName: "flag.fill")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(flagCount > 0 ? Theme.onChrome : Theme.onChromeDim)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(Rectangle())
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(chrome)
+                .frame(width: buttonSize, height: buttonSize)
+                .background(Circle().fill(Theme.onChrome))
                 .overlay(alignment: .topTrailing) {
                     if flagCount > 0 {
                         Text(Numerals.eastern(flagCount))
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(Theme.onChrome)
-                            .padding(3)
+                            .padding(4)
                             .background(Circle().fill(tint))
-                            .offset(x: 2, y: 2)
+                            .offset(x: 3, y: -3)
                     }
                 }
         }
@@ -161,17 +94,81 @@ struct ReaderChrome: View {
         .accessibilityLabel("Review")
     }
 
+    // Navigation group (back, index) and action group (mode, mic, review) — the
+    // two ends of the bar/rail.
+    @ViewBuilder private var navGroup: some View {
+        discButton("chevron.backward", label: "Back to Library", action: onBack)
+        discButton("list.bullet", label: "Index", action: onIndex)
+    }
+
+    @ViewBuilder private var actionGroup: some View {
+        modeButton
+        if mode == .memorize {
+            MicButton(isListening: micBinding, tint: tint)
+                .transition(.scale.combined(with: .opacity))
+        }
+        reviewButton
+    }
+
+    // MARK: - Horizontal top bar (Duo open, upright)
+
+    private var bar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                navGroup
+                Spacer(minLength: 0)
+                actionGroup
+                pageText
+            }
+            if mode == .memorize {
+                VoiceStatusLabel(voice: voice).transition(.opacity)
+            }
+        }
+        .padding(.horizontal, Theme.margin)
+        .padding(.top, max(8, topInset))
+        .padding(.bottom, 10)
+        .background { chrome.ignoresSafeArea(edges: .top) }
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.chromeHairline).frame(height: 1) }
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private var pageText: some View {
+        Text(isCover ? "الغلاف"
+             : "\(Numerals.eastern(currentPage)) / \(Numerals.eastern(pageCount))")
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(Theme.onChromeDim)
+            .fixedSize()
+    }
+
+    // MARK: - Vertical rail (Duo folded or on its side)
+
+    private var rail: some View {
+        VStack(spacing: 12) {
+            navGroup
+            Spacer(minLength: 0)
+            actionGroup
+            pageStack
+        }
+        .padding(.top, max(12, topInset))
+        .padding(.bottom, 14)
+        .frame(width: width)
+        .frame(maxHeight: .infinity)
+        .background { chrome.ignoresSafeArea() }
+        .overlay(alignment: .trailing) { Rectangle().fill(Theme.chromeHairline).frame(width: 1) }
+        .transition(.move(edge: .leading).combined(with: .opacity))
+    }
+
     @ViewBuilder private var pageStack: some View {
         if isCover {
             Image(systemName: "book.closed")
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Theme.onChromeDim)
                 .accessibilityLabel("Cover")
         } else {
             VStack(spacing: 2) {
-                Text(Numerals.eastern(currentPage)).font(.system(size: 13, weight: .semibold))
-                Rectangle().fill(Theme.onChromeDim).frame(width: 12, height: 1)
-                Text(Numerals.eastern(pageCount)).font(.system(size: 11))
+                Text(Numerals.eastern(currentPage)).font(.system(size: 14, weight: .semibold))
+                Rectangle().fill(Theme.onChromeDim).frame(width: 14, height: 1)
+                Text(Numerals.eastern(pageCount)).font(.system(size: 12))
             }
             .foregroundStyle(Theme.onChromeDim)
             .accessibilityLabel("Page \(currentPage) of \(pageCount)")

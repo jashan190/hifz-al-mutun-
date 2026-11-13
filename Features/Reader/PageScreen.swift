@@ -74,6 +74,9 @@ struct PageScreen: View {
       GeometryReader { geo in
         let currentLayout = layout(geo.size)
         let twoPages = currentLayout.showsTwoPages
+        // The camera/status reserved strip on the trailing (right) edge and top.
+        let leadingInset = geo.safeAreaInsets.leading
+        let topInset = geo.safeAreaInsets.top
         pager(twoPages: twoPages)
         .task(id: geo.size) {
             // Two pages share the width.
@@ -83,33 +86,33 @@ struct PageScreen: View {
         .onAppear { ReadingPosition.recordOpened(matn.id) }
         .environment(\.readerActions, actions)
         .background(Theme.cover.ignoresSafeArea())
-        // Top: the full header on regular devices; on the Duo the header is gone,
-        // leaving just the chapter as a quiet running head.
+        // Top: the full header on regular devices; the Duo held upright gets the
+        // top bar in the camera/status strip; the side-rail layouts keep just a
+        // quiet chapter running head here.
         .safeAreaInset(edge: .top, spacing: 0) {
             if barsVisible {
                 if currentLayout == .standard { topBar }
+                else if currentLayout == .duoPortrait { readerChrome(vertical: false, topInset: topInset) }
                 else if !babsCaption.isEmpty { duoRunningHead }
             }
         }
-        // Bottom bar: the footer on regular devices and the Duo held upright.
+        // Bottom bar: only regular devices keep a footer.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if barsVisible {
-                if currentLayout == .standard { footer }
-                else if currentLayout == .duoPortrait { readerChrome(vertical: false) }
+            if barsVisible && currentLayout == .standard { footer }
+        }
+        // Side rail (Duo folded or on its side) slotted into the trailing (right)
+        // camera/status strip: reserve only what the device doesn't already, then
+        // overlay the rail flush to the edge, matching the strip width.
+        .safeAreaInset(edge: .leading, spacing: 0) {
+            if barsVisible && currentLayout.usesVerticalRail {
+                Color.clear.frame(width: max(0, ReaderChrome.railWidth - leadingInset))
             }
         }
-        // Folded cover: a slim rail on the physical right edge that reserves its
-        // own space (no side camera strip there). `.leading` is the right edge in RTL.
-        .safeAreaInset(edge: .leading, spacing: 0) {
-            if barsVisible && currentLayout == .duoCover { readerChrome(vertical: true) }
-        }
-        // Open landscape: slot the rail into the right-edge camera/status strip the
-        // content already leaves clear — flush to the edge, matching the strip width.
         .overlay(alignment: .leading) {
-            if barsVisible && currentLayout == .duoSpread {
+            if barsVisible && currentLayout.usesVerticalRail {
                 readerChrome(vertical: true,
-                             width: max(ReaderChrome.railWidth, geo.safeAreaInsets.leading),
-                             topInset: geo.safeAreaInsets.top)
+                             width: max(ReaderChrome.railWidth, leadingInset),
+                             topInset: topInset)
                     .ignoresSafeArea()
             }
         }
