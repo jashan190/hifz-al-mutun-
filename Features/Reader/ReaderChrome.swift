@@ -26,6 +26,8 @@ struct ReaderChrome: View {
     /// Vertical centre of the status pill / island, so the top-bar controls line
     /// up with it exactly.
     var islandCenterY: CGFloat = 0
+    /// Horizontal offset for the rail controls, to sit directly under the pill.
+    var railOffsetX: CGFloat = 0
     let onBack: () -> Void
     let onIndex: () -> Void
     let onReview: () -> Void
@@ -118,7 +120,7 @@ struct ReaderChrome: View {
                 HStack(spacing: 12) {
                     // Nav (back, index) sits on the right, just inside the reserved
                     // island span; actions and page number on the left.
-                    Spacer(minLength: islandReserve)
+                    Spacer(minLength: max(0, islandReserve - 16))
                     navGroup
                     Spacer(minLength: 0)
                     actionGroup
@@ -126,9 +128,8 @@ struct ReaderChrome: View {
                 }
                 .padding(.horizontal, Theme.margin)
                 .frame(height: buttonSize)
-                // Line the controls up with the status pill's vertical centre (the
-                // occlusion centre reads a touch high, so nudge down a little).
-                .padding(.top, max(0, islandCenterY - buttonSize / 2) + 14)
+                // Line the controls up with the status pill's vertical centre.
+                .padding(.top, max(0, islandCenterY - buttonSize / 2) + 7)
             }
             .transition(.move(edge: .top).combined(with: .opacity))
     }
@@ -165,8 +166,8 @@ struct ReaderChrome: View {
         // strip, dropped a little lower so the top controls sit well below it.
         .padding(.top, max(124, topInset + 48))
         .padding(.bottom, 16)
-        // Nudge the controls slightly toward the content, off the camera edge.
-        .offset(x: -8)
+        // Sit directly under the status pill.
+        .offset(x: railOffsetX)
         .frame(width: width)
         .frame(maxHeight: .infinity)
         .background { chrome.ignoresSafeArea() }

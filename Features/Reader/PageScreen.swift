@@ -116,9 +116,14 @@ struct PageScreen: View {
         }
         .overlay(alignment: .leading) {
             if barsVisible && currentLayout.usesVerticalRail {
-                readerChrome(vertical: true,
-                             width: max(ReaderChrome.railWidth, leadingInset),
-                             topInset: topInset)
+                let railW = max(ReaderChrome.railWidth, leadingInset)
+                let info = islandInfo(geo, topInset: topInset)
+                // Centre the rail controls under the status pill (clamped to stay
+                // inside the rail).
+                let rawOffset = info.centerX - (geo.size.width - railW / 2)
+                let limit = railW / 2 - 22
+                readerChrome(vertical: true, width: railW, topInset: topInset,
+                             railOffsetX: min(max(rawOffset, -limit), limit))
                     .ignoresSafeArea()
             }
         }
@@ -483,12 +488,14 @@ struct PageScreen: View {
                               width: CGFloat = ReaderChrome.railWidth,
                               topInset: CGFloat = 0,
                               islandReserve: CGFloat = 0,
-                              islandCenterY: CGFloat = 0) -> some View {
+                              islandCenterY: CGFloat = 0,
+                              railOffsetX: CGFloat = 0) -> some View {
         ReaderChrome(mode: $mode, voice: voice, tint: subjectAccent, chrome: chrome,
                      flagCount: flagStore.count(for: matn.id),
                      currentPage: currentPage, pageCount: displayPageCount,
                      vertical: vertical, width: width, topInset: topInset,
                      islandReserve: islandReserve, islandCenterY: islandCenterY,
+                     railOffsetX: railOffsetX,
                      onBack: { dismiss() },
                      onIndex: { showIndex = true },
                      onReview: { reviewPresented = true },
@@ -499,16 +506,20 @@ struct PageScreen: View {
     /// the screen, reserved so the top-bar controls shift clear as it expands.
     /// iOS 27.1 `reservedRegions`; 0 on older systems (controls already sit on the
     /// opposite side from the island).
-    private func islandInfo(_ geo: GeometryProxy, topInset: CGFloat) -> (reserve: CGFloat, centerY: CGFloat) {
-        let fallback = (reserve: CGFloat(0), centerY: topInset / 2)
+    private func islandInfo(_ geo: GeometryProxy, topInset: CGFloat)
+        -> (reserve: CGFloat, centerY: CGFloat, centerX: CGFloat) {
+        let fallback = (reserve: CGFloat(0), centerY: topInset / 2, centerX: geo.size.width / 2)
         guard #available(iOS 27.1, *) else { return fallback }
         let regions = geo.reservedRegions(kind: .occlusion, options: [.includeInactive])
         let top = regions.filter { $0.frame.minY < topInset + 40 && $0.frame.width > 0 }
         guard !top.isEmpty,
               let leadingEdge = top.map(\.frame.minX).min(),
+              let trailingEdge = top.map(\.frame.maxX).max(),
               let minY = top.map(\.frame.minY).min(),
               let maxY = top.map(\.frame.maxY).max() else { return fallback }
-        return (reserve: max(0, geo.size.width - leadingEdge), centerY: (minY + maxY) / 2)
+        return (reserve: max(0, geo.size.width - leadingEdge),
+                centerY: (minY + maxY) / 2,
+                centerX: (leadingEdge + trailingEdge) / 2)
     }
 
 }
