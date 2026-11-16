@@ -12,6 +12,7 @@ struct ReviewSheet: View {
     let done: () -> Void
 
     @EnvironmentObject private var flagStore: FlagStore
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var items: [ReviewItem] {
         ReviewItems.resolve(matn: matn, flags: flagStore.flags[matn.id] ?? [])
@@ -63,8 +64,13 @@ struct ReviewSheet: View {
                 .listStyle(.plain)
             }
 
-            HStack(spacing: 10) {
-                Button(action: reviewAgain) { Text("Review again").frame(maxWidth: .infinity) }
+            // Side by side; stacked at the largest text sizes so neither wraps.
+            let buttons = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))
+            buttons {
+                Button(action: reviewAgain) {
+                    Text("Review again").frame(maxWidth: .infinity).foregroundStyle(Theme.onAccent)
+                }
                     .buttonStyle(.borderedProminent)
                 Button(action: done) { Text("Done").frame(maxWidth: .infinity) }
                     .buttonStyle(.bordered)

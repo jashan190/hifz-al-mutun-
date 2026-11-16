@@ -40,7 +40,8 @@ struct RecitationIndex {
             // (VoiceController.page(forCursor:)) must NOT trust this field for
             // prose — they map a word's page via PageScreen's prosePages instead.
             // `pageStart` likewise stays empty for prose, so firstWordIndex(onPage:)
-            // just clamps to the end (unused for prose — start uses ofBayt/hadith).
+            // just clamps to the end: VoiceController maps a prose page through
+            // its runtime pages (`prosePages`) and `wordIndex(hadith:wordInBody:)`.
             for hadith in matn.hadiths {
                 baytStart[hadith.number] = words.count
                 for (wi, word) in hadith.body.enumerated() {
@@ -81,6 +82,9 @@ struct RecitationIndex {
     /// word-bearing page — the right seed for "start reciting from this page".
     /// Flat index of a bayt's first word, or nil for an unknown bayt.
     func firstWordIndex(ofBayt bayt: Int) -> Int? { baytStart[bayt] }
+
+    /// Prose: the flat index of a hadith's word (its pages are cut at runtime).
+    func wordIndex(hadith: Int, wordInBody: Int) -> Int? { baytStart[hadith].map { $0 + wordInBody } }
 
     func firstWordIndex(onPage page: Int) -> Int {
         if let start = pageStart[page] { return start }

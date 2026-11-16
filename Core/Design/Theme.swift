@@ -59,6 +59,10 @@ enum Theme {
         UIColor(Color(hex: 0xFFD60A)).withAlphaComponent(traits.userInterfaceStyle == .dark ? 1 : 0.45)
     })
 
+    /// Text on a filled subject-accent button: white on the deep light-mode
+    /// accents, dark on the brighter dark-mode ones (white there is ~2.5:1).
+    static let onAccent = Color.dynamic(light: 0xFFFFFF, dark: 0x141413)
+
     /// The text on `fixedHighlight`: its own colour in light mode, dark ink
     /// (12:1 on the yellow) in dark mode.
     static func onFixed(_ color: Color) -> Color {

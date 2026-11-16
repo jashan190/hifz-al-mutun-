@@ -61,6 +61,12 @@ struct RevealState {
         return k
     }
 
+    /// Whether this one word is revealed. Prose needs it word by word: a
+    /// sitting can start part way into a hadith, which is all one "hemistich".
+    func isRevealed(bayt: Int, half: Half, wordIndex: Int) -> Bool {
+        flatIndex(bayt: bayt, half: half, wordIndex: wordIndex).map { isRevealed($0) } ?? false
+    }
+
     /// Whether the next expected word is in this hemistich (its blank is the
     /// one to tap to reveal it).
     func holdsCursor(bayt: Int, half: Half) -> Bool {

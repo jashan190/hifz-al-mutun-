@@ -29,6 +29,17 @@ import Testing
         #expect(!RevealState(index: index(), cursor: 0).isCurrent(bayt: 1, half: .sadr, wordIndex: 0))
     }
 
+    // Prose starts part way into a hadith (one long hemistich): the words
+    // reached show though the ones before the start don't.
+    @Test func wordsFromAStartPartWayInAreRevealed() {
+        let r = RevealState(index: index(), anchor: 1, cursor: 3)
+        #expect(r.revealedWords(bayt: 1, half: .sadr) == 0)
+        #expect(!r.isRevealed(bayt: 1, half: .sadr, wordIndex: 0))
+        #expect(r.isRevealed(bayt: 1, half: .sadr, wordIndex: 1))
+        #expect(r.isRevealed(bayt: 1, half: .ajuz, wordIndex: 0))
+        #expect(!r.isRevealed(bayt: 1, half: .ajuz, wordIndex: 1))
+    }
+
     @Test func zeroCursorRevealsNothing() {
         let r = RevealState(index: index(), cursor: 0)
         #expect(r.revealedWords(bayt: 1, half: .sadr) == 0)

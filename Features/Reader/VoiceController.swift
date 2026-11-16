@@ -62,6 +62,11 @@ final class VoiceController: ObservableObject {
 
     var hasSession: Bool { session != nil }
 
+    /// Prose only: the pages as cut for this screen (set by PageScreen), so a
+    /// page number can be turned into the word it starts with.
+    var prosePages: [MatnPage] = []
+    private var isProse = false
+
     /// A sitting is running (by voice or by tap), as opposed to stopped with
     /// its results still on screen.
     var isActive: Bool {
@@ -88,7 +93,8 @@ final class VoiceController: ObservableObject {
         self.matnID = matn.id
         self.flags = flags
         self.isManual = manual
-        let startIndex = bayt.flatMap { index.firstWordIndex(ofBayt: $0) } ?? index.firstWordIndex(onPage: page)
+        self.isProse = matn.kind == .prose
+        let startIndex = bayt.flatMap { index.firstWordIndex(ofBayt: $0) } ?? firstWord(onPage: page, in: index)
         let source = manual ? SilentSpeechSource() : makeSource()
         let session = RecitationSession(index: index, source: source, startWordIndex: startIndex)
         if let whisper = source as? WhisperSpeechSource, VowelChecker.modelURL != nil,
@@ -110,7 +116,16 @@ final class VoiceController: ObservableObject {
 
         cursor = session.cursor
         reveal = session.reveal
-        session.$cursor.sink { [weak self] in self?.cursor = $0 }.store(in: &cancellables)
+        session.$cursor.sink { [weak self] c in
+            self?.cursor = c
+            // The last word of the matn is done: end the sitting and show its review.
+            if c >= index.normalizedWords.count {
+                Task { @MainActor in
+                    guard let self, self.isActive, !self.stopped else { return }
+                    self.stop()
+                }
+            }
+        }.store(in: &cancellables)
         session.$lockState.sink { [weak self] in self?.lockState = $0 }.store(in: &cancellables)
         session.$reveal.sink { [weak self] in self?.reveal = $0 }.store(in: &cancellables)
         session.$mistakeCount.sink { [weak self] in self?.mistakeCount = $0 }.store(in: &cancellables)
@@ -197,7 +212,15 @@ final class VoiceController: ObservableObject {
     /// The reciter moved to another page by hand: continue from its top.
     func jump(toPage page: Int) {
         guard isActive, let index, let session else { return }
-        session.jump(toWord: index.firstWordIndex(onPage: page))
+        session.jump(toWord: firstWord(onPage: page, in: index))
+    }
+
+    /// The first word on a page. Prose pages are cut at runtime, so they are
+    /// looked up in `prosePages`; before they are cut, the first hadith.
+    private func firstWord(onPage page: Int, in index: RecitationIndex) -> Int {
+        guard isProse else { return index.firstWordIndex(onPage: page) }
+        return ProsePaginator.place(onPage: page, in: prosePages)
+            .flatMap { index.wordIndex(hadith: $0.hadith, wordInBody: $0.wordInBody) } ?? 0
     }
 
     /// The reciter tapped a bayt number: continue from that bayt.

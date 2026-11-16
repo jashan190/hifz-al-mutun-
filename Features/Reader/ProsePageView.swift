@@ -31,12 +31,12 @@ struct ProsePageView: View {
     /// Gap between wrapped lines; shared with the paginator's measurement.
     static func lineSpacing(for fontSize: CGFloat) -> CGFloat { fontSize * 0.5 }
 
-    /// The `.sadr` half holds the hadith's whole body, so `revealedWords` is a
-    /// prefix count over it: a word at body index `w` is shown iff `w < that`.
+    /// The `.sadr` half holds the hadith's whole body. Checked word by word,
+    /// not as a prefix: a sitting can start on a later page of the hadith.
     private func shown(_ j: Int) -> Bool {
         guard memorizing else { return true }   // read mode: all shown
         guard let reveal else { return false }  // memorize, nothing revealed yet → blank
-        return (fragment.bodyStart + j) < reveal.revealedWords(bayt: fragment.hadithNumber, half: .sadr)
+        return reveal.isRevealed(bayt: fragment.hadithNumber, half: .sadr, wordIndex: fragment.bodyStart + j)
     }
     private func wordColor(_ j: Int, _ role: ProseRole) -> UIColor {
         let base = role == .matn ? UIColor(subjectColor) : UIColor(Theme.ink)
