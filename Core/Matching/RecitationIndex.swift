@@ -76,19 +76,29 @@ struct RecitationIndex {
         self.baytStart = baytStart
     }
 
-    /// Flat index of the first word on a page; `normalizedWords.count` if the
-    /// page has no words at or after it (clamps callers to the end). A
-    /// heading-only page (no bayts) reports the first word of the next
-    /// word-bearing page — the right seed for "start reciting from this page".
     /// Flat index of a bayt's first word, or nil for an unknown bayt.
     func firstWordIndex(ofBayt bayt: Int) -> Int? { baytStart[bayt] }
 
     /// Prose: the flat index of a hadith's word (its pages are cut at runtime).
     func wordIndex(hadith: Int, wordInBody: Int) -> Int? { baytStart[hadith].map { $0 + wordInBody } }
 
+    /// Flat index of the first word at or after `page`; `normalizedWords.count`
+    /// if the page has no words at or after it (clamps callers to the end). A
+    /// heading-only page (no bayts) reports the first word of the next
+    /// word-bearing page — the right seed for "start reciting from this page".
+    ///
+    /// The cover is page 0 and isn't in `pages` at all, so it relies on the same
+    /// rule: a sitting started there begins at the top of the matn. The Duo's
+    /// book view makes that the common case, since the cover shares the opening
+    /// spread with page 1 — the reciter reads page 1 while the reader is still
+    /// on page 0.
+    ///
+    /// Poems only: prose leaves `pageStart` empty, and `VoiceController` maps a
+    /// prose page through its runtime pages instead (`wordIndex(hadith:…)`).
     func firstWordIndex(onPage page: Int) -> Int {
         if let start = pageStart[page] { return start }
-        // Page not found (e.g. out of range): clamp to end.
-        return normalizedWords.count
+        guard let next = pageStart.keys.filter({ $0 >= page }).min(),
+              let start = pageStart[next] else { return normalizedWords.count }
+        return start
     }
 }

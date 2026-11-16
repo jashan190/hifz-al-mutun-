@@ -20,6 +20,16 @@ import Foundation
                     babs: [], reviewNotes: [])
     }
 
+    private func proseMatn() -> Matn {
+        let body = ["بني", "الاسلام"].map {
+            ProseWord(text: $0, normalized: ArabicNormalize.normalize($0), role: .matn)
+        }
+        return Matn(id: "p", title: "p", fullTitle: nil, titleLatin: "p", author: "a", meter: "m",
+                    subject: .hadith, kind: .prose, hadiths: [Hadith(number: 1, title: "١", body: body, takhrij: "")],
+                    baytsPerPage: 0, pageCount: 0, baytCount: 1,
+                    pages: [], babs: [], reviewNotes: [])
+    }
+
     /// Let queued main-actor work (source events, sinks) run.
     private func settle() async {
         for _ in 0..<20 { await Task.yield() }
@@ -266,6 +276,33 @@ import Foundation
         voice.start(matn: matn(), fromPage: 1, flags: nil)
         await settle()
         #expect(voice.page(forCursor: voice.cursor) == 2)   // last word of page 1 recited
+    }
+
+    // The reader opens on the cover (page 0), and the Duo's book view keeps it
+    // there while page 1 is on screen beside it — so this is where a sitting
+    // usually begins. The cursor used to be seeded past the last word: the mic
+    // reported "listening" and nothing the reciter said could ever match it.
+    @Test func aSittingStartedOnTheCoverFollowsTheReciter() async {
+        let voice = VoiceController()
+        UserDefaults.standard.set("يقول راجي", forKey: "debugRecite")
+        defer { UserDefaults.standard.removeObject(forKey: "debugRecite") }
+        voice.start(matn: matn(), fromPage: 0, flags: nil)
+        await settle()
+        #expect(voice.cursor == 2)
+        #expect(voice.reveal?.revealedWords(bayt: 1, half: .sadr) == 2)
+    }
+
+    // Prose has no page index at all (ProsePaginator lays it out at runtime), so
+    // a sitting that starts before those pages exist has neither a page nor a
+    // hadith to seed from. It must still begin at the top, not past the end.
+    @Test func aProseSittingWithNothingToSeedFromFollowsTheReciter() async {
+        let voice = VoiceController()
+        UserDefaults.standard.set("بني الاسلام", forKey: "debugRecite")
+        defer { UserDefaults.standard.removeObject(forKey: "debugRecite") }
+        voice.start(matn: proseMatn(), fromPage: 0, flags: nil)
+        await settle()
+        #expect(voice.cursor == 2)
+        #expect(voice.reveal?.revealedWords(bayt: 1, half: .sadr) == 2)
     }
 
     @Test func clearAllRemovesEveryFlag() {
