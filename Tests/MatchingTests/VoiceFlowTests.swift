@@ -305,6 +305,32 @@ import Foundation
         #expect(voice.reveal?.revealedWords(bayt: 1, half: .sadr) == 2)
     }
 
+    // Recording that ends before a word is heard used to leave the status at
+    // .listening for ever: the mic pulsed and nothing could happen. It is a
+    // failure now, so the reader can say so and offer tap-to-reveal.
+    @Test func recordingThatEndsUnheardIsReported() async {
+        let mock = MockSpeechSource(script: [], failure: .recordingEndedUnheard)
+        let session = RecitationSession(index: RecitationIndex(matn: matn()), source: mock, startWordIndex: 0)
+        session.start()
+        await settle()
+        var reported = false
+        if case .failed = session.status { reported = true }
+        #expect(reported)
+        #expect(session.status != .listening)
+    }
+
+    // A source that finishes on its own (recording ended after some words) ends
+    // the sitting instead: what was heard stays, and the mic stops saying it is
+    // listening.
+    @Test func aSourceFinishingOnItsOwnEndsTheSitting() async {
+        let mock = MockSpeechSource(script: [.init(text: "يقول راجي", isFinal: true)])
+        let session = RecitationSession(index: RecitationIndex(matn: matn()), source: mock, startWordIndex: 0)
+        session.start()
+        await settle()
+        #expect(session.status == .idle)        // not still "listening"
+        #expect(session.cursor == 2)            // and it kept what it heard
+    }
+
     @Test func clearAllRemovesEveryFlag() {
         let store = FlagStore.inMemory()
         store.setFlag(true, matnID: "a", FlagKey(bayt: 1, half: .sadr, wordIndex: 0))

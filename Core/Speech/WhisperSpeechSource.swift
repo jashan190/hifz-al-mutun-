@@ -23,6 +23,9 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
     private let phase = OSAllocatedUnfairLock(initialState: Phase.idle)
     /// Set once the streamer's loop has returned.
     private let streamEnded = OSAllocatedUnfairLock(initialState: false)
+    /// Whether any fragment has been yielded, so a recording that ends without
+    /// ever being heard can be reported rather than left looking live.
+    private let produced = OSAllocatedUnfairLock(initialState: false)
 
     #if DEBUG
     private static let log = Logger(subsystem: "com.farhan.hifzalmutun", category: "speech")
@@ -120,13 +123,27 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
         // last guess becomes final and the stream ends.
         try await streamer.startStreamTranscription()
         streamEnded.withLock { $0 = true }
-        phase.withLock { $0 = .stopped }
+        // `stop()` sets .stopped before it ever reaches the streamer, so a phase
+        // still at .running here means the loop ended on its own: WhisperKit
+        // logs recording errors and returns rather than throwing them.
+        let endedOnItsOwn = phase.withLock { p -> Bool in
+            let unexpected = p == .running
+            p = .stopped
+            return unexpected
+        }
         if var (last, span) = emitter.withLock({ e in e.flush().map { ($0, e.finalSpan) } }) {
             if keepsAudio, let recorder, let span { last.audio = Self.clip(recorder.audioSamples, span) }
             log(last)
+            produced.withLock { $0 = true }
             continuation.yield(last)
         }
         continuation.finish()
+        // Nothing was ever heard and nobody asked to stop: say so, rather than
+        // leave the mic looking live for a sitting that can never match a word.
+        // A sitting that did hear something keeps it — the summary still stands.
+        if endedOnItsOwn, !produced.withLock({ $0 }) {
+            throw SpeechSourceError.recordingEndedUnheard
+        }
     }
 
     private func receive(_ state: AudioStreamTranscriber.State) {
@@ -152,6 +169,7 @@ final class WhisperSpeechSource: SpeechSource, @unchecked Sendable {
         #endif
         for fragment in out {
             log(fragment)
+            produced.withLock { $0 = true }
             continuation.yield(fragment)
         }
     }

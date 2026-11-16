@@ -5,6 +5,11 @@ enum SpeechSourceError: Error, Equatable {
     case micNotAuthorized
     /// The speech model couldn't be fetched (usually no internet on first use).
     case modelDownloadFailed
+    /// Recording ended on its own before producing anything — an audio error
+    /// the engine logged and swallowed, or an interruption during setup. Only
+    /// raised when nothing was heard: a sitting that ran and then ended keeps
+    /// what it heard instead of failing.
+    case recordingEndedUnheard
 }
 
 /// Progress a source reports while it gets ready, before any fragment.

@@ -1,5 +1,6 @@
 import Foundation
 import WhisperKit
+import os
 
 /// Holds the loaded Whisper model for the whole app run, so each sitting
 /// (a mic tap, "Review again", a bayt tap) reuses it instead of loading
@@ -9,6 +10,12 @@ import WhisperKit
 /// rather than starting a second one into the same folder.
 actor WhisperEngine {
     static let shared = WhisperEngine()
+
+    /// Every engine failure reaches the reader as the same "couldn't download"
+    /// message, so the real one is logged here or it is lost. `log stream
+    /// --predicate 'subsystem == "com.farhan.hifzalmutun"'` while starting a
+    /// sitting shows it.
+    static let log = Logger(subsystem: "com.farhan.hifzalmutun", category: "whisper")
 
     private var loaded: (model: WhisperModel, whisper: WhisperKit)?
     private var pending: (model: WhisperModel, task: Task<WhisperKit, Error>)?
@@ -64,6 +71,7 @@ actor WhisperEngine {
             return try await WhisperKit(config)
         } catch {
             // Most likely the tokenizer, fetched on the first load.
+            Self.log.error("loading \(model.variant, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw SpeechSourceError.modelDownloadFailed
         }
     }

@@ -21,6 +21,7 @@ enum VoiceFailure: Equatable {
         switch error as? SpeechSourceError {
         case .micNotAuthorized?: self = .micDenied
         case .modelDownloadFailed?: self = .downloadFailed
+        case .recordingEndedUnheard?: self = .other("recording ended before anything was heard")
         case nil: self = .other(error.localizedDescription)
         }
     }
@@ -170,6 +171,12 @@ final class RecitationSession: ObservableObject {
                 }
             }
         }
+        // The source finished of its own accord rather than through stop() —
+        // recording ended, or a scripted source ran out. The sitting is over, so
+        // don't leave the mic saying it is still listening. Testing `.listening`
+        // rather than overwriting means a failure keeps its own status whichever
+        // of the two lands first.
+        if !stopped, case .listening = status { status = .idle }
     }
 
     /// Checks the words a final result settled against its audio: those

@@ -80,6 +80,8 @@ enum WhisperModel: String, CaseIterable, Identifiable {
         } catch is CancellationError {
             throw CancellationError()
         } catch {
+            // Keep the reason: the reader only ever says "couldn't download".
+            WhisperEngine.log.error("downloading \(variant, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw SpeechSourceError.modelDownloadFailed
         }
     }
