@@ -19,8 +19,14 @@ Notes:
   out at Xcode 26.6 (iOS 26.5 SDK), which is enough for the iOS 26 deployment
   target. Xcode 27 is only on the `xcode-27` preview image. To move to it, set
   `runs-on: xcode-27` and `XCODE_APP: /Applications/Xcode_27.app` in the
-  workflow. Do that once the image is GA, or earlier if the app starts using
-  iOS 27 SDK APIs.
+  workflow. Do that once the image is GA.
+- **iOS 27 SDK APIs must be gated at compile time.** `#available(iOS 27.1, *)`
+  is a runtime check — the call inside it still has to compile against the
+  runner's iOS 26.5 SDK, so an iOS 27 symbol breaks CI even when it's
+  unreachable there. Wrap those in `#if compiler(>=6.4)` (the Swift that ships
+  with Xcode 27) with a fallback, as `PageScreen.islandInfo` does for
+  `GeometryProxy.reservedRegions`. CI can't exercise the gated branch, so test
+  it locally on Xcode 27; the gates can come out once CI moves to it.
 - **Whisper end-to-end tests are off.** They only run with `WHISPER_E2E=1`
   (`TEST_RUNNER_WHISPER_E2E=1`) and download a 632 MB model, so CI never sets it.
 - **Caching.** The SPM checkout (`SourcePackages/`, via
