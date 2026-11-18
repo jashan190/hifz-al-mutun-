@@ -25,20 +25,6 @@ enum Subject: String, CaseIterable, Codable, Hashable {
         }
     }
 
-    /// The subject's accent colour. Every subject is now Madinah green — subjects
-    /// are told apart by `icon`, not colour.
+    /// The subject's accent colour (loud, so a shelf reads at a glance).
     var accent: Color { Theme.subjectAccent(self) }
-
-    /// An SF Symbol that stands in for the subject, so shelves and covers read at
-    /// a glance now that colour no longer distinguishes them.
-    var icon: String {
-        switch self {
-        case .quran:   return "book.closed.fill"
-        case .hadith:  return "text.quote"
-        case .seerah:  return "map.fill"
-        case .aqeedah: return "moon.stars.fill"
-        case .arabic:  return "character.book.closed.fill"
-        case .fiqh:    return "building.columns.fill"
-        }
-    }
 }
