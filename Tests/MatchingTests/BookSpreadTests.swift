@@ -4,18 +4,20 @@ import CoreGraphics
 
 /// The open iPhone Duo on its side: pages in fixed pairs, like a book.
 @Suite struct BookSpreadTests {
-    @Test func pagesPairOneTwoThreeFour() {
-        #expect([0, 1, 2, 3, 4, 5].map(BookSpread.first(of:)) == [0, 1, 1, 3, 3, 5])
+    @Test func pagesPairTwoThreeFourFive() {
+        // The cover opens the book beside page 1; the rest pair 2·3, 4·5.
+        #expect([0, 1, 2, 3, 4, 5].map(BookSpread.first(of:)) == [1, 1, 2, 2, 4, 4])
     }
 
-    @Test func theTitlePageStandsAlone() {
-        #expect(BookSpread.pages(of: 0, pageCount: 9) == [0])
-        #expect(BookSpread.spreads(pageCount: 5) == [0, 1, 3, 5])
+    @Test func theCoverSharesTheOpeningSpread() {
+        // Like a printed muṣḥaf: cover on the right, page 1 on the left.
+        #expect(BookSpread.pages(of: 1, pageCount: 9) == [0, 1])
+        #expect(BookSpread.spreads(pageCount: 5) == [1, 2, 4])
     }
 
-    @Test func anOddLastPageHasABlankBesideIt() {
-        #expect(BookSpread.pages(of: 3, pageCount: 4) == [3, 4])
-        #expect(BookSpread.pages(of: 5, pageCount: 5) == [5, nil])
+    @Test func anUnpairedLastPageHasABlankBesideIt() {
+        #expect(BookSpread.pages(of: 4, pageCount: 5) == [4, 5])
+        #expect(BookSpread.pages(of: 4, pageCount: 4) == [4, nil])
     }
 
     @Test func onlyTheInnerScreenOpensAsABook() {
