@@ -26,45 +26,31 @@ struct PageView: View {
 
     // Tighter margins/gaps give each hemistich more width, which — since the text
     // is sized to fill its column — makes the glyphs noticeably larger.
-    // Even padding: top == bottom (`pagePadding`), left == right == half of it.
-    static let pagePadding: CGFloat = 28
-    private var hPadding: CGFloat { Self.pagePadding / 2 }
-    private var topMargin: CGFloat { Self.pagePadding }
-    // Lean number column + gaps so the two hemistichs get as much width (and thus
-    // font size) as possible.
-    private let numberColumn: CGFloat = 20
-    private let numberGap: CGFloat = 4
-    private let midGap: CGFloat = 7
+    private let hPadding: CGFloat = 8
+    private let numberColumn: CGFloat = 24
+    private let numberGap: CGFloat = 5
+    private let midGap: CGFloat = 10
     private let referenceSize: CGFloat = 40
     // Low floor: a long-metre poem (Shāṭibiyyah) fits its longest hemistich at a
     // smaller uniform size; clamping up here would make that line overflow and
     // break the "every line, one size" rule.
     private let minSize: CGFloat = 8
-    private let maxSize: CGFloat = 60
+    private let maxSize: CGFloat = 48
     // Width measurement underestimates SwiftUI's rendered width, so size and
     // justify to a slightly conservative target to avoid truncation.
     private let fitSafety: CGFloat = 0.99
 
     @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
 
-    static let folioHeight: CGFloat = Self.pagePadding
+    static let folioHeight: CGFloat = 34
 
     var body: some View {
         GeometryReader { geo in
             let items = pageModel.items
             let bayts = items.compactMap { if case .bayt(let b) = $0 { return b } else { return nil } }
-            // Cap the reading column to the width at which the font reaches its
-            // max size. On a phone this is the full width (unchanged); on the
-            // Duo's wide inner screen it keeps the verses filling their columns
-            // and centred with equal margins, instead of stretching thin across
-            // the page or clumping to one side.
-            let widest = PageMetrics.widestHemistich(in: matn, at: referenceSize)
-            let maxColumn = widest > 0 ? maxSize * widest / (referenceSize * fitSafety) : geo.size.width
-            let contentWidth = min(geo.size.width,
-                                   2 * maxColumn + numberColumn + numberGap + midGap + 2 * hPadding)
             let columnWidth = max(
                 1,
-                (contentWidth - 2 * hPadding - numberColumn - 2 * midGap) / 2
+                (geo.size.width - 2 * hPadding - numberColumn - numberGap - midGap) / 2
             )
             let fontSize = pageFontSize(columnWidth: columnWidth)
             // A full page (its quota of bayts) distributes its rows to fill the
@@ -117,14 +103,12 @@ struct PageView: View {
                         }
                     }
                     .frame(
-                        minWidth: contentWidth - 2 * hPadding,
-                        maxWidth: contentWidth - 2 * hPadding,
-                        minHeight: geo.size.height - Self.folioHeight - topMargin,
+                        maxWidth: .infinity,
+                        minHeight: geo.size.height - Self.folioHeight - 2 * Theme.margin,
                         alignment: .top
                     )
                     .padding(.horizontal, hPadding)
-                    .frame(maxWidth: .infinity)   // centre the capped column
-                    .padding(.top, topMargin)
+                    .padding(.top, Theme.margin)
                 }
                 folio
             }
@@ -195,13 +179,9 @@ private struct LayeredText: View {
     let size: CGFloat
     var width: CGFloat? = nil          // fixed column (hemistich) or nil (heading)
     var defaultColor: Color = Theme.ink
-    // Which edge the half-line justifies toward: the sadr (right column) hugs the
-    // right, the ajuz (left column) the left — so the verse fills both outer edges
-    // evenly and sits centred, with any slack meeting in the middle.
-    var textAlignment: Alignment = .leading
 
     var body: some View {
-        ZStack(alignment: width == nil ? .center : textAlignment) {
+        ZStack(alignment: width == nil ? .center : .leading) {
             layer(rendered.base)
             // The shifted nuns are also nudged slightly left (positive x reads as
             // leftward under RTL) so they sit in the gap between words, clear of the
@@ -240,7 +220,7 @@ private struct LayeredText: View {
 
     @ViewBuilder
     private func layer(_ s: AttributedString) -> some View {
-        let text = Text(s).font(font).fontWeight(.medium).foregroundStyle(defaultColor)
+        let text = Text(s).font(font).foregroundStyle(defaultColor)
         if let width {
             // Width measurement (NSString.size) can under-predict SwiftUI's
             // rendered width for some Arabic clusters (e.g. the madda in وَآلِهِ),
@@ -248,7 +228,7 @@ private struct LayeredText: View {
             // shrink range so such an outlier scales down to fit instead of
             // truncating with an ellipsis.
             text.lineLimit(1).minimumScaleFactor(0.75)
-                .frame(width: width, alignment: textAlignment)
+                .frame(width: width, alignment: .leading)
         } else {
             text.multilineTextAlignment(.center).frame(maxWidth: .infinity)
         }
@@ -536,11 +516,9 @@ private struct BaytRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // The bayt number sits in the centre, between the two hemistichs, so
-            // the verse is symmetric with equal margins on both sides of the page.
-            hemistich(bayt.sadr, which: .sadr)
-            Color.clear.frame(width: midGap)
             number
+            Color.clear.frame(width: numberGap)
+            hemistich(bayt.sadr, which: .sadr)
             Color.clear.frame(width: midGap)
             hemistich(bayt.ajuz, which: .ajuz)
         }
@@ -600,8 +578,7 @@ private struct BaytRow: View {
                 ),
                 font: PageFont.font(size: fontSize),
                 size: fontSize,
-                width: columnWidth,
-                textAlignment: which == .ajuz ? .trailing : .leading
+                width: columnWidth
             )
             // Long-press: flag or unflag any word of this half-line. The page is
             // justified as one line, so the menu lists its words.
