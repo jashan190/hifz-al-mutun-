@@ -502,9 +502,15 @@ struct PageScreen: View {
     /// the screen, reserved so the top-bar controls shift clear as it expands.
     /// iOS 27.1 `reservedRegions`; 0 on older systems (controls already sit on the
     /// opposite side from the island).
+    ///
+    /// `reservedRegions` is iOS 27 SDK only, so `#available` isn't enough on its
+    /// own — the call still has to compile, and CI builds with Xcode 26.6 (iOS 26.5
+    /// SDK). `compiler(>=6.4)` is the Swift that ships with Xcode 27; drop the gate
+    /// once every build machine is on it (docs/ci.md).
     private func islandInfo(_ geo: GeometryProxy, topInset: CGFloat)
         -> (reserve: CGFloat, centerY: CGFloat, centerX: CGFloat) {
         let fallback = (reserve: CGFloat(0), centerY: topInset / 2, centerX: geo.size.width / 2)
+        #if compiler(>=6.4)
         guard #available(iOS 27.1, *) else { return fallback }
         let regions = geo.reservedRegions(kind: .occlusion, options: [.includeInactive])
         let top = regions.filter { $0.frame.minY < topInset + 40 && $0.frame.width > 0 }
@@ -516,6 +522,9 @@ struct PageScreen: View {
         return (reserve: max(0, geo.size.width - leadingEdge),
                 centerY: (minY + maxY) / 2,
                 centerX: (leadingEdge + trailingEdge) / 2)
+        #else
+        return fallback
+        #endif
     }
 
 }
