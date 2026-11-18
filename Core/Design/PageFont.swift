@@ -2,15 +2,16 @@ import SwiftUI
 import CoreText
 import UIKit
 
-// The matn page is set in Amiri Quran (bundled) — a Quranic naskh that renders
-// the ḍabṭ marks (small superscript letters, superscript alif, etc.). Falls back
-// to plain Amiri, then the system font. Everything else uses the system font.
+// The matn page is set in Scheherazade New (bundled) — a clear, readable naskh
+// that renders the ḍabṭ marks (small superscript letters, superscript alif, etc.),
+// using its Medium weight for legibility at small sizes. Falls back to Amiri Quran,
+// then plain Amiri, then the system font. Everything else uses the system font.
 // We register the bundled fonts (lazily, once) and expose one place to get the
 // page font and to measure a hemistich's width, so a page shares one size.
 
 enum PageFont {
     // Preferred first; first one that's actually registered wins.
-    private static let candidates = ["Amiri Quran", "Amiri"]
+    private static let candidates = ["ScheherazadeNew-Medium", "Scheherazade New", "Amiri Quran", "Amiri"]
 
     private static var didRegister = false
     private(set) static var resolvedName: String? = nil

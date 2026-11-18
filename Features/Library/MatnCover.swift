@@ -88,21 +88,25 @@ struct MatnCover: View {
 
     private var content: some View {
         VStack(spacing: sz(5, 9, 12)) {
-            Text(cartLabel)
-                .font(DisplayFont.body(size: sz(7, 12, 15)))
-                .foregroundStyle(color)
-                .padding(.horizontal, sz(7, 12, 16))
-                .padding(.vertical, sz(1, 2, 3))
-                .overlay(Capsule().stroke(color.opacity(0.8), lineWidth: 1))
+            HStack(spacing: sz(3, 5, 6)) {
+                Image(systemName: matn.subject.icon)
+                    .font(.system(size: sz(7, 11, 14), weight: .medium))
+                Text(cartLabel)
+                    .font(PageFont.font(size: sz(7, 12, 15)))
+            }
+            .foregroundStyle(color)
+            .padding(.horizontal, sz(7, 12, 16))
+            .padding(.vertical, sz(1, 2, 3))
+            .overlay(Capsule().stroke(color.opacity(0.8), lineWidth: 1))
             Text(matn.title)
-                .font(DisplayFont.title(size: titleSize))
+                .font(PageFont.font(size: titleSize))
                 .foregroundStyle(color)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.6)
             if !matn.author.isEmpty {
                 Text(matn.author)
-                    .font(DisplayFont.body(size: sz(7.5, 13, 17)))
+                    .font(PageFont.font(size: sz(7.5, 13, 17)))
                     .foregroundStyle(Theme.ink.opacity(0.58))
                     .multilineTextAlignment(.center)
                     .lineLimit(1)
@@ -117,7 +121,7 @@ struct MatnCover: View {
             Text(matn.kind == .prose
                  ? "\(Numerals.eastern(matn.baytCount)) حديثًا"
                  : "\(Numerals.eastern(matn.baytCount)) بيت")
-                .font(DisplayFont.body(size: sz(7.5, 12, 15)))
+                .font(PageFont.font(size: sz(7.5, 12, 15)))
                 .foregroundStyle(color.opacity(0.9))
                 .padding(.bottom, style == .page ? 46 : sz(10, 18, 0))
         }
