@@ -177,8 +177,9 @@ final class RecitationTracker {
         /// the place is still known, so nearby matches are judged as if locked.
         var lostBySilence = false
         /// The word due when the place was lost, called wrong with what was
-        /// heard instead: taken back if that turns out to be text further on.
-        var lostCalledWrong: Int?
+        /// heard instead (`heard`): taken back if that turns out to be text
+        /// further on and the word's bayt was skipped whole.
+        var lostCalledWrong: (word: Int, heard: [(raw: String, norm: String)])?
     }
 
     private var committed: State
@@ -505,7 +506,7 @@ final class RecitationTracker {
                         // red at once with what was, and stays red if the
                         // reciter then says it after all, as in Tarteel.
                         let heard = s.pending.map(\.raw).joined(separator: " ")
-                        if s.outcomes[s.cursor] == nil { s.lostCalledWrong = s.cursor }
+                        if s.outcomes[s.cursor] == nil { s.lostCalledWrong = (s.cursor, s.pending) }
                         judge(s.cursor, .wrong(heard: heard), heard: heard, in: &s)
                         s.cursor = Self.firstNonEmpty(from: s.cursor + 1, in: words)
                     }
@@ -709,17 +710,15 @@ final class RecitationTracker {
 
     /// While lost, where to search further on: from where the run of
     /// unmatched words began, one bayt on (a hadith: `lostWindow` words) for
-    /// each bayt's worth of words heard since, `lostWindow` words long.
-    /// The words heard before the place was lost count too: they were the
-    /// start of whatever the reciter went on to.
+    /// every `lostAfterUnmatched` words heard since, `lostWindow` words long.
+    /// That is about twice the reciter's pace, so it catches up with a skip
+    /// of several bayts. The words heard before the place was lost count
+    /// too: they were the start of whatever the reciter went on to.
     private func slidWindow(_ s: State) -> Range<Int> {
         var start = s.runFrom?.cursor ?? s.cursor
-        var heard = s.unmatchedRun
-        while start < words.count {
+        for _ in 0..<(s.unmatchedRun / tuning.lostAfterUnmatched) {
             let next = nextUnit(after: start)
-            let length = (start..<next).filter { !words[$0].isEmpty }.count
-            guard next < words.count, heard >= length else { break }
-            heard -= length
+            guard next < words.count else { break }
             start = next
         }
         return start..<min(words.count, start + tuning.lostWindow)
@@ -746,7 +745,8 @@ final class RecitationTracker {
     /// The place found again at `hit` after being lost. The words heard since
     /// the last match are lined up with the text since then, and those said
     /// count as right. A word called wrong on getting lost is taken back when
-    /// what was heard for it turns out to be that text. A bayt passed over
+    /// what was heard for it turns out to be text further on and its bayt was
+    /// skipped whole. A bayt passed over
     /// whole was skipped (`RecitationIndex.skippedBayts` counts it once);
     /// other words jumped stay `.unheard`, as the recognizer may have missed them.
     private func judgeLostGap(upTo hit: Int, in s: inout State) {
@@ -754,11 +754,42 @@ final class RecitationTracker {
         let span = (from..<hit).filter { !words[$0].isEmpty }
         guard !span.isEmpty else { return }
         let heard = s.sinceMatch
-        let said = align(heard, span)
-        // The first `lostAfterUnmatched` tokens were what the wrong word heard,
-        // if none have been dropped from `sinceMatch` since.
-        if let w = s.lostCalledWrong, heard.count == s.unmatchedRun,
-           said.contains(where: { $0.token < tuning.lostAfterUnmatched }) {
+        var said = align(heard, span)
+        // The word called wrong on getting lost was really the start of a
+        // skip if what was heard for it is text further on (two words of it).
+        var calledWrong: Int?
+        if let lost = s.lostCalledWrong,
+           align(lost.heard, ((lost.word + 1)..<min(words.count, hit + tuning.lostWindow)).filter { !words[$0].isEmpty })
+               .count >= 2 {
+            calledWrong = lost.word
+        }
+        // Bayts passed over whole. One word right in a bayt doesn't make it
+        // said if that word comes again later, up to where the reciter was
+        // found (أن in bayts 5 and 6): it was most likely that later one.
+        // That holds for the bayt the place was lost in too, whose words
+        // before `from` were judged against what turned out to be the skip.
+        var skipped: [[Int]] = []
+        if !prose, let bayts = baytOfWord, let start = baytStart[bayts[from]] {
+            var b = start
+            while b < hit {
+                let next = nextUnit(after: b)
+                let bayt = (b..<next).filter { !words[$0].isEmpty }
+                let later = Set((next..<min(words.count, hit + tuning.lostWindow)).map { words[$0] })
+                let right = Set(said.filter { bayt.contains($0.word) }.map(\.word))
+                    .union(bayt.filter { $0 < from && [.correct, .unsure].contains(s.outcomes[$0]) })
+                let rest = bayt.filter { !right.contains($0) }
+                if next <= hit, right.count <= 1, right.allSatisfy({ later.contains(words[$0]) }),
+                   rest.allSatisfy({ w in
+                       (s.outcomes[w] ?? .unheard) == .unheard || w == calledWrong
+                           || (w < from && s.outcomes[w]?.isMistake == true)
+                   }) {
+                    skipped.append(bayt)
+                    said.removeAll { bayt.contains($0.word) }
+                }
+                b = next
+            }
+        }
+        for w in skipped.joined() where s.outcomes[w] != nil {
             s.outcomes[w] = nil
             s.heard[w] = nil
             s.withdrawn.insert(w)
@@ -767,19 +798,7 @@ final class RecitationTracker {
             judge(w, Self.saidRight(after: s.outcomes[w], exact: matches(heard[t].norm, at: w) == true),
                   heard: nil, in: &s)
         }
-        let matched = Set(said.map(\.word))
-        if !prose, let bayts = baytOfWord {
-            var b = from
-            while b < hit {
-                let next = nextUnit(after: b)
-                let whole = baytStart[bayts[b]] == b && next <= hit
-                let bayt = (b..<next).filter { !words[$0].isEmpty }
-                if whole, bayt.allSatisfy({ !matched.contains($0) && (s.outcomes[$0] ?? .unheard) == .unheard }) {
-                    for w in bayt { judge(w, .skipped, heard: nil, in: &s) }
-                }
-                b = next
-            }
-        }
+        for w in skipped.joined() { judge(w, .skipped, heard: nil, in: &s) }
         for w in span where s.outcomes[w] == nil { judge(w, .unheard, heard: nil, in: &s) }
     }
 

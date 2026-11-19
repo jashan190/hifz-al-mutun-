@@ -138,6 +138,7 @@ struct PageScreen: View {
             ReviewSheet(
                 matn: matn,
                 annotations: voice.summary.map { ReviewItems.annotations($0) } ?? [:],
+                skippedBayts: voice.summary?.skippedBayts ?? [],
                 onSelect: { key in reviewPresented = false; goToFlag(key) },
                 onRemove: { key in flagStore.setFlag(false, matnID: matn.id, key) },
                 reviewAgain: { reviewPresented = false; startVoice() },

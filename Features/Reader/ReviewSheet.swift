@@ -6,6 +6,8 @@ struct ReviewSheet: View {
     let matn: Matn
     /// Ephemeral annotations from the current sitting (empty when none).
     var annotations: [FlagKey: ReviewSummary.Mistake] = [:]
+    /// Bayts the current sitting left out whole.
+    var skippedBayts: Set<Int> = []
     let onSelect: (FlagKey) -> Void
     let onRemove: (FlagKey) -> Void
     let reviewAgain: () -> Void
@@ -15,7 +17,7 @@ struct ReviewSheet: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var items: [ReviewItem] {
-        ReviewItems.resolve(matn: matn, flags: flagStore.flags[matn.id] ?? [])
+        ReviewItems.resolve(matn: matn, flags: flagStore.flags[matn.id] ?? [], skippedBayts: skippedBayts)
     }
 
     var body: some View {

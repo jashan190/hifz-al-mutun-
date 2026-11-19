@@ -94,6 +94,10 @@ import Foundation
         #expect(r.red.isDisjoint(with: r.words(of: 2...2)), "bayt 2 was right")
         #expect(!r.red.isDisjoint(with: r.words(of: 3...3)), "bayt 3 was never said")
         #expect(r.flashed.isEmpty)
+        // As the app builds it: bayt 3 is one skipped bayt, and bayt 4 is followed.
+        let app = try Self.replay("r97", asInApp: true)
+        #expect(app.index.skippedBayts(app.tracker.outcomes) == [3])
+        #expect(app.red.isDisjoint(with: app.words(of: 4...4)))
     }
 
     // The `sim_` replays: a computer voice (macOS's Arabic voice) reading the

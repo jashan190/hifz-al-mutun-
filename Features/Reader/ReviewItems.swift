@@ -6,8 +6,15 @@ struct ReviewItem: Identifiable {
     let word: String        // the flagged word, as written
     let location: String    // "Bayt 12 · first half" / "الحديث ٣"
     /// Every flagged word the row stands for: one, or a whole bayt's.
-    var keys: [FlagKey] = []
+    let keys: [FlagKey]
     var id: FlagKey { key }
+
+    init(key: FlagKey, word: String, location: String, keys: [FlagKey]? = nil) {
+        self.key = key
+        self.word = word
+        self.location = location
+        self.keys = keys ?? [key]
+    }
 }
 
 /// Resolves a matn's flagged positions into display rows, and builds the
@@ -19,19 +26,21 @@ enum ReviewItems {
     }
 
     /// Flagged words for a matn, in reading order. Orphan/out-of-range keys are
-    /// skipped. A bayt with every word flagged (left out whole) is one row.
-    static func resolve(matn: Matn, flags: Set<FlagKey>) -> [ReviewItem] {
+    /// skipped. A bayt with every word flagged is one row: "skipped" if the
+    /// current sitting left it out (`skippedBayts`), else "whole bayt".
+    static func resolve(matn: Matn, flags: Set<FlagKey>, skippedBayts: Set<Int> = []) -> [ReviewItem] {
         let sorted = flags.sorted { sortKey($0) < sortKey($1) }
         var items: [ReviewItem] = []
         for key in sorted {
             if let bayt = wholeBayt(matn: matn, key.bayt, flags: flags) {
                 if items.last?.key.bayt == key.bayt, items.last?.keys.count ?? 0 > 1 { continue }
                 items.append(ReviewItem(key: key, word: bayt.sadr.text + " … " + bayt.ajuz.text,
-                                        location: "Bayt \(key.bayt) · whole bayt", keys: wholeKeys(bayt)))
+                                        location: "Bayt \(key.bayt) · \(skippedBayts.contains(key.bayt) ? "skipped" : "whole bayt")",
+                                        keys: wholeKeys(bayt)))
                 continue
             }
             guard let word = word(matn: matn, key: key) else { continue }
-            items.append(ReviewItem(key: key, word: word, location: location(matn: matn, key: key), keys: [key]))
+            items.append(ReviewItem(key: key, word: word, location: location(matn: matn, key: key)))
         }
         return items
     }
