@@ -5,6 +5,8 @@ struct ReviewItem: Identifiable {
     let key: FlagKey
     let word: String        // the flagged word, as written
     let location: String    // "Bayt 12 · first half" / "الحديث ٣"
+    /// Every flagged word the row stands for: one, or a whole bayt's.
+    var keys: [FlagKey] = []
     var id: FlagKey { key }
 }
 
@@ -16,13 +18,40 @@ enum ReviewItems {
         (k.bayt, k.half == .sadr ? 0 : 1, k.wordIndex)
     }
 
-    /// Flagged words for a matn, in reading order. Orphan/out-of-range keys are skipped.
+    /// Flagged words for a matn, in reading order. Orphan/out-of-range keys are
+    /// skipped. A bayt with every word flagged (left out whole) is one row.
     static func resolve(matn: Matn, flags: Set<FlagKey>) -> [ReviewItem] {
         let sorted = flags.sorted { sortKey($0) < sortKey($1) }
-        return sorted.compactMap { key in
-            guard let word = word(matn: matn, key: key) else { return nil }
-            return ReviewItem(key: key, word: word, location: location(matn: matn, key: key))
+        var items: [ReviewItem] = []
+        for key in sorted {
+            if let bayt = wholeBayt(matn: matn, key.bayt, flags: flags) {
+                if items.last?.key.bayt == key.bayt, items.last?.keys.count ?? 0 > 1 { continue }
+                items.append(ReviewItem(key: key, word: bayt.sadr.text + " … " + bayt.ajuz.text,
+                                        location: "Bayt \(key.bayt) · whole bayt", keys: wholeKeys(bayt)))
+                continue
+            }
+            guard let word = word(matn: matn, key: key) else { continue }
+            items.append(ReviewItem(key: key, word: word, location: location(matn: matn, key: key), keys: [key]))
         }
+        return items
+    }
+
+    /// The bayt, if every one of its words is flagged.
+    private static func wholeBayt(matn: Matn, _ number: Int, flags: Set<FlagKey>) -> Bayt? {
+        guard matn.kind != .prose else { return nil }
+        for page in matn.pages {
+            for item in page.items {
+                guard case .bayt(let b) = item, b.number == number else { continue }
+                let keys = wholeKeys(b)
+                return keys.count > 1 && keys.allSatisfy(flags.contains) ? b : nil
+            }
+        }
+        return nil
+    }
+
+    private static func wholeKeys(_ b: Bayt) -> [FlagKey] {
+        b.sadr.words.indices.map { FlagKey(bayt: b.number, half: .sadr, wordIndex: $0) }
+            + b.ajuz.words.indices.map { FlagKey(bayt: b.number, half: .ajuz, wordIndex: $0) }
     }
 
     private static func word(matn: Matn, key: FlagKey) -> String? {

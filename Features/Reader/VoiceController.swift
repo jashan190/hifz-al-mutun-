@@ -9,8 +9,12 @@ struct ReviewSummary: Equatable {
     /// Each mistake, in recitation order, with the ones the reciter went back
     /// and fixed (listed, but not counted).
     let mistakes: [Mistake]
+    /// Bayts left out whole: each counts as one mistake, not one per word.
+    var skippedBayts: Set<Int> = []
 
-    var mistakeCount: Int { mistakes.filter { !$0.fixed }.count }
+    var mistakeCount: Int {
+        mistakes.filter { !$0.fixed && ($0.added || !skippedBayts.contains($0.bayt)) }.count + skippedBayts.count
+    }
     var fixedCount: Int { mistakes.filter(\.fixed).count }
 
     struct Mistake: Equatable, Identifiable {
@@ -177,7 +181,8 @@ final class VoiceController: ObservableObject {
         return ReviewSummary(
             baytsRecited: Set(judged.keys.map { index.refs[$0].bayt }).count,
             revealed: judged.values.filter { $0 == .revealed }.count,
-            mistakes: mistakes
+            mistakes: mistakes,
+            skippedBayts: index.skippedBayts(judged)
         )
     }
 

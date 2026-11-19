@@ -26,7 +26,7 @@ struct ReviewSheet: View {
                         .font(.title2.weight(.bold)).foregroundStyle(Theme.ink)
                         .environment(\.layoutDirection, .rightToLeft)
                     Text(items.isEmpty ? "No flagged words yet"
-                         : "\(Numerals.eastern(items.count)) flagged \(items.count == 1 ? "word" : "words")")
+                         : "\(Numerals.eastern(items.count)) to review")
                         .font(.subheadline).foregroundStyle(Theme.ink.opacity(0.7))
                 }
                 Spacer()
@@ -55,7 +55,7 @@ struct ReviewSheet: View {
                             .listRowInsets(EdgeInsets(top: 2, leading: Theme.margin, bottom: 2, trailing: Theme.margin))
                             .listRowSeparator(.visible)
                             .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) { onRemove(item.key) } label: {
+                                Button(role: .destructive) { item.keys.forEach(onRemove) } label: {
                                     Label("Remove", systemImage: "flag.slash")
                                 }
                             }
