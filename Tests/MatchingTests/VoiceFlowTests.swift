@@ -3,8 +3,9 @@ import Foundation
 @testable import HifzAlMutun
 
 /// The session and controller around the tracker: status, failures, flags.
+/// Serialized: the tests share the `debugRecite` / `debugVoiceFail` defaults.
 @MainActor
-@Suite struct VoiceFlowTests {
+@Suite(.serialized) struct VoiceFlowTests {
     private func matn() -> Matn {
         func hemi(_ w: [String]) -> Hemistich {
             Hemistich(text: w.joined(separator: " "),
