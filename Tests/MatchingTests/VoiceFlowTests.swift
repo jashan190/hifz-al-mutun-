@@ -3,8 +3,9 @@ import Foundation
 @testable import HifzAlMutun
 
 /// The session and controller around the tracker: status, failures, flags.
+/// Serialized: the tests share the `debugRecite` / `debugVoiceFail` defaults.
 @MainActor
-@Suite struct VoiceFlowTests {
+@Suite(.serialized) struct VoiceFlowTests {
     private func matn() -> Matn {
         func hemi(_ w: [String]) -> Hemistich {
             Hemistich(text: w.joined(separator: " "),
@@ -244,6 +245,24 @@ import Foundation
         await settle()
         #expect(!voice.isActive)
         #expect(voice.summary != nil)
+    }
+
+    // The Duo's status pill: shown for a failure, hidden while idle or simply
+    // listening in place.
+    @Test func theStatusSaysSomethingOnlyWhenThereIsSomethingToSay() async {
+        let voice = VoiceController()
+        #expect(!VoiceStatusLabel.hasMessage(voice))
+        UserDefaults.standard.set("mic", forKey: "debugVoiceFail")
+        voice.start(matn: matn(), fromPage: 1, flags: nil)
+        await settle()
+        UserDefaults.standard.removeObject(forKey: "debugVoiceFail")
+        #expect(VoiceStatusLabel.hasMessage(voice))
+        UserDefaults.standard.set("يقول راجي", forKey: "debugRecite")
+        defer { UserDefaults.standard.removeObject(forKey: "debugRecite") }
+        voice.start(matn: matn(), fromPage: 1, flags: nil)
+        await settle()
+        #expect(voice.status == .listening)
+        #expect(!VoiceStatusLabel.hasMessage(voice))
     }
 
     @Test func voiceFailureFallsBackToTapKeepingTheReason() async {

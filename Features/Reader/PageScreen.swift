@@ -84,6 +84,10 @@ struct PageScreen: View {
                                        height: geo.size.height))
         }
         .onAppear { ReadingPosition.recordOpened(matn.id) }
+        // The Duo has no footer: what voice review is doing (getting ready, the
+        // download, why it can't listen) floats in a pill at the foot of the page,
+        // inside the page so it never runs under the rail.
+        .overlay(alignment: .bottom) { voiceStatusPill(currentLayout) }
         .environment(\.readerActions, actions)
         .background(Theme.cover.ignoresSafeArea())
         // Top: the full header on regular devices; the Duo held upright gets the
@@ -376,6 +380,16 @@ struct PageScreen: View {
         }
     }
 
+    @ViewBuilder private func voiceStatusPill(_ layout: ReaderLayout) -> some View {
+        if layout != .standard, mode == .memorize, VoiceStatusLabel.hasMessage(voice) {
+            VoiceStatusLabel(voice: voice)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(Capsule().fill(chrome))
+                .padding(.horizontal, Theme.margin).padding(.bottom, 16)
+                .transition(.opacity)
+        }
+    }
+
     private func startVoice(bayt: Int? = nil) {
         voice.start(matn: matn, fromPage: currentPage, bayt: bayt, flags: flagStore)
     }
@@ -534,6 +548,15 @@ struct PageScreen: View {
 struct VoiceStatusLabel: View {
     @ObservedObject var voice: VoiceController
     @Environment(\.openURL) private var openURL
+
+    /// Whether the label says anything now (the Duo's pill hides when not).
+    static func hasMessage(_ voice: VoiceController) -> Bool {
+        switch voice.status {
+        case .idle: return false
+        case .listening: return voice.isManual || voice.lockState == .lost
+        case .preparing, .downloading, .loadingModel, .failed: return true
+        }
+    }
 
     var body: some View {
         switch voice.status {
