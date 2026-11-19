@@ -217,6 +217,9 @@ final class RecitationTracker {
     /// How words that can merge into the next one may be spelled (`Idgham`).
     private let idgham: [Int: [String]]
 
+    /// The text has ﷺ (the Arbaeen).
+    private let hasSalawat: Bool
+
     /// Hadith: a "bayt" is a whole hadith, so the lost search moves on
     /// `lostWindow` words at a time and skips aren't grouped.
     private let prose: Bool
@@ -230,6 +233,7 @@ final class RecitationTracker {
         self.tuning = tuning
         self.idgham = idgham
         self.prose = prose
+        hasSalawat = words.contains(Self.salawat)
         baytOfWord = bayts
         var starts: [Int: Int] = [:]
         for (i, b) in (bayts ?? []).enumerated() where starts[b] == nil { starts[b] = i }
@@ -412,8 +416,20 @@ final class RecitationTracker {
     // MARK: - Alignment
 
     private func apply(_ tokens: [(raw: String, norm: String)], to s: inout State) {
+        var tokens = tokens
         var i = 0
         while i < tokens.count {
+            // ﷺ said as a phrase (heard as several words) is that one word,
+            // and the rest of one begun in the last result is part of it.
+            if hasSalawat, let k = salawatRest(tokens, at: i, in: s) {
+                tokens.removeSubrange(i..<(i + k))
+                continue
+            }
+            if hasSalawat, let k = salawatLength(tokens, at: i), salawatNear(s) {
+                let phrase = tokens[i..<(i + k)]
+                tokens.replaceSubrange(i..<(i + k), with: [(raw: phrase.map(\.raw).joined(separator: " "),
+                                                            norm: Self.salawat)])
+            }
             let token = tokens[i]
             let near = s.cursor..<min(words.count, s.cursor + tuning.lockedLookahead)
             let wide = s.cursor..<min(words.count, s.cursor + tuning.lostWindow)
@@ -800,6 +816,42 @@ final class RecitationTracker {
         }
         for w in skipped.joined() { judge(w, .skipped, heard: nil, in: &s) }
         for w in span where s.outcomes[w] == nil { judge(w, .unheard, heard: nil, in: &s) }
+    }
+
+    /// ﷺ as the text has it (one word).
+    private static let salawat = ArabicNormalize.normalize("صلى الله عليه وسلم")
+    /// The ways it is said, word by word.
+    private static let salawatForms = ["صلى الله عليه وسلم", "صلى الله عليه وآله وسلم", "عليه الصلاة والسلام"]
+        .map { $0.split(separator: " ").map { ArabicNormalize.normalize(String($0)) } }
+
+    /// How many tokens from `i` are ﷺ said: a whole form, or its first two
+    /// words or more (Whisper often drops the end of a phrase).
+    private func salawatLength(_ tokens: [(raw: String, norm: String)], at i: Int) -> Int? {
+        let best = Self.salawatForms.map { form in
+            zip(form, tokens[i...]).prefix { $0 == $1.norm }.count
+        }.max() ?? 0
+        return best >= 2 ? best : nil
+    }
+
+    /// Right after ﷺ was matched: how many tokens from `i` end a form of it
+    /// (عليه وسلم after صلى الله, the phrase split between two results).
+    private func salawatRest(_ tokens: [(raw: String, norm: String)], at i: Int, in s: State) -> Int? {
+        guard s.pending.isEmpty, let last = s.lastRight, words[last] == Self.salawat,
+              s.cursor == Self.firstNonEmpty(from: last + 1, in: words) else { return nil }
+        for form in Self.salawatForms {
+            for j in 1..<form.count where form.count - j <= tokens.count - i
+                && zip(form[j...], tokens[i...]).allSatisfy({ $0 == $1.norm }) {
+                return form.count - j
+            }
+        }
+        return nil
+    }
+
+    /// ﷺ is among the words the next token could be matched to.
+    private func salawatNear(_ s: State) -> Bool {
+        let end = s.lock == .lost ? max(slidWindow(s).upperBound, s.cursor + tuning.lostWindow)
+                                  : s.cursor + tuning.lostWindow
+        return (s.cursor..<min(words.count, end)).contains { words[$0] == Self.salawat }
     }
 
     /// The longest in-order pairing of heard tokens with the words of `span`.

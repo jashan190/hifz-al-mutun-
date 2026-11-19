@@ -110,9 +110,10 @@ import Foundation
         #expect(tuhfa.red.isEmpty && tuhfa.flashed.isEmpty)
         // It ends heard as بين معلم for بينمو علما: those two are left unjudged.
         #expect(tuhfa.tracker.outcomes.count == tuhfa.words(of: 1...10).count - 2)
-        // ﷺ is one word in the text and said as four.
+        // ﷺ, said as صلى الله عليه وسلم, is right.
         let hadith = try Self.replay("sim_arbaeen", asInApp: true)
-        #expect(hadith.describe(hadith.red) == "1:ﷺ")
+        #expect(hadith.red.isEmpty && hadith.flashed.isEmpty)
+        #expect(hadith.tracker.added.isEmpty)
     }
 
     @Test func simulatedMistakesAreCaught() throws {
@@ -129,7 +130,7 @@ import Foundation
         #expect(r.red.isDisjoint(with: r.words(of: 9...10)))
         // The hadith: الأعمال left out, امرأة said as مال.
         let hadith = try Self.replay("sim_arbaeen_err", asInApp: true)
-        #expect(hadith.describe(hadith.red) == "1:ﷺ 1:الأَعْمالُ 1:امْرَأَةٍ")
+        #expect(hadith.describe(hadith.red) == "1:الأَعْمالُ 1:امْرَأَةٍ")
     }
 }
 private final class ReplayBundleToken {}
