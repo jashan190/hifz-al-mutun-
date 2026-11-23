@@ -39,4 +39,20 @@ import Testing
         #expect(idx.firstWordIndex(onPage: 1) == 0)
         #expect(idx.firstWordIndex(onPage: 99) == idx.normalizedWords.count) // past the end
     }
+
+    @Test func aBaytWithAnUnheardOrUnjudgedWordIsNotGrouped() {
+        let index = RecitationIndex(matn: makeMatn())
+        var outcomes: [Int: WordOutcome] = [0: .skipped, 1: .skipped, 2: .skipped]
+
+        #expect(index.skippedBayts(outcomes).isEmpty)
+        #expect(index.mistakeCount(outcomes) == 3)
+
+        outcomes[3] = .unheard
+        #expect(index.skippedBayts(outcomes).isEmpty)
+        #expect(index.mistakeCount(outcomes) == 3)
+
+        outcomes[3] = .skipped
+        #expect(index.skippedBayts(outcomes) == [1])
+        #expect(index.mistakeCount(outcomes) == 1)
+    }
 }
