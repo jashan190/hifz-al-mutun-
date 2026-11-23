@@ -59,6 +59,17 @@ import Foundation
         #expect(t.cursor == index.firstWordIndex(ofBayt: 21))
     }
 
+    @Test func aSkipHeardOneWordAtATimeIsFound() throws {
+        // Each word its own result: the two in a row span results.
+        let index = try Self.tuhfa()
+        let t = tracker(index)
+        for (k, w) in (words(of: 1...7, index) + words(of: 9...12, index)).enumerated() {
+            t.consume(.init(text: index.normalizedWords[w], isFinal: true), at: Double(k))
+        }
+        #expect(index.skippedBayts(t.outcomes) == [8])
+        #expect(t.cursor == index.firstWordIndex(ofBayt: 13))
+    }
+
     @Test func aWrongBaytIsNotASkip() throws {
         // Words that aren't the text at all, then the next bayt: the word due
         // stays wrong, and nothing is grouped as skipped.

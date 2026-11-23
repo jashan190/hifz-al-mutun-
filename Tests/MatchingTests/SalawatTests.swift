@@ -45,6 +45,32 @@ import Foundation
         #expect(t.cursor == s + 5)
     }
 
+    // Split anywhere: its first word ending one result, or its rest in two.
+    @Test(arguments: [["صلى", "الله عليه وسلم"], ["صلى الله", "عليه", "وسلم"], ["صلى", "الله", "عليه وسلم"]])
+    func aPhraseSplitAnywhereIsOneWord(_ parts: [String]) throws {
+        let (t, index, s) = try Self.hadith()
+        let before = index.normalizedWords[..<s].joined(separator: " ")
+        let after = index.normalizedWords[(s + 1)...(s + 4)].joined(separator: " ")
+        let results = ["\(before) \(parts[0])"] + parts.dropFirst().dropLast() + ["\(parts.last!) \(after)"]
+        for (k, text) in results.enumerated() { t.consume(.init(text: text, isFinal: true), at: Double(k)) }
+        #expect(t.outcomes[s] == .correct, "\(parts)")
+        #expect(!t.outcomes.values.contains { $0.isMistake }, "\(parts)")
+        #expect(t.added.isEmpty, "\(parts): \(t.added)")
+        #expect(t.cursor == s + 5)
+    }
+
+    @Test func nothingIsTakenAfterAWholePhrase() throws {
+        // صلى الله عليه وسلم said whole: a الله after it isn't more of it,
+        // but what was said for the next word.
+        let (t, index, s) = try Self.hadith()
+        t.consume(.init(text: index.normalizedWords[..<s].joined(separator: " ") + " صلى الله عليه وسلم",
+                        isFinal: true), at: 0)
+        t.consume(.init(text: "الله", isFinal: true), at: 1)
+        t.consume(.init(text: index.normalizedWords[(s + 2)...(s + 5)].joined(separator: " "), isFinal: true), at: 2)
+        #expect(t.outcomes[s] == .correct)
+        #expect(t.outcomes[s + 1] == .wrong(heard: "الله"), "\(String(describing: t.outcomes[s + 1]))")
+    }
+
     @Test func leavingItOutIsAMistake() throws {
         let (t, s) = try recite("")
         #expect(t.outcomes[s] == .skipped)

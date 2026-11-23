@@ -180,6 +180,9 @@ final class RecitationTracker {
         /// heard instead (`heard`): taken back if that turns out to be text
         /// further on and the word's bayt was skipped whole.
         var lostCalledWrong: (word: Int, heard: [(raw: String, norm: String)])?
+        /// Right after ﷺ was matched: the rest of each form the words heard
+        /// for it began, still to come (none if a whole form was said).
+        var salawatLeft: [[String]] = []
     }
 
     private var committed: State
@@ -422,11 +425,21 @@ final class RecitationTracker {
             // ﷺ said as a phrase (heard as several words) is that one word,
             // and the rest of one begun in the last result is part of it.
             if hasSalawat, let k = salawatRest(tokens, at: i, in: s) {
+                let taken = tokens[i..<(i + k)].map(\.norm)
+                s.salawatLeft = s.salawatLeft.compactMap { $0.starts(with: taken) ? Array($0.dropFirst(k)) : nil }
+                    .filter { !$0.isEmpty }
                 tokens.removeSubrange(i..<(i + k))
                 continue
             }
-            if hasSalawat, let k = salawatLength(tokens, at: i), salawatNear(s) {
-                let phrase = tokens[i..<(i + k)]
+            var salawatSaid: [String]?
+            if hasSalawat, let (p, k) = salawatLength(tokens, at: i, after: s.pending), salawatNear(s) {
+                // Its first words may be the last result's, still unmatched.
+                let phrase = s.pending.suffix(p) + tokens[i..<(i + k)]
+                salawatSaid = phrase.map(\.norm)
+                s.pending.removeLast(p)
+                s.sinceMatch.removeLast(min(p, s.sinceMatch.count))
+                s.unmatchedRun = max(0, s.unmatchedRun - p)
+                if s.sinceMatch.isEmpty { s.runFrom = nil }
                 tokens.replaceSubrange(i..<(i + k), with: [(raw: phrase.map(\.raw).joined(separator: " "),
                                                             norm: Self.salawat)])
             }
@@ -471,7 +484,7 @@ final class RecitationTracker {
                 found = (hit, exact, true, token.raw)
             } else if s.lock == .lost, case let ahead = slidWindow(s), ahead.upperBound > wide.upperBound,
                       let (hit, exact) = match(token.norm, in: max(ahead.lowerBound, wide.upperBound)..<ahead.upperBound),
-                      twoInARow(hit, before: s.pending.last, tokens: tokens, at: i) {
+                      twoInARow(hit, before: s.sinceMatch.last, tokens: tokens, at: i) {
                 // Further on (a bayt or more skipped): two words in a row.
                 found = (hit, exact, true, token.raw)
             }
@@ -500,6 +513,11 @@ final class RecitationTracker {
                 s.lock = .locked
                 s.lostBySilence = false
                 s.lostCalledWrong = nil
+                s.salawatLeft = []
+                if words[found.hit] == Self.salawat, let said = salawatSaid {
+                    s.salawatLeft = Self.salawatForms.filter { $0.starts(with: said) && $0.count > said.count }
+                        .map { Array($0.dropFirst(said.count)) }
+                }
                 s.pending = []
                 s.unmatchedRun = 0
                 s.sinceMatch = []
@@ -824,25 +842,33 @@ final class RecitationTracker {
     private static let salawatForms = ["صلى الله عليه وسلم", "صلى الله عليه وآله وسلم", "عليه الصلاة والسلام"]
         .map { $0.split(separator: " ").map { ArabicNormalize.normalize(String($0)) } }
 
-    /// How many tokens from `i` are ﷺ said: a whole form, or its first two
-    /// words or more (Whisper often drops the end of a phrase).
-    private func salawatLength(_ tokens: [(raw: String, norm: String)], at i: Int) -> Int? {
-        let best = Self.salawatForms.map { form in
-            zip(form, tokens[i...]).prefix { $0 == $1.norm }.count
-        }.max() ?? 0
-        return best >= 2 ? best : nil
+    /// How many of the last `pending` tokens and the tokens from `i` are ﷺ
+    /// said: a whole form, or its first two words or more (Whisper often
+    /// drops the end of a phrase). The phrase may begin in the last result.
+    private func salawatLength(_ tokens: [(raw: String, norm: String)], at i: Int,
+                               after pending: [(raw: String, norm: String)]) -> (pending: Int, tokens: Int)? {
+        var best: (pending: Int, tokens: Int)?
+        for form in Self.salawatForms {
+            for p in 0...min(pending.count, form.count - 1)
+            where zip(form, pending.suffix(p)).allSatisfy({ $0 == $1.norm }) {
+                let k = zip(form[p...], tokens[i...]).prefix { $0 == $1.norm }.count
+                if k > 0, p + k >= 2, p + k > (best.map { $0.pending + $0.tokens } ?? 0) { best = (p, k) }
+            }
+        }
+        return best
     }
 
     /// Right after ﷺ was matched: how many tokens from `i` end a form of it
-    /// (عليه وسلم after صلى الله, the phrase split between two results).
+    /// (عليه وسلم after صلى الله, the phrase split between two results). The
+    /// rest may itself be split: عليه ending one result, وسلم the next. A
+    /// token ending the result that is the word due isn't taken.
     private func salawatRest(_ tokens: [(raw: String, norm: String)], at i: Int, in s: State) -> Int? {
         guard s.pending.isEmpty, let last = s.lastRight, words[last] == Self.salawat,
               s.cursor == Self.firstNonEmpty(from: last + 1, in: words) else { return nil }
-        for form in Self.salawatForms {
-            for j in 1..<form.count where form.count - j <= tokens.count - i
-                && zip(form[j...], tokens[i...]).allSatisfy({ $0 == $1.norm }) {
-                return form.count - j
-            }
+        for rest in s.salawatLeft {
+            let n = min(rest.count, tokens.count - i)
+            guard n > 0, zip(rest.prefix(n), tokens[i..<(i + n)]).allSatisfy({ $0 == $1.norm }) else { continue }
+            if n == rest.count || s.cursor >= words.count || matches(tokens[i].norm, at: s.cursor) == nil { return n }
         }
         return nil
     }

@@ -53,7 +53,8 @@ struct ReviewSheet: View {
                 List {
                     ForEach(items) { item in
                         MistakeCard(location: item.location, word: item.word,
-                                    mistake: annotations[item.key]) { onSelect(item.key) }
+                                    // A whole bayt's row isn't one word's mistake.
+                                    mistake: item.keys.count > 1 ? nil : annotations[item.key]) { onSelect(item.key) }
                             .listRowInsets(EdgeInsets(top: 2, leading: Theme.margin, bottom: 2, trailing: Theme.margin))
                             .listRowSeparator(.visible)
                             .swipeActions(edge: .trailing) {

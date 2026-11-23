@@ -45,13 +45,17 @@ enum ReviewItems {
         return items
     }
 
-    /// The bayt, if every one of its words is flagged.
+    /// The bayt, if every one of its words is flagged: those with letters, as
+    /// the tracker judges no others.
     private static func wholeBayt(matn: Matn, _ number: Int, flags: Set<FlagKey>) -> Bayt? {
         guard matn.kind != .prose else { return nil }
         for page in matn.pages {
             for item in page.items {
                 guard case .bayt(let b) = item, b.number == number else { continue }
-                let keys = wholeKeys(b)
+                let keys = wholeKeys(b).filter { key in
+                    let half = key.half == .sadr ? b.sadr : b.ajuz
+                    return !ArabicNormalize.normalize(half.words[key.wordIndex].text).isEmpty
+                }
                 return keys.count > 1 && keys.allSatisfy(flags.contains) ? b : nil
             }
         }
