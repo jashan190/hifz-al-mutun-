@@ -70,6 +70,23 @@ import Foundation
         #expect(t.cursor == index.firstWordIndex(ofBayt: 13))
     }
 
+    @Test func aNearWordSaidWhileLostKeepsWhatWasHeard() throws {
+        // Bayt 8 left out, bayt 9's first word said nearly: once the place is
+        // found, that word is unsure, with what was heard for its letters.
+        let index = try Self.tuhfa()
+        let t = tracker(index)
+        recite(Array(1...7), into: t, index)
+        let nine = words(of: 9...9, index)
+        let first = index.normalizedWords[nine[0]]
+        let near = String(first.dropLast()) + (first.last == "ت" ? "ن" : "ت")
+        let rest = (nine.dropFirst().map { index.normalizedWords[$0] } + words(of: 10...10, index).map { index.normalizedWords[$0] })
+        t.consume(.init(text: near, isFinal: true), at: 7)
+        for (k, w) in rest.enumerated() { t.consume(.init(text: w, isFinal: true), at: Double(8 + k)) }
+        try #require(index.skippedBayts(t.outcomes) == [8])
+        #expect(t.outcomes[nine[0]] == .unsure, "\(first) as \(near): \(String(describing: t.outcomes[nine[0]]))")
+        #expect(t.heard[nine[0]] == near)
+    }
+
     @Test func aWrongBaytIsNotASkip() throws {
         // Words that aren't the text at all, then the next bayt: the word due
         // stays wrong, and nothing is grouped as skipped.

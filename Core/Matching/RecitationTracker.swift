@@ -829,8 +829,8 @@ final class RecitationTracker {
             s.withdrawn.insert(w)
         }
         for (t, w) in said {
-            judge(w, Self.saidRight(after: s.outcomes[w], exact: matches(heard[t].norm, at: w) == true),
-                  heard: nil, in: &s)
+            let exact = matches(heard[t].norm, at: w) == true
+            judge(w, Self.saidRight(after: s.outcomes[w], exact: exact), heard: exact ? nil : heard[t].raw, in: &s)
         }
         for w in skipped.joined() { judge(w, .skipped, heard: nil, in: &s) }
         for w in span where s.outcomes[w] == nil { judge(w, .unheard, heard: nil, in: &s) }
