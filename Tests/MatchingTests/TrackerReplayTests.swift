@@ -33,7 +33,8 @@ import Foundation
         }
     }
 
-    static func replay(_ name: String) throws -> Replay {
+    /// `asInApp`: the tracker built as the session builds it (bayts, idgham).
+    static func replay(_ name: String, asInApp: Bool = false) throws -> Replay {
         struct Fragment: Decodable { let t: Double; let final: Bool; let text: String }
         struct File: Decodable { let matn: String; let fragments: [Fragment] }
         let url = try #require(Bundle(for: ReplayBundleToken.self).url(forResource: "replay_\(name)", withExtension: "json"))
@@ -42,7 +43,10 @@ import Foundation
         store.load()
         let matn = try #require(store.matns.first { $0.id == file.matn })
         let index = RecitationIndex(matn: matn)
-        let tracker = RecitationTracker(words: index.normalizedWords, startIndex: 0)
+        let tracker = asInApp
+            ? RecitationTracker(words: index.normalizedWords, startIndex: 0, bayts: index.refs.map(\.bayt),
+                                idgham: index.idgham, prose: index.isProse)
+            : RecitationTracker(words: index.normalizedWords, startIndex: 0)
         var everRed: Set<Int> = []
         for f in file.fragments {
             tracker.consume(.init(text: f.text, isFinal: f.final), at: f.t)
@@ -90,6 +94,43 @@ import Foundation
         #expect(r.red.isDisjoint(with: r.words(of: 2...2)), "bayt 2 was right")
         #expect(!r.red.isDisjoint(with: r.words(of: 3...3)), "bayt 3 was never said")
         #expect(r.flashed.isEmpty)
+        // As the app builds it: bayt 3 is one skipped bayt, and bayt 4 is followed.
+        let app = try Self.replay("r97", asInApp: true)
+        #expect(app.index.skippedBayts(app.tracker.outcomes) == [3])
+        #expect(app.red.isDisjoint(with: app.words(of: 4...4)))
+    }
+
+    // The `sim_` replays: a computer voice (macOS's Arabic voice) reading the
+    // text, through Whisper in the Simulator. Clean speech with no melody, so
+    // they show the tracker's logic on real Whisper output, not how well
+    // Whisper hears a reciter. `_err`: with mistakes made on purpose.
+
+    @Test func simulatedCorrectReadingsStayQuiet() throws {
+        let tuhfa = try Self.replay("sim_tuhfa", asInApp: true)
+        #expect(tuhfa.red.isEmpty && tuhfa.flashed.isEmpty)
+        // It ends heard as بين معلم for بينمو علما: those two are left unjudged.
+        #expect(tuhfa.tracker.outcomes.count == tuhfa.words(of: 1...10).count - 2)
+        // ﷺ, said as صلى الله عليه وسلم, is right.
+        let hadith = try Self.replay("sim_arbaeen", asInApp: true)
+        #expect(hadith.red.isEmpty && hadith.flashed.isEmpty)
+        #expect(hadith.tracker.added.isEmpty)
+    }
+
+    @Test func simulatedMistakesAreCaught() throws {
+        // Bayt 2: لله left out; bayt 4: شيخنا said as كتاب; bayt 6 said
+        // twice; bayt 8 left out whole.
+        let r = try Self.replay("sim_tuhfa_err", asInApp: true)
+        let eight = r.words(of: 8...8)
+        #expect(r.describe(r.red.subtracting(eight)) == "2:لِلَّهِ 4:شَيْخِنَا")
+        #expect(eight.allSatisfy { r.tracker.outcomes[$0] == .skipped })
+        #expect(r.index.skippedBayts(r.tracker.outcomes) == [8])
+        #expect(r.index.mistakeCount(r.tracker.outcomes) == 3)
+        // Found again at bayt 9, whose first half was heard while lost.
+        #expect(r.words(of: 9...9).allSatisfy { r.tracker.outcomes[$0] == .correct || r.tracker.outcomes[$0] == .unsure })
+        #expect(r.red.isDisjoint(with: r.words(of: 9...10)))
+        // The hadith: الأعمال left out, امرأة said as مال.
+        let hadith = try Self.replay("sim_arbaeen_err", asInApp: true)
+        #expect(hadith.describe(hadith.red) == "1:الأَعْمالُ 1:امْرَأَةٍ")
     }
 }
 private final class ReplayBundleToken {}

@@ -20,6 +20,8 @@ struct RecitationIndex {
     let refs: [WordRef]
     /// How words that can merge into the next one may be spelled (`Idgham`).
     let idgham: [Int: [String]]
+    /// Hadith: each "bayt" is a whole hadith.
+    let isProse: Bool
     private let pageStart: [Int: Int]   // page number → first flat word index
     private let baytStart: [Int: Int]   // bayt number → first flat word index
 
@@ -72,6 +74,7 @@ struct RecitationIndex {
         self.displayWords = display
         self.refs = refs
         self.idgham = Idgham.spellings(written: display, words: words)
+        self.isProse = matn.kind == .prose
         self.pageStart = pageStart
         self.baytStart = baytStart
     }
@@ -85,6 +88,22 @@ struct RecitationIndex {
 
     /// Prose: the flat index of a hadith's word (its pages are cut at runtime).
     func wordIndex(hadith: Int, wordInBody: Int) -> Int? { baytStart[hadith].map { $0 + wordInBody } }
+
+    /// Bayts left out whole: every word skipped. Each counts as one mistake.
+    func skippedBayts(_ outcomes: [Int: WordOutcome]) -> Set<Int> {
+        guard !isProse else { return [] }
+        var skipped: [Int: Bool] = [:]
+        for (i, ref) in refs.enumerated() where !normalizedWords[i].isEmpty {
+            skipped[ref.bayt] = (skipped[ref.bayt] ?? true) && outcomes[i] == .skipped
+        }
+        return Set(skipped.filter(\.value).keys)
+    }
+
+    /// Mistakes as counted: a bayt skipped whole is one, not one per word.
+    func mistakeCount(_ outcomes: [Int: WordOutcome]) -> Int {
+        let bayts = skippedBayts(outcomes)
+        return outcomes.filter { $0.value.isMistake && !bayts.contains(refs[$0.key].bayt) }.count + bayts.count
+    }
 
     func firstWordIndex(onPage page: Int) -> Int {
         if let start = pageStart[page] { return start }

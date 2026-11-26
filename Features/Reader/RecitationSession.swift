@@ -82,10 +82,14 @@ final class RecitationSession: ObservableObject {
     private var waiting: [(settled: [Int: WordOutcome], audio: [Float], generation: Int)] = []
     private let maxWaiting = 20
 
+    private let index: RecitationIndex
+
     init(index: RecitationIndex, source: SpeechSource, startWordIndex: Int) {
         let layout = RevealLayout(index: index)
         let tracker = RecitationTracker(words: index.normalizedWords, startIndex: startWordIndex,
-                                        bayts: index.refs.map(\.bayt), idgham: index.idgham)
+                                        bayts: index.refs.map(\.bayt), idgham: index.idgham,
+                                        prose: index.isProse)
+        self.index = index
         self.layout = layout
         self.source = source
         self.tracker = tracker
@@ -263,7 +267,7 @@ final class RecitationSession: ObservableObject {
         if nowAdded != added { added = nowAdded }
         reveal = RevealState(layout: layout, anchor: anchor, cursor: cursor, outcomes: nowShown, heard: nowHeard,
                              added: nowAdded, lastRight: lastRight)
-        let mistakes = nowShown.values.filter(\.isMistake).count + nowAdded.count
+        let mistakes = index.mistakeCount(nowShown) + nowAdded.count
         if mistakes != mistakeCount { mistakeCount = mistakes }
     }
 }

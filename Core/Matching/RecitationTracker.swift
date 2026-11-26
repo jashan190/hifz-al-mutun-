@@ -176,6 +176,13 @@ final class RecitationTracker {
         /// Lost only because of a pause (not because what was heard didn't fit):
         /// the place is still known, so nearby matches are judged as if locked.
         var lostBySilence = false
+        /// The word due when the place was lost, called wrong with what was
+        /// heard instead (`heard`): taken back if that turns out to be text
+        /// further on and the word's bayt was skipped whole.
+        var lostCalledWrong: (word: Int, heard: [(raw: String, norm: String)])?
+        /// Right after ﷺ was matched: the rest of each form the words heard
+        /// for it began, still to come (none if a whole form was said).
+        var salawatLeft: [[String]] = []
     }
 
     private var committed: State
@@ -213,14 +220,23 @@ final class RecitationTracker {
     /// How words that can merge into the next one may be spelled (`Idgham`).
     private let idgham: [Int: [String]]
 
+    /// The text has ﷺ (the Arbaeen).
+    private let hasSalawat: Bool
+
+    /// Hadith: a "bayt" is a whole hadith, so the lost search moves on
+    /// `lostWindow` words at a time and skips aren't grouped.
+    private let prose: Bool
+
     /// `bayts` is each word's bayt number; without it, going back is searched
     /// for over everything recited since the start or last jump. `idgham` is
     /// from `Idgham.spellings`.
     init(words: [String], startIndex: Int = 0, bayts: [Int]? = nil, idgham: [Int: [String]] = [:],
-         tuning: MatchTuning = MatchTuning()) {
+         prose: Bool = false, tuning: MatchTuning = MatchTuning()) {
         self.words = words
         self.tuning = tuning
         self.idgham = idgham
+        self.prose = prose
+        hasSalawat = words.contains(Self.salawat)
         baytOfWord = bayts
         var starts: [Int: Int] = [:]
         for (i, b) in (bayts ?? []).enumerated() where starts[b] == nil { starts[b] = i }
@@ -403,8 +419,30 @@ final class RecitationTracker {
     // MARK: - Alignment
 
     private func apply(_ tokens: [(raw: String, norm: String)], to s: inout State) {
+        var tokens = tokens
         var i = 0
         while i < tokens.count {
+            // ﷺ said as a phrase (heard as several words) is that one word,
+            // and the rest of one begun in the last result is part of it.
+            if hasSalawat, let k = salawatRest(tokens, at: i, in: s) {
+                let taken = tokens[i..<(i + k)].map(\.norm)
+                s.salawatLeft = s.salawatLeft.compactMap { $0.starts(with: taken) ? Array($0.dropFirst(k)) : nil }
+                    .filter { !$0.isEmpty }
+                tokens.removeSubrange(i..<(i + k))
+                continue
+            }
+            var salawatSaid: [String]?
+            if hasSalawat, let (p, k) = salawatLength(tokens, at: i, after: s.pending), salawatNear(s) {
+                // Its first words may be the last result's, still unmatched.
+                let phrase = s.pending.suffix(p) + tokens[i..<(i + k)]
+                salawatSaid = phrase.map(\.norm)
+                s.pending.removeLast(p)
+                s.sinceMatch.removeLast(min(p, s.sinceMatch.count))
+                s.unmatchedRun = max(0, s.unmatchedRun - p)
+                if s.sinceMatch.isEmpty { s.runFrom = nil }
+                tokens.replaceSubrange(i..<(i + k), with: [(raw: phrase.map(\.raw).joined(separator: " "),
+                                                            norm: Self.salawat)])
+            }
             let token = tokens[i]
             let near = s.cursor..<min(words.count, s.cursor + tuning.lockedLookahead)
             let wide = s.cursor..<min(words.count, s.cursor + tuning.lostWindow)
@@ -444,10 +482,17 @@ final class RecitationTracker {
             } else if s.lock == .lost, let (hit, exact) = match(token.norm, in: wide),
                       resyncAccepted(hit, tokens: tokens, at: i) {
                 found = (hit, exact, true, token.raw)
+            } else if s.lock == .lost, case let ahead = slidWindow(s), ahead.upperBound > wide.upperBound,
+                      let (hit, exact) = match(token.norm, in: max(ahead.lowerBound, wide.upperBound)..<ahead.upperBound),
+                      twoInARow(hit, before: s.sinceMatch.last, tokens: tokens, at: i) {
+                // Further on (a bayt or more skipped): two words in a row.
+                found = (hit, exact, true, token.raw)
             }
             if let found {
                 if let from = joinedFrom {
-                    if found.uncertainGap {
+                    if found.uncertainGap, s.lock == .lost {
+                        judgeLostGap(upTo: from, in: &s)
+                    } else if found.uncertainGap {
                         judgeGap(upTo: from, in: &s, lost: true)
                     } else {
                         noteAdded(before: from, in: &s)
@@ -455,6 +500,8 @@ final class RecitationTracker {
                     for w in from..<found.hit where !words[w].isEmpty {
                         judge(w, Self.saidRight(after: s.outcomes[w], exact: found.exact), heard: nil, in: &s)
                     }
+                } else if found.uncertainGap, s.lock == .lost {
+                    judgeLostGap(upTo: found.hit, in: &s)
                 } else {
                     if !found.uncertainGap { noteAdded(before: found.hit, in: &s) }
                     judgeGap(upTo: found.hit, in: &s, lost: found.uncertainGap, glued: remnant)
@@ -465,6 +512,12 @@ final class RecitationTracker {
                 s.lastRight = found.hit
                 s.lock = .locked
                 s.lostBySilence = false
+                s.lostCalledWrong = nil
+                s.salawatLeft = []
+                if words[found.hit] == Self.salawat, let said = salawatSaid {
+                    s.salawatLeft = Self.salawatForms.filter { $0.starts(with: said) && $0.count > said.count }
+                        .map { Array($0.dropFirst(said.count)) }
+                }
                 s.pending = []
                 s.unmatchedRun = 0
                 s.sinceMatch = []
@@ -487,6 +540,7 @@ final class RecitationTracker {
                         // red at once with what was, and stays red if the
                         // reciter then says it after all, as in Tarteel.
                         let heard = s.pending.map(\.raw).joined(separator: " ")
+                        if s.outcomes[s.cursor] == nil { s.lostCalledWrong = (s.cursor, s.pending) }
                         judge(s.cursor, .wrong(heard: heard), heard: heard, in: &s)
                         s.cursor = Self.firstNonEmpty(from: s.cursor + 1, in: words)
                     }
@@ -536,6 +590,7 @@ final class RecitationTracker {
             s.lastRight = run.last!
             s.lock = .locked
             s.lostBySilence = false
+            s.lostCalledWrong = nil
             s.pending = []
             s.unmatchedRun = 0
             s.sinceMatch = []
@@ -685,6 +740,169 @@ final class RecitationTracker {
         let after = Self.firstNonEmpty(from: hit + 1, in: words)
         guard i + 1 < tokens.count, after < words.count else { return false }
         return matches(tokens[i + 1].norm, at: after) != nil
+    }
+
+    /// While lost, where to search further on: from where the run of
+    /// unmatched words began, one bayt on (a hadith: `lostWindow` words) for
+    /// every `lostAfterUnmatched` words heard since, `lostWindow` words long.
+    /// That is about twice the reciter's pace, so it catches up with a skip
+    /// of several bayts. The words heard before the place was lost count
+    /// too: they were the start of whatever the reciter went on to.
+    private func slidWindow(_ s: State) -> Range<Int> {
+        var start = s.runFrom?.cursor ?? s.cursor
+        for _ in 0..<(s.unmatchedRun / tuning.lostAfterUnmatched) {
+            let next = nextUnit(after: start)
+            guard next < words.count else { break }
+            start = next
+        }
+        return start..<min(words.count, start + tuning.lostWindow)
+    }
+
+    /// The first word of the bayt after the one `i` is in.
+    private func nextUnit(after i: Int) -> Int {
+        guard !prose, let bayts = baytOfWord, i < bayts.count else { return min(words.count, i + tuning.lostWindow) }
+        return (i..<bayts.count).first { bayts[$0] != bayts[i] } ?? words.count
+    }
+
+    /// Past the lost window, a match needs the word before it (the last token
+    /// heard) or the word after it (the next token) to match too.
+    private func twoInARow(_ hit: Int, before last: (raw: String, norm: String)?,
+                           tokens: [(raw: String, norm: String)], at i: Int) -> Bool {
+        guard words[hit].count >= 2 else { return false }
+        if let last, let before = words[..<hit].lastIndex(where: { !$0.isEmpty }),
+           matches(last.norm, at: before) != nil { return true }
+        let after = Self.firstNonEmpty(from: hit + 1, in: words)
+        guard i + 1 < tokens.count, after < words.count else { return false }
+        return matches(tokens[i + 1].norm, at: after) != nil
+    }
+
+    /// The place found again at `hit` after being lost. The words heard since
+    /// the last match are lined up with the text since then, and those said
+    /// count as right. A word called wrong on getting lost is taken back when
+    /// what was heard for it turns out to be text further on and its bayt was
+    /// skipped whole. A bayt passed over
+    /// whole was skipped (`RecitationIndex.skippedBayts` counts it once);
+    /// other words jumped stay `.unheard`, as the recognizer may have missed them.
+    private func judgeLostGap(upTo hit: Int, in s: inout State) {
+        let from = s.runFrom?.cursor ?? s.cursor
+        let span = (from..<hit).filter { !words[$0].isEmpty }
+        guard !span.isEmpty else { return }
+        let heard = s.sinceMatch
+        var said = align(heard, span)
+        // The word called wrong on getting lost was really the start of a
+        // skip if what was heard for it is text further on (two words of it).
+        var calledWrong: Int?
+        if let lost = s.lostCalledWrong,
+           align(lost.heard, ((lost.word + 1)..<min(words.count, hit + tuning.lostWindow)).filter { !words[$0].isEmpty })
+               .count >= 2 {
+            calledWrong = lost.word
+        }
+        // Bayts passed over whole. One word right in a bayt doesn't make it
+        // said if that word comes again later, up to where the reciter was
+        // found (أن in bayts 5 and 6): it was most likely that later one.
+        // That holds for the bayt the place was lost in too, whose words
+        // before `from` were judged against what turned out to be the skip.
+        var skipped: [[Int]] = []
+        if !prose, let bayts = baytOfWord, let start = baytStart[bayts[from]] {
+            var b = start
+            while b < hit {
+                let next = nextUnit(after: b)
+                let bayt = (b..<next).filter { !words[$0].isEmpty }
+                let later = Set((next..<min(words.count, hit + tuning.lostWindow)).map { words[$0] })
+                let right = Set(said.filter { bayt.contains($0.word) }.map(\.word))
+                    .union(bayt.filter { $0 < from && [.correct, .unsure].contains(s.outcomes[$0]) })
+                let rest = bayt.filter { !right.contains($0) }
+                if next <= hit, right.count <= 1, right.allSatisfy({ later.contains(words[$0]) }),
+                   rest.allSatisfy({ w in
+                       (s.outcomes[w] ?? .unheard) == .unheard || w == calledWrong
+                           || (w < from && s.outcomes[w]?.isMistake == true)
+                   }) {
+                    skipped.append(bayt)
+                    said.removeAll { bayt.contains($0.word) }
+                }
+                b = next
+            }
+        }
+        for w in skipped.joined() where s.outcomes[w] != nil {
+            s.outcomes[w] = nil
+            s.heard[w] = nil
+            s.withdrawn.insert(w)
+        }
+        for (t, w) in said {
+            let exact = matches(heard[t].norm, at: w) == true
+            judge(w, Self.saidRight(after: s.outcomes[w], exact: exact), heard: exact ? nil : heard[t].raw, in: &s)
+        }
+        for w in skipped.joined() { judge(w, .skipped, heard: nil, in: &s) }
+        for w in span where s.outcomes[w] == nil { judge(w, .unheard, heard: nil, in: &s) }
+    }
+
+    /// ﷺ as the text has it (one word).
+    private static let salawat = ArabicNormalize.normalize("صلى الله عليه وسلم")
+    /// The ways it is said, word by word.
+    private static let salawatForms = ["صلى الله عليه وسلم", "صلى الله عليه وآله وسلم", "عليه الصلاة والسلام"]
+        .map { $0.split(separator: " ").map { ArabicNormalize.normalize(String($0)) } }
+
+    /// How many of the last `pending` tokens and the tokens from `i` are ﷺ
+    /// said: a whole form, or its first two words or more (Whisper often
+    /// drops the end of a phrase). The phrase may begin in the last result.
+    private func salawatLength(_ tokens: [(raw: String, norm: String)], at i: Int,
+                               after pending: [(raw: String, norm: String)]) -> (pending: Int, tokens: Int)? {
+        var best: (pending: Int, tokens: Int)?
+        for form in Self.salawatForms {
+            for p in 0...min(pending.count, form.count - 1)
+            where zip(form, pending.suffix(p)).allSatisfy({ $0 == $1.norm }) {
+                let k = zip(form[p...], tokens[i...]).prefix { $0 == $1.norm }.count
+                if k > 0, p + k >= 2, p + k > (best.map { $0.pending + $0.tokens } ?? 0) { best = (p, k) }
+            }
+        }
+        return best
+    }
+
+    /// Right after ﷺ was matched: how many tokens from `i` end a form of it
+    /// (عليه وسلم after صلى الله, the phrase split between two results). The
+    /// rest may itself be split: عليه ending one result, وسلم the next. A
+    /// token ending the result that is the word due isn't taken.
+    private func salawatRest(_ tokens: [(raw: String, norm: String)], at i: Int, in s: State) -> Int? {
+        guard s.pending.isEmpty, let last = s.lastRight, words[last] == Self.salawat,
+              s.cursor == Self.firstNonEmpty(from: last + 1, in: words) else { return nil }
+        for rest in s.salawatLeft {
+            let n = min(rest.count, tokens.count - i)
+            guard n > 0, zip(rest.prefix(n), tokens[i..<(i + n)]).allSatisfy({ $0 == $1.norm }) else { continue }
+            if n == rest.count || s.cursor >= words.count || matches(tokens[i].norm, at: s.cursor) == nil { return n }
+        }
+        return nil
+    }
+
+    /// ﷺ is among the words the next token could be matched to.
+    private func salawatNear(_ s: State) -> Bool {
+        let end = s.lock == .lost ? max(slidWindow(s).upperBound, s.cursor + tuning.lostWindow)
+                                  : s.cursor + tuning.lostWindow
+        return (s.cursor..<min(words.count, end)).contains { words[$0] == Self.salawat }
+    }
+
+    /// The longest in-order pairing of heard tokens with the words of `span`.
+    private func align(_ heard: [(raw: String, norm: String)], _ span: [Int]) -> [(token: Int, word: Int)] {
+        guard !heard.isEmpty else { return [] }
+        let n = heard.count, m = span.count
+        var best = Array(repeating: Array(repeating: 0, count: m + 1), count: n + 1)
+        for t in stride(from: n - 1, through: 0, by: -1) {
+            for k in stride(from: m - 1, through: 0, by: -1) {
+                let pair = matches(heard[t].norm, at: span[k]) != nil ? best[t + 1][k + 1] + 1 : 0
+                best[t][k] = max(pair, best[t + 1][k], best[t][k + 1])
+            }
+        }
+        var pairs: [(token: Int, word: Int)] = []
+        var t = 0, k = 0
+        while t < n, k < m {
+            if matches(heard[t].norm, at: span[k]) != nil, best[t][k] == best[t + 1][k + 1] + 1 {
+                pairs.append((t, span[k])); t += 1; k += 1
+            } else if best[t + 1][k] >= best[t][k + 1] {
+                t += 1
+            } else {
+                k += 1
+            }
+        }
+        return pairs
     }
 
     /// The token heard as several expected words run together, starting at

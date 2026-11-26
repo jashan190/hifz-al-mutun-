@@ -6,6 +6,8 @@ struct ReviewSheet: View {
     let matn: Matn
     /// Ephemeral annotations from the current sitting (empty when none).
     var annotations: [FlagKey: ReviewSummary.Mistake] = [:]
+    /// Bayts the current sitting left out whole.
+    var skippedBayts: Set<Int> = []
     let onSelect: (FlagKey) -> Void
     let onRemove: (FlagKey) -> Void
     let reviewAgain: () -> Void
@@ -15,7 +17,7 @@ struct ReviewSheet: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var items: [ReviewItem] {
-        ReviewItems.resolve(matn: matn, flags: flagStore.flags[matn.id] ?? [])
+        ReviewItems.resolve(matn: matn, flags: flagStore.flags[matn.id] ?? [], skippedBayts: skippedBayts)
     }
 
     var body: some View {
@@ -26,7 +28,7 @@ struct ReviewSheet: View {
                         .font(.title2.weight(.bold)).foregroundStyle(Theme.ink)
                         .environment(\.layoutDirection, .rightToLeft)
                     Text(items.isEmpty ? "No flagged words yet"
-                         : "\(Numerals.eastern(items.count)) flagged \(items.count == 1 ? "word" : "words")")
+                         : "\(Numerals.eastern(items.count)) to review")
                         .font(.subheadline).foregroundStyle(Theme.ink.opacity(0.7))
                 }
                 Spacer()
@@ -51,11 +53,12 @@ struct ReviewSheet: View {
                 List {
                     ForEach(items) { item in
                         MistakeCard(location: item.location, word: item.word,
-                                    mistake: annotations[item.key]) { onSelect(item.key) }
+                                    // A whole bayt's row isn't one word's mistake.
+                                    mistake: item.keys.count > 1 ? nil : annotations[item.key]) { onSelect(item.key) }
                             .listRowInsets(EdgeInsets(top: 2, leading: Theme.margin, bottom: 2, trailing: Theme.margin))
                             .listRowSeparator(.visible)
                             .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) { onRemove(item.key) } label: {
+                                Button(role: .destructive) { item.keys.forEach(onRemove) } label: {
                                     Label("Remove", systemImage: "flag.slash")
                                 }
                             }
