@@ -63,4 +63,12 @@ import Testing
         #expect(index.refs.map(\.half) == [.sadr, .sadr, .ajuz])
         #expect(index.refs.map(\.page) == [1, 1, 1])
     }
+
+    @Test func skippedProseWordsCountIndividuallyEvenWhenTheWholeHadithWasSkipped() {
+        let index = RecitationIndex(matn: proseMatn())
+        let outcomes: [Int: WordOutcome] = [0: .skipped, 1: .skipped, 2: .unheard]
+
+        #expect(index.skippedBayts(outcomes).isEmpty)
+        #expect(index.mistakeCount(outcomes) == 2)
+    }
 }

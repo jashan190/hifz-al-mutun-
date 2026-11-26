@@ -20,10 +20,13 @@ import Foundation
     /// Each bayt in `bayts` recited correctly, one final per bayt.
     private func recite(_ bayts: [Int], into t: RecitationTracker, _ index: RecitationIndex) {
         for (k, b) in bayts.enumerated() {
-            let text = index.refs.indices.filter { index.refs[$0].bayt == b }
-                .map { index.normalizedWords[$0] }.filter { !$0.isEmpty }.joined(separator: " ")
-            t.consume(.init(text: text, isFinal: true), at: Double(k))
+            t.consume(fragment(for: b, in: index), at: Double(k))
         }
+    }
+
+    private func fragment(for bayt: Int, in index: RecitationIndex) -> TranscriptFragment {
+        let text = words(of: bayt...bayt, index).map { index.normalizedWords[$0] }.joined(separator: " ")
+        return TranscriptFragment(text: text, isFinal: true)
     }
 
     private func words(of bayts: ClosedRange<Int>, _ index: RecitationIndex) -> [Int] {
@@ -149,5 +152,48 @@ import Foundation
                                     skippedBayts: [2])
         // Bayt 1's word, bayt 2 once, and the word added in it; not the fixed one.
         #expect(summary.mistakeCount == 3)
+    }
+
+    @Test func proseRecoveryBeyondTheLostWindowNeedsTwoWords() {
+        // The next passage starts just outside the original lost window.
+        let words = ["ميزان"] + Array(repeating: "صحراء", count: 13) + ["مرجان", "زمرد"]
+        let hadiths = Array(repeating: 1, count: 8) + Array(repeating: 2, count: 6) + [3, 3]
+        let t = RecitationTracker(words: words, bayts: hadiths, prose: true)
+        let wrong = "فيل بوم نسر بط"
+        t.consume(.init(text: "ميزان", isFinal: true), at: 0)
+        t.consume(.init(text: wrong, isFinal: true), at: 1)
+        #expect(t.lockState == .lost)
+
+        t.consume(.init(text: "مرجان", isFinal: true), at: 2)
+        #expect(t.lockState == .lost)
+        #expect(t.cursor == 2)
+        #expect(t.outcomes[14] == nil)
+
+        t.consume(.init(text: "مرجان زمرد", isFinal: true), at: 3)
+        #expect(t.lockState == .locked)
+        #expect(t.cursor == words.count)
+        #expect(t.outcomes[1] == .wrong(heard: wrong))
+        // Even the hadith that was passed over in full stays unheard.
+        #expect((2..<14).allSatisfy { t.outcomes[$0] == .unheard })
+        #expect(t.outcomes[14] == .correct)
+        #expect(t.outcomes[15] == .correct)
+    }
+
+    @Test func liveSessionCountsAWholeSkipOnceButShowsEverySkippedWord() async throws {
+        let index = try Self.tuhfa()
+        let script = [1, 2, 3, 4, 5, 6, 7, 9, 10].map { fragment(for: $0, in: index) }
+        let source = MockSpeechSource(script: script)
+        let session = RecitationSession(index: index, source: source, startWordIndex: 0)
+        try await source.start()
+        await session.run()
+
+        let skippedWords = words(of: 8...8, index)
+        #expect(skippedWords.count > 1)
+        #expect(session.mistakeCount == 1)
+        #expect(skippedWords.allSatisfy { i in
+            let ref = index.refs[i]
+            return session.reveal.outcome(bayt: ref.bayt, half: ref.half, wordIndex: ref.wordIndex) == .skipped
+        })
+        #expect(session.cursor == index.firstWordIndex(ofBayt: 11))
     }
 }

@@ -89,4 +89,33 @@ import Foundation
         #expect(t.cursor == end)
         #expect(!t.outcomes.values.contains { $0.isMistake })
     }
+
+    @Test func aRevisedPartialSalawatDoesNotCommitTheEarlierGuess() {
+        let words = ["رسول", "ﷺ", "يقول", "الحق"].map(ArabicNormalize.normalize)
+        let t = RecitationTracker(words: words, prose: true)
+        t.consume(.init(text: "رسول", isFinal: true), at: 0)
+        t.consume(.init(text: "صلى الله", isFinal: false), at: 1)
+        #expect(t.cursor == 2)
+        #expect(t.outcomes[1] == nil)
+
+        // Whisper revises the phrase away; the skipped glyph must stay a mistake.
+        t.consume(.init(text: "يقول الحق", isFinal: true), at: 1.1)
+        #expect(t.outcomes[1] == .skipped)
+        #expect(t.outcomes[2] == .correct)
+        #expect(t.outcomes[3] == .correct)
+        #expect(t.cursor == words.count)
+    }
+
+    @Test func aDistantGlyphDoesNotAbsorbSalawatWrittenAsSeparateWords() {
+        let phrase = ["صلى", "الله", "عليه", "وسلم"]
+        let words = (phrase + Array(repeating: "صحراء", count: 12) + ["ﷺ"])
+            .map(ArabicNormalize.normalize)
+        let t = RecitationTracker(words: words, prose: true)
+
+        t.consume(.init(text: phrase.joined(separator: " "), isFinal: true), at: 0)
+
+        #expect(t.cursor == phrase.count)
+        #expect(t.outcomes == [0: .correct, 1: .correct, 2: .correct, 3: .correct])
+        #expect(t.added.isEmpty)
+    }
 }

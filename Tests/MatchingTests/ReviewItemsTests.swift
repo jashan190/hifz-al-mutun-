@@ -57,4 +57,19 @@ import Testing
         let map = ReviewItems.annotations(ReviewSummary(baytsRecited: 1, revealed: 0, mistakes: [m]))
         #expect(map[FlagKey(bayt: 2, half: .ajuz, wordIndex: 0)]?.heard == "تلى")
     }
+
+    @Test func onlyCompleteFlagsProduceAWholeBaytRow() throws {
+        let whole = [FlagKey(bayt: 1, half: .sadr, wordIndex: 0),
+                     FlagKey(bayt: 1, half: .sadr, wordIndex: 1),
+                     FlagKey(bayt: 1, half: .ajuz, wordIndex: 0)]
+        let remaining = FlagKey(bayt: 2, half: .ajuz, wordIndex: 0)
+        // Some flags for bayt 2 were cleared, but the sitting still calls it skipped.
+        let items = ReviewItems.resolve(matn: poemMatn(), flags: Set(whole + [remaining]), skippedBayts: [2])
+
+        #expect(items.map(\.location) == ["Bayt 1 · whole bayt", "Bayt 2 · second half"])
+        #expect(items.map(\.word) == ["في النظم … أولا", "تلا"])
+        #expect(items.map(\.keys) == [whole, [remaining]])
+        let grouped = try #require(items.first)
+        #expect(grouped.key == whole.first)
+    }
 }
